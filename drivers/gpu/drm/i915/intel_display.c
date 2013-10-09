@@ -383,15 +383,14 @@ static const intel_limit_t intel_limits_vlv_dp = {
 
 static bool check_live_status(struct drm_i915_private *dev_priv)
 {
-	DRM_DEBUG_PM("Reading: HDMIB_HOTPLUG_LIVE_STATUS = %x\n", I915_READ(PORT_HOTPLUG_STAT));
-
-	if (((I915_READ(PORT_HOTPLUG_STAT) & HDMIB_HOTPLUG_LIVE_STATUS) == 0) &&
-		((I915_READ(PORT_HOTPLUG_STAT) & HDMIC_HOTPLUG_LIVE_STATUS) == 0) &&
-		((I915_READ(PORT_HOTPLUG_STAT) & HDMID_HOTPLUG_LIVE_STATUS) == 0))
-		return false;
-	else
-		return true;
+	/* Since certain panels are causing delay in updating the live_status register
+	 * and increasing delay doesnot meet the KPI, now live_status is determined whether
+	 * the device is available or not
+	 */
+	DRM_DEBUG_DRIVER("HDMI live_status is returning is %d\n", !dev_priv->unplug);
+	return !dev_priv->unplug;
 }
+
 
 void i915_update_plane_stat(struct drm_i915_private *dev_priv, int pipe,
 		int plane, bool enable, int planes)
@@ -11220,7 +11219,7 @@ static void intel_crtc_init(struct drm_device *dev, int pipe)
 	/* Disable both bend spread initially */
 	dev_priv->clockspread = false;
 	dev_priv->clockbend = false;
-	dev_priv->unplug = false;
+	dev_priv->unplug = true;
 	dev_priv->audio_suspended = true;
 	valleyview_program_clock_bending(
 			dev_priv, &clockbend);

@@ -1285,6 +1285,7 @@ intel_hdmi_detect(struct drm_connector *connector, bool force)
 			intel_hdmi->rgb_quant_range_selectable =
 				drm_rgb_quant_range_selectable(edid);
 			connector->display_info.raw_edid = (char *)edid;
+			dev_priv->unplug = false;
 			DRM_DEBUG_DRIVER("Got edid, HDMI connected\n");
 		} else {
 			DRM_ERROR("EDID not in digital form ?\n");

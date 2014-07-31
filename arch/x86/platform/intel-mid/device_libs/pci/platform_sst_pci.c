@@ -278,9 +278,10 @@ static void set_mofd_sst_config(struct sst_platform_info *sst_info)
 	sst_info->debugfs_data = &moor_debugfs_data;
 	sst_info->lib_info = &mofd_lib_dnld_info;
 
-	sst_info->enable_recovery = 0;
+	/* Enable recovery for mofd based devices*/
+	sst_info->enable_recovery = 1;
 	/* Timer based recovery not enabled in mofd based devices */
-	sst_info->start_recovery_timer = false;
+	sst_info->start_recovery_timer = true;
 
 	return ;
 

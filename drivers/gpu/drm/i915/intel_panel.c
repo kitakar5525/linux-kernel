@@ -769,7 +769,6 @@ void intel_panel_enable_backlight(struct drm_device *dev,
 	spin_lock_irqsave(&dev_priv->backlight.lock, flags);
 
 	if (dev_priv->backlight.level == 0) {
-		dev_priv->backlight.level = intel_panel_get_max_backlight(dev);
 		if (dev_priv->backlight.device)
 			dev_priv->backlight.device->props.brightness =
 				dev_priv->backlight.level;

@@ -967,10 +967,16 @@ bool is_media_playback_drrs_request(struct drm_mode_set *set)
 	struct intel_mipi_drrs_work *work = dev_priv->drrs.mipi_drrs_work;
 	bool ret = false;
 
-	if (dev_priv->drrs_state.type < SEAMLESS_DRRS_SUPPORT)
+	if (dev_priv->drrs_state.type < SEAMLESS_DRRS_SUPPORT ||
+					!dev_priv->drrs.connector)
 		return ret;
 
 	if (set->mode == NULL)
+		return ret;
+
+	/* At present only DSI and eDP support DRRS */
+	if (!intel_pipe_has_type(set->crtc, INTEL_OUTPUT_EDP) &&
+			!intel_pipe_has_type(set->crtc, INTEL_OUTPUT_DSI))
 		return ret;
 
 	DRM_DEBUG_KMS("mode_vr: %d, crtc_vr: %d, cur_rr_type: %d\n",

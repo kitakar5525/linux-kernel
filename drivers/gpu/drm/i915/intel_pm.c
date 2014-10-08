@@ -987,7 +987,7 @@ bool is_media_playback_drrs_request(struct drm_mode_set *set)
 		if (set->mode->vrefresh != set->crtc->mode.vrefresh)
 			ret = true;
 
-		if (dev_priv->drrs_state.type == SEAMLESS_DRRS_SUPPORT_SW) {
+		if (dev_priv->drrs_state.type == SEAMLESS_DRRS_SUPPORT_SW && work) {
 			if (work_busy(&work->work.work)) {
 				if (work->target_mode->vrefresh !=
 						set->mode->vrefresh)

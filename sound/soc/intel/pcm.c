@@ -41,6 +41,7 @@
 #include "platform_ipc_v2.h"
 #include "sst_platform.h"
 #include "sst_platform_pvt.h"
+#include <asm/cacheflush.h>
 
 struct device *sst_pdev;
 struct sst_device *sst_dsp;
@@ -581,9 +582,20 @@ static int sst_media_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params,
 				struct snd_soc_dai *dai)
 {
+	unsigned long addr;
+	int pages, retval;
 	pr_debug("%s\n", __func__);
 
 	snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(params));
+	/* mark the pages as uncached region */
+	addr = (unsigned long) substream->runtime->dma_area;
+	pages = (substream->runtime->dma_bytes + PAGE_SIZE - 1) / PAGE_SIZE;
+	retval = set_memory_uc(addr, pages);
+	if (retval) {
+		pr_err("set_memory_uc failed.Error:%d\n", retval);
+		return retval;
+	}
+
 	memset(substream->runtime->dma_area, 0, params_buffer_bytes(params));
 	return 0;
 }
@@ -619,7 +631,17 @@ static int sst_be_hw_params(struct snd_pcm_substream *substream,
 static int sst_media_hw_free(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *dai)
 {
-	return snd_pcm_lib_free_pages(substream);
+	unsigned long addr;
+	u32 pages;
+
+	/* mark back the pages as cached/writeback region before the free */
+	if (substream->runtime->dma_area != NULL) {
+		addr = (unsigned long) substream->runtime->dma_area;
+		pages = (substream->runtime->dma_bytes + PAGE_SIZE - 1)/PAGE_SIZE;
+		set_memory_wb(addr, pages);
+		return snd_pcm_lib_free_pages(substream);
+	}
+	return 0;
 }
 
 static int sst_send_timer_cmd(struct snd_pcm_substream *substream,

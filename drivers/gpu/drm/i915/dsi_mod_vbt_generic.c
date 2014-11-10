@@ -34,6 +34,7 @@
 #include <video/mipi_display.h>
 #include <linux/i2c.h>
 #include <asm/intel-mid.h>
+#include <linux/mfd/intel_mid_pmic.h>
 #include "i915_drv.h"
 #include "intel_drv.h"
 #include "intel_dsi.h"
@@ -214,12 +215,67 @@ out:
 	return data;
 }
 
+static u8 *mipi_exec_spi(struct intel_dsi *intel_dsi, u8 *data)
+{             u8 payload_size;
+
+	/*
+	 * SPI block is not used in linux, but if at all the
+	 * VBT contains the SPI block we have to skip to the
+	 * next block, hence reading the size of the SPI block
+	 * and skipping the same.
+	 */
+	data = data + 5;
+	payload_size = *data;
+	data = data + payload_size + 1;
+
+	return data;
+}
+
+static u8 *mipi_exec_pmic(struct intel_dsi *intel_dsi, u8 *data)
+{
+	u32 register_address, register_data;
+	int data_mask, tmp;
+	int ret;
+
+	/*
+	 * First 3 bytes are not relevant for Linux.
+	 * Skipping the data field by 3 bytes to get
+	 * the PMIC register Address.
+	 */
+	data += 3;
+	register_address = *((u32 *)data);
+	data += 4;
+	register_data = *((u32 *)data);
+	data += 4;
+	data_mask = *((u32 *)data);
+	data += 4;
+
+	tmp = intel_mid_pmic_readb(register_address);
+	if (tmp < 0) {
+		DRM_ERROR("PMIC Read failed\n");
+		return ERR_PTR(tmp);
+	}
+
+	tmp &= ~data_mask;
+	register_data &= data_mask;
+	register_data |= tmp;
+	ret = intel_mid_pmic_writeb(register_address, register_data);
+	if (ret < 0) {
+		DRM_ERROR("PMIC Write failed\n");
+		return ERR_PTR(ret);
+	}
+
+	return data;
+}
+
 FN_MIPI_ELEM_EXEC exec_elem[] = {
 	NULL, /* reserved */
 	mipi_exec_send_packet,
 	mipi_exec_delay,
 	mipi_exec_gpio,
 	mipi_exec_i2c,
+	mipi_exec_spi,
+	mipi_exec_pmic,
 	NULL, /* status read; later */
 };
 

@@ -798,10 +798,6 @@ struct mipi_config {
 
 } __packed;
 
-struct bdb_mipi_config {
-	struct mipi_config config[0];
-};
-
 /* Block 52 contains MiPi configuration block
  * 6 * bdb_mipi_config, followed by 6 pps data
  * block below
@@ -812,6 +808,11 @@ struct mipi_pps_data {
 	u16 bl_disable_delay;
 	u16 panel_off_delay;
 	u16 panel_power_cycle_delay;
+};
+
+struct bdb_mipi_config {
+	struct mipi_config config[MAX_MIPI_CONFIGURATIONS];
+	struct mipi_pps_data pps[MAX_MIPI_CONFIGURATIONS];
 };
 
 /* MIPI Sequnece Block definitions */
@@ -825,6 +826,9 @@ enum MIPI_SEQ {
 	MIPI_SEQ_BACKLIGHT_ON,
 	MIPI_SEQ_BACKLIGHT_OFF,
 	MIPI_SEQ_TEAR_ON,
+	MIPI_SEQ_TEAR_OFF,
+	MIPI_POWER_ON,
+	MIPI_POWER_OFF,
 	MIPI_SEQ_MAX
 
 };
@@ -835,6 +839,8 @@ enum MIPI_SEQ_ELEMENT {
 	MIPI_SEQ_ELEM_DELAY,
 	MIPI_SEQ_ELEM_GPIO,
 	MIPI_SEQ_ELEM_I2C,
+	MIPI_SEQ_ELEM_SPI,
+	MIPI_SEQ_ELEM_PMIC,
 	MIPI_SEQ_ELEM_STATUS,
 	MIPI_SEQ_ELEM_MAX
 
@@ -862,7 +868,7 @@ enum MIPI_GPIO_PIN_INDEX {
 /* We will have variable number of these - max 6 */
 struct bdb_mipi_sequence {
 	u8 version;
-	void *data;
+	u8 data[0];
 };
 
 #endif /* _I830_BIOS_H_ */

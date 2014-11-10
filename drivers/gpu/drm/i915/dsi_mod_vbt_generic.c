@@ -32,6 +32,7 @@
 #include <drm/i915_drm.h>
 #include <linux/slab.h>
 #include <video/mipi_display.h>
+#include <linux/i2c.h>
 #include <asm/intel-mid.h>
 #include "i915_drv.h"
 #include "intel_drv.h"
@@ -155,11 +156,70 @@ static u8 *mipi_exec_gpio(struct intel_dsi *intel_dsi, u8 *data)
 	return data;
 }
 
+static u8 *mipi_exec_i2c(struct intel_dsi *intel_dsi, u8 *data)
+{
+	struct i2c_adapter *adapter;
+	int ret;
+	u8 reg_offset, payload_size, retries = 5;
+	struct i2c_msg msg;
+	u8 *transmit_buffer = NULL;
+
+	u8 flag = *data++;
+	u8 index = *data++;
+	u8 bus_number = *data++;
+	u16 slave_add = *(u16 *)(data);
+	data = data + 2;
+	reg_offset = *data++;
+	payload_size = *data++;
+
+	adapter = i2c_get_adapter(bus_number);
+
+	if (!adapter) {
+		DRM_ERROR("i2c_get_adapter(%u) failed, index:%u flag: %u\n",
+				(bus_number + 1), index, flag);
+		goto out;
+	}
+
+	transmit_buffer = kmalloc(1 + payload_size, GFP_TEMPORARY);
+
+	if (!transmit_buffer)
+		goto out;
+
+	transmit_buffer[0] = reg_offset;
+	memcpy(&transmit_buffer[1], data, (size_t)payload_size);
+
+	msg.addr   = slave_add;
+	msg.flags  = 0;
+	msg.len    = payload_size + 1;
+	msg.buf    = &transmit_buffer[0];
+
+	do {
+		ret =  i2c_transfer(adapter, &msg, 1);
+		if (ret == 1)
+			break;
+		else if (ret == -EAGAIN)
+			usleep_range(1000, 2500);
+		else {
+			DRM_ERROR("i2c transfer failed, error code:%d", ret);
+			break;
+		}
+	} while (retries--);
+
+	if (retries == 0)
+		DRM_ERROR("i2c transfer failed, error code:%d", ret);
+out:
+	kfree(transmit_buffer);
+
+	data = data + payload_size;
+	return data;
+}
+
 FN_MIPI_ELEM_EXEC exec_elem[] = {
 	NULL, /* reserved */
 	mipi_exec_send_packet,
 	mipi_exec_delay,
 	mipi_exec_gpio,
+	mipi_exec_i2c,
 	NULL, /* status read; later */
 };
 
@@ -175,7 +235,10 @@ static char *seq_name[] = {
 	"MIPI_SEQ_INIT_OTP",
 	"MIPI_SEQ_DISPLAY_ON",
 	"MIPI_SEQ_DISPLAY_OFF",
-	"MIPI_SEQ_DEASSERT_RESET"
+	"MIPI_SEQ_DEASSERT_RESET",
+	"MIPI_BACKLIGHT_ON",
+	"MIPI_BACKLIGHT_OFF",
+	"MIPI_TEAR_ON",
 };
 
 static void generic_exec_sequence(struct intel_dsi *intel_dsi, char *sequence)
@@ -629,6 +692,16 @@ void generic_disable(struct intel_dsi_device *dsi)
 	generic_exec_sequence(intel_dsi, sequence);
 }
 
+void generic_enable_bklt(struct intel_dsi_device *dsi)
+{
+	struct intel_dsi *intel_dsi = container_of(dsi, struct intel_dsi, dev);
+	struct drm_device *dev = intel_dsi->base.base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	char *sequence = dev_priv->vbt.dsi.sequence[MIPI_SEQ_BACKLIGHT_ON];
+	generic_exec_sequence(intel_dsi, sequence);
+}
+
 enum drm_connector_status generic_detect(struct intel_dsi_device *dsi)
 {
 	return connector_status_connected;
@@ -687,6 +760,7 @@ struct intel_dsi_dev_ops vbt_generic_dsi_display_ops = {
 	.send_otp_cmds = generic_send_otp_cmds,
 	.enable = generic_enable,
 	.disable = generic_disable,
+	.enable_backlight = generic_enable_bklt,
 	.detect = generic_detect,
 	.get_hw_state = generic_get_hw_state,
 	.get_modes = generic_get_modes,

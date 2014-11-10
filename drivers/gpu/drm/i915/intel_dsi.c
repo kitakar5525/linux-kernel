@@ -407,6 +407,9 @@ static void intel_dsi_enable(struct intel_encoder *encoder)
 			(intel_dsi->backlight_on_delay * 1000) + 500);
 
 	intel_panel_enable_backlight(dev, pipe);
+
+	if (intel_dsi->dev.dev_ops->enable_backlight)
+		intel_dsi->dev.dev_ops->enable_backlight(&intel_dsi->dev);
 }
 
 static void intel_dsi_disable(struct intel_encoder *encoder)

@@ -537,11 +537,6 @@ static int lp855x_probe(struct i2c_client *cl, const struct i2c_device_id *id)
 	lp->chip_id = id->driver_data;
 	i2c_set_clientdata(cl, lp);
 
-	ret = lp855x_configure(lp);
-	if (ret) {
-		dev_err(lp->dev, "device config err: %d", ret);
-		goto err_dev;
-	}
 	gcl = cl;
 
 	ret = lp855x_backlight_register(lp);

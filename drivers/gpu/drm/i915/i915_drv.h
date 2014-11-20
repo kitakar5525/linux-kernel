@@ -1214,6 +1214,12 @@ struct intel_vbt_target_res {
 	int yres;
 };
 
+#define HDMI_VSWING_1000MV_2DB		0
+#define HDMI_VSWING_1000MV_0DB		1
+#define HDMI_VSWING_800MV_0DB		2
+#define HDMI_VSWING_600MV_2DB		3
+#define HDMI_VSWING_600MV_0DB		4
+
 struct intel_vbt_data {
 	struct drm_display_mode *lfp_lvds_vbt_mode; /* if any */
 	struct drm_display_mode *sdvo_lvds_vbt_mode; /* if any */

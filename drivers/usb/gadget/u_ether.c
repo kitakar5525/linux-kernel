@@ -654,6 +654,7 @@ static int eth_stop(struct net_device *net)
 {
 	struct eth_dev	*dev = netdev_priv(net);
 	unsigned long	flags;
+	int		result = 0;
 
 	VDBG(dev, "%s\n", __func__);
 	netif_stop_queue(net);
@@ -684,14 +685,23 @@ static int eth_stop(struct net_device *net)
 		 */
 		in = link->in_ep->desc;
 		out = link->out_ep->desc;
-		usb_ep_disable(link->in_ep);
-		usb_ep_disable(link->out_ep);
+		if (in) {
+			usb_ep_disable(link->in_ep);
+			link->in_ep->desc = NULL;
+		}
+		if (out) {
+			usb_ep_disable(link->out_ep);
+			link->out_ep->desc = NULL;
+		}
+
 		if (netif_carrier_ok(net)) {
 			DBG(dev, "host still using in/out endpoints\n");
-			link->in_ep->desc = in;
-			link->out_ep->desc = out;
-			usb_ep_enable(link->in_ep);
-			usb_ep_enable(link->out_ep);
+			result = usb_ep_enable(link->in_ep);
+			if (!result)
+				link->in_ep->desc = in;
+			result = usb_ep_enable(link->out_ep);
+			if (!result)
+				link->out_ep->desc = out;
 		}
 	}
 	spin_unlock_irqrestore(&dev->lock, flags);
@@ -945,7 +955,8 @@ void gether_disconnect(struct gether *link)
 	 * of all pending i/o.  then free the request objects
 	 * and forget about the endpoints.
 	 */
-	usb_ep_disable(link->in_ep);
+	if (link->in_ep->desc)
+		usb_ep_disable(link->in_ep);
 	spin_lock(&dev->req_lock);
 	while (!list_empty(&dev->tx_reqs)) {
 		req = container_of(dev->tx_reqs.next,
@@ -960,7 +971,8 @@ void gether_disconnect(struct gether *link)
 	link->in_ep->driver_data = NULL;
 	link->in_ep->desc = NULL;
 
-	usb_ep_disable(link->out_ep);
+	if (link->out_ep->desc)
+		usb_ep_disable(link->out_ep);
 	spin_lock(&dev->req_lock);
 	while (!list_empty(&dev->rx_reqs)) {
 		req = container_of(dev->rx_reqs.next,

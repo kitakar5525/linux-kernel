@@ -281,6 +281,9 @@ static int sdhci_acpi_emmc_probe_slot(struct platform_device *pdev)
 
 	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
 
+	/* Enable Packed Command */
+	host->mmc->caps2 |= MMC_CAP2_PACKED_CMD;
+
 	if (!sdhci_intel_host(&cpu))
 		return 0;
 

@@ -285,7 +285,7 @@ struct bdb_lvds_options {
 	u32 blt_control_type_bits;
 } __attribute__((packed));
 
-struct bdb_panel_backlight {
+struct bdb_lfp_backlight_data_entry {
 	/* Backlight control parameters */
 	u8 type:2;
 	u8 inverter_pol:1;
@@ -295,6 +295,12 @@ struct bdb_panel_backlight {
 	u8 minbrightness;
 	u8 i2c_slave_addr;
 	u8 brightnesscmd;
+} __packed;
+
+struct bdb_lfp_backlight_data {
+	u8 entry_size;
+	struct bdb_lfp_backlight_data_entry data[16];
+	u8 level[16];
 } __packed;
 
 /* LFP pointer table contains entries to the struct below */

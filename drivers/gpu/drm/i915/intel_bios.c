@@ -202,17 +202,18 @@ get_lvds_fp_timing(const struct bdb_header *bdb,
 static void parse_backlight_data(struct drm_i915_private *dev_priv,
 						struct bdb_header *bdb)
 {
-	struct bdb_panel_backlight *vbt_panel_bl = NULL;
-	void *bl_start = NULL;
+	struct bdb_lfp_backlight_data *backlight_data = NULL;
+	struct bdb_lfp_backlight_data_entry *entry = NULL;
 
-	bl_start = find_section(bdb, BDB_LVDS_BACKLIGHT);
-	if (!bl_start) {
+	backlight_data = find_section(bdb, BDB_LVDS_BACKLIGHT);
+	if (!backlight_data) {
 		DRM_DEBUG_KMS("No backlight BDB found");
 		return;
 	}
 	DRM_DEBUG_KMS("Found backlight BDB");
-	vbt_panel_bl = (struct bdb_panel_backlight *)(bl_start + 1) + panel_type;
-	dev_priv->vbt.pwm_frequency = vbt_panel_bl->pwm_freq;
+	entry = &backlight_data->data[panel_type];
+	dev_priv->vbt.pwm_frequency = entry->pwm_freq;
+	dev_priv->vbt.init_backlight_level = backlight_data->level[panel_type];
 }
 
 /* Try to find integrated panel data */

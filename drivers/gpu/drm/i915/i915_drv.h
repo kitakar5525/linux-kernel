@@ -1267,6 +1267,7 @@ struct intel_vbt_data {
 
 	struct child_device_config *child_dev;
 	struct intel_vbt_target_res target_res;
+	u8 init_backlight_level;
 };
 
 enum intel_ddb_partitioning {

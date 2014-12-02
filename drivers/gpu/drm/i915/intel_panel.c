@@ -833,6 +833,11 @@ static void intel_panel_init_backlight(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	dev_priv->backlight.level = intel_panel_get_backlight(dev);
+	if (dev_priv->backlight.level == 0) {
+		/*To handle scenarios where GOP missed to update the LFP backlight register*/
+		if (IS_VALLEYVIEW(dev) && dev_priv->is_mipi)
+			dev_priv->backlight.level = dev_priv->vbt.init_backlight_level;
+	}
 	dev_priv->backlight.enabled = dev_priv->backlight.level != 0;
 
 #ifdef CONFIG_CRYSTAL_COVE

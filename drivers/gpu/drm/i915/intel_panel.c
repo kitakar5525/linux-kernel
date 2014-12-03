@@ -767,16 +767,6 @@ void intel_panel_enable_backlight(struct drm_device *dev,
 		{
 			intel_mid_pmic_writeb(0x4B, 0xFF);
 			intel_mid_pmic_writeb(0x51, 0x01);
-
-			/* Control Backlight Slope programming for LP8556 IC*/
-			if (lpdata && (spid.hardware_id == BYT_TABLET_BLK_8PR1)) {
-				mdelay(2);
-				if (lp855x_ext_write_byte(LP8556_CFG3, LP8556_MODE_SL_50MS_FL_HV_PWM_12BIT))
-					DRM_ERROR("Backlight slope programming failed\n");
-				else
-					DRM_INFO("Backlight slope programming success\n");
-				mdelay(2);
-			}
 		}
 		break;
 	case INTEL_SIO_PWM:

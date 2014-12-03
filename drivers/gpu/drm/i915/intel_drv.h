@@ -686,9 +686,6 @@ struct intel_unpin_work {
 #define NANOSEC_MULTIPLIER	1000000000
 #define INVERSE_BEND_RESOLUTION	(VLV_ACCUMULATOR_SIZE*48*128)
 
-/* Added to control Backlight Slope programming */
-#define LP8556_MODE_SL_50MS_FL_HV_PWM_12BIT      0x3E
-
 struct intel_program_clock_bending {
 	u32 dotclock;
 	u32 referenceclk;

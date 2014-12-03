@@ -8871,6 +8871,41 @@ static void intel_gen7_queue_mmio_flip_work(struct work_struct *__work)
 	i9xx_update_plane(crtc, crtc->fb, 0, 0);
 }
 
+static void intel_gen7_queue_mmio_flip_work_sync(struct i915_flip_work *flipwork)
+{
+	int ret = 0;
+	unsigned int reset_counter;
+	struct drm_crtc *crtc = flipwork->flipdata.crtc;
+	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
+	struct drm_device *dev = crtc->dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_ring_buffer *ring =
+		&dev_priv->ring[flipwork->flipdata.ring_id];
+
+	if (dev_priv->ums.mm_suspended || (ring->obj == NULL)) {
+		DRM_ERROR("flip attempted while the ring is not ready\n");
+		return;
+	}
+
+	/* Wait is needed only for nonZero Seqnos, as zero Seqno indicates
+	that either the rendering on the object (through GPU) is already
+	completed or not intiated at all */
+	if (flipwork->flipdata.seqno > 0) {
+		reset_counter =
+			atomic_read(&dev_priv->gpu_error.reset_counter);
+		/* sleep wait until the seqno has passed */
+		ret = __wait_seqno(ring, flipwork->flipdata.seqno,
+			reset_counter, true, NULL);
+		if (ret)
+			DRM_ERROR("wait_seqno failed on seqno 0x%x(%d)\n",
+			flipwork->flipdata.seqno,
+			flipwork->flipdata.ring_id);
+	}
+
+	intel_mark_page_flip_active(intel_crtc);
+	i9xx_update_plane(crtc, crtc->fb, 0, 0);
+}
+
 /* Using MMIO based flips starting from VLV, for Media power well
  * residency optimization. The other alternative of having Render
  * ring based flip calls is not being used, as the performance
@@ -8936,13 +8971,18 @@ static int intel_gen7_queue_mmio_flip(struct drm_device *dev,
 		}
 	}
 
-	INIT_WORK(&work->work, intel_gen7_queue_mmio_flip_work);
+	if (dev_priv->atomic_update)
+		intel_gen7_queue_mmio_flip_work_sync(work);
+	else {
+		INIT_WORK(&work->work, intel_gen7_queue_mmio_flip_work);
 
-	/* Queue the MMIO flip work in our private workqueue,
-	 * from which the work items will be dequeued sequentially
-	 * one by one
-	 */
-	queue_work(dev_priv->flipwq, &work->work);
+		/*
+		 * Queue the MMIO flip work in our private workqueue,
+		 * from which the work items will be dequeued sequentially
+		 * one by one
+		 */
+		queue_work(dev_priv->flipwq, &work->work);
+	}
 
 	return 0;
 

@@ -1431,7 +1431,6 @@ typedef struct drm_i915_private {
 	u32 irq_mask;
 	u32 hotplugstat;
 	u32 pfit_pipe;
-	struct regulator *v3p3sx_reg;
 	bool s0ixstat;
 	bool audio_suspended;
 	bool late_resume;

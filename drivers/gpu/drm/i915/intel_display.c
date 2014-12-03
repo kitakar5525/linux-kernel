@@ -9204,6 +9204,7 @@ static void i915_commit(struct drm_i915_private *dev_priv,
 		reg = &intel_crtc->reg;
 		plane = intel_crtc->plane;
 	}
+	/* Enable Primary plane */
 	if (type == SPRITE_PLANE) {
 		if (intel_plane->pri_update && (reg->dspcntr & (1 << 31))) {
 			I915_WRITE(DSPCNTR(pipe), reg->dspcntr);
@@ -9285,14 +9286,13 @@ static void intel_pipe_vblank_evade(struct drm_crtc *crtc)
 	/* FIXME needs to be calibrated sensibly */
 	u32 min = crtc->hwmode.crtc_vdisplay - usecs_to_scanlines(crtc, 50);
 	u32 max = crtc->hwmode.crtc_vdisplay - 1;
-	long timeout = msecs_to_jiffies(3);
 	u32 val;
 
 	local_irq_disable();
 	val = I915_READ(PIPEDSL(pipe));
 	local_irq_enable();
 
-	while (val >= min && val <= max && timeout > 0) {
+	while (val >= min && val <= max) {
 
 		intel_wait_for_vblank(dev_priv->dev, intel_crtc->pipe);
 		local_irq_disable();
@@ -9307,7 +9307,7 @@ static void intel_pipe_vblank_evade(struct drm_crtc *crtc)
 			 val, crtc->hwmode.crtc_vdisplay);
 }
 
-static int intel_crtc_set_display(struct drm_crtc *crtc,
+static int intel_crtc_flip_prepare(struct drm_crtc *crtc,
 				struct drm_mode_set_display *disp,
 				struct drm_file *file_priv)
 {
@@ -9327,18 +9327,11 @@ static int intel_crtc_set_display(struct drm_crtc *crtc,
 	disp->errored = 0;
 	disp->presented = 0;
 
-	/* If HWC version and size of the struct doesnt match, return NULL */
-	if (!(disp->version == DRM_MODE_SET_DISPLAY_VERSION && disp->size ==
-			sizeof(struct drm_mode_set_display))) {
-		DRM_ERROR("HWC version or struct size mismatch");
-		return -EINVAL;
-	}
-	dev_priv->atomic_update = true;
 	/*
 	 * userspace app will not call this function again until the
 	 * page_flip done event is received so no locking is required here
 	 */
-	/* Disable maxfifo is multiple planes are enabled */
+	/* Disable maxfifo if multiple planes are enabled */
 	for (i = disp->num_planes-1; i >= 0; i--) {
 		if (disp->plane[i].update_flag &
 				DRM_MODE_SET_DISPLAY_PLANE_UPDATE_PRESENT)
@@ -9546,16 +9539,21 @@ static int intel_crtc_set_display(struct drm_crtc *crtc,
 			}
 		}
 	}
-	/* Check if we need to a vblank, if so wait for vblank */
-	if (dev_priv->wait_vbl) {
-		if (dev_priv->vblcount ==
-			atomic_read(&dev->_vblank_count[intel_crtc->pipe])) {
-			intel_wait_for_vblank(dev, intel_crtc->pipe);
-		}
-		dev_priv->wait_vbl = false;
-	}
-	/* make sure to start from a fresh vsync, it we are close to vblank */
-	intel_pipe_vblank_evade(crtc);
+	return ret;
+}
+
+static void intel_crtc_flip_commit(struct drm_crtc *crtc,
+				struct drm_mode_set_display *disp,
+				struct drm_file *file_priv)
+{
+	struct drm_device *dev = crtc->dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
+	struct drm_mode_object *obj;
+	struct drm_plane *drm_plane;
+	struct intel_plane *intel_plane;
+	int i;
+
 	/* Program the z-order */
 	if (disp->update_flag & DRM_MODE_SET_DISPLAY_UPDATE_ZORDER) {
 		I915_WRITE_BITS(SPCNTR(intel_crtc->pipe, 0),
@@ -9575,8 +9573,6 @@ static int intel_crtc_set_display(struct drm_crtc *crtc,
 			} else {
 				obj = drm_mode_object_find(dev, disp->plane[i].obj_id,
 						   DRM_MODE_OBJECT_PLANE);
-				if (!obj)
-					return -ENOENT;
 				drm_plane = obj_to_plane(obj);
 				intel_plane = to_intel_plane(drm_plane);
 				i915_commit(dev_priv, (void *)intel_plane,
@@ -9584,10 +9580,54 @@ static int intel_crtc_set_display(struct drm_crtc *crtc,
 			}
 		}
 	}
+	/* Enable maxffo if required */
 	if (is_maxfifo_needed(dev_priv) && !dev_priv->maxfifo_enabled) {
 		I915_WRITE(FW_BLC_SELF_VLV, FW_CSPWRDWNEN);
 		dev_priv->maxfifo_enabled = true;
 	}
+}
+
+static int intel_crtc_set_display(struct drm_crtc *crtc,
+				struct drm_mode_set_display *disp,
+				struct drm_file *file_priv)
+{
+	struct drm_device *dev = crtc->dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
+	int ret = 0;
+
+	disp->errored = 0;
+	disp->presented = 0;
+
+	/* If HWC version and size of the struct doesnt match, return NULL */
+	if (!(disp->version == DRM_MODE_SET_DISPLAY_VERSION && disp->size ==
+			sizeof(struct drm_mode_set_display))) {
+		DRM_ERROR("HWC version or struct size mismatch");
+		return -EINVAL;
+	}
+	dev_priv->atomic_update = true;
+
+	/* Prepare or calculate plane properties for flip */
+	ret = intel_crtc_flip_prepare(crtc, disp, file_priv);
+	if (ret) {
+		DRM_ERROR("failed to validate or calculate plane data\n");
+		return ret;
+	}
+
+	/* Check if we need to a vblank, if so wait for vblank */
+	if (dev_priv->wait_vbl) {
+		if (dev_priv->vblcount ==
+			atomic_read(&dev->_vblank_count[intel_crtc->pipe])) {
+			intel_wait_for_vblank(dev, intel_crtc->pipe);
+		}
+		dev_priv->wait_vbl = false;
+	}
+	/* make sure to start from a fresh vsync, it we are close to vblank */
+	intel_pipe_vblank_evade(crtc);
+
+	/* flip: write to the plane registers */
+	intel_crtc_flip_commit(crtc, disp, file_priv);
+
 	dev_priv->atomic_update = false;
 	return ret;
 }

@@ -1367,9 +1367,6 @@ struct i915_plane_stat {
 	bool sprite_c;
 	bool sprite_d;
 };
-#define DL_PRIMARY_MASK 0x000000ff
-#define DL_SPRITEA_MASK 0x0000ff00
-#define DL_SPRITEB_MASK 0x00ff0000
 
 enum intel_backlight_pwm {
 	INTEL_PWM_PMIC,

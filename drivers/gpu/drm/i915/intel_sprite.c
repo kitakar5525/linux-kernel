@@ -548,7 +548,6 @@ vlv_update_plane(struct drm_plane *dplane, struct drm_crtc *crtc,
 	}
 	i915_update_plane_stat(dev_priv, pipe, plane, true, SPRITE_PLANE);
 
-	intel_plane->last_plane_state = true; /* true means enabled */
 	if (event == NULL)
 		POSTING_READ(SPSURF(pipe, plane));
 

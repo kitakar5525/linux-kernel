@@ -2498,6 +2498,7 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 
 	if (!dev_priv->atomic_update)
 		intel_update_watermarks(dev);
+
 	return 0;
 }
 

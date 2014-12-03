@@ -1810,7 +1810,6 @@ static bool vlv_compute_drain_latency(struct drm_device *dev,
 		*cursor_dl = (64 * (*cursor_prec_mult) * 4) / entries;
 		latencyprogrammed = true;
 	}
-
 	if (enable.sprite_enabled) {
 		entries = DIV_ROUND_UP(clock, 1000) * sprite_pixel_size;
 		*sprite_prec_mult = (entries > 256) ?
@@ -1853,7 +1852,7 @@ static void vlv_update_drain_latency(struct drm_device *dev)
 				DDL_PLANEA_PRECISION_32 :
 				DDL_PLANEA_PRECISION_64;
 		I915_WRITE_BITS(VLV_DDL1, planea_prec | planea_dl,
-				0x000000ff);
+					0x000000ff);
 	} else
 		I915_WRITE_BITS(VLV_DDL1, 0x0000, 0x000000ff);
 
@@ -3657,26 +3656,13 @@ static void valleyview_update_sprite_wm(struct drm_plane *plane,
 
 	if (enabled && vlv_compute_drain_latency(dev, intel_plane->pipe, NULL, NULL, NULL, NULL,
 			&sprite_prec_mult, &sprite_dl, pixel_size, enable)) {
-		/*
-		 * DL programming for Sprite plane is separated out as DL programming sequence
-		 * will be different during pixel format chnage when both the sprite may change
-		 * pixel format simultaneously, one from 4->2 and other 2->4.
-		 */
-		if (intel_plane->plane == 0) {
+
 			sprite_prec = (sprite_prec_mult ==
 					DRAIN_LATENCY_PRECISION_32) ?
 					DDL_SPRITEA_PRECISION_32 :
 					DDL_SPRITEA_PRECISION_64;
 			I915_WRITE_BITS(VLV_DDL(intel_plane->pipe),
 					sprite_prec | (sprite_dl << shift), mask);
-		} else {
-			sprite_prec = (sprite_prec_mult ==
-					DRAIN_LATENCY_PRECISION_32) ?
-					DDL_SPRITEB_PRECISION_32 :
-					DDL_SPRITEB_PRECISION_64;
-			I915_WRITE_BITS(VLV_DDL(intel_plane->pipe),
-					sprite_prec | (sprite_dl << shift), mask);
-		}
 	} else
 		I915_WRITE_BITS(VLV_DDL(intel_plane->pipe), 0x00, mask);
 

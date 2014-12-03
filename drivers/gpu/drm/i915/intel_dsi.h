@@ -196,14 +196,14 @@ struct intel_dsi {
 	u16 port;
 
 	/* all delays in ms */
-	u8 backlight_off_delay;
-	u8 backlight_on_delay;
-	u8 panel_on_delay;
-	u8 panel_off_delay;
-	u8 panel_pwr_cycle_delay;
+	u16 backlight_off_delay;
+	u16 backlight_on_delay;
+	u16 panel_on_delay;
+	u16 panel_off_delay;
+	u16 panel_pwr_cycle_delay;
 
 	bool send_shutdown;
-	u8 shutdown_pkt_delay; /*in ms*/
+	u16 shutdown_pkt_delay; /*in ms*/
 	enum panel_fitter pfit;
 };
 

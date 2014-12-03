@@ -420,6 +420,7 @@ struct intel_crtc {
 	u8 lut_r[256], lut_g[256], lut_b[256];
 	u32 flags;
 	__u32 z_order;
+	__u32 alpha;
 	/*
 	 * Whether the crtc and the connected output pipeline is active. Implies
 	 * that crtc->enabled is set, i.e. the current mode configuration has
@@ -450,9 +451,6 @@ struct intel_crtc {
 	struct intel_crtc_config config;
 
 	uint32_t ddi_pll_sel;
-	bool primary_alpha;
-	bool sprite0_alpha;
-	bool sprite1_alpha;
 
 	/* reset counter value when the last flip was submitted */
 	unsigned int reset_counter;
@@ -488,6 +486,7 @@ struct intel_plane {
 	u32 flags;
 	__u32 z_order;
 	__u32 rrb2_enable;
+	__u32 alpha;
 	int crtc_x, crtc_y;
 	unsigned int crtc_w, crtc_h;
 	uint32_t src_x, src_y;

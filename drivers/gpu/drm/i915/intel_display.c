@@ -2283,6 +2283,7 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 	int pipe = intel_crtc->pipe;
 	unsigned long linear_offset;
 	bool rotate = false;
+	bool alpha_changed = false;
 	u32 dspcntr;
 	u32 reg;
 	u32 mask;
@@ -2315,46 +2316,55 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 		intel_crtc->pri_update = false;
 	} else
 		dspcntr = I915_READ(reg);
+	/* Update plane alpha */
+	if (intel_crtc->flags & DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA) {
+		alpha_changed = true;
+		intel_crtc->flags &= ~DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA;
+	}
 	/* Mask out pixel format bits in case we change it */
 	dspcntr &= ~DISPPLANE_PIXFORMAT_MASK;
 	switch (fb->pixel_format) {
 	case DRM_FORMAT_C8:
 		dspcntr |= DISPPLANE_8BPP;
 		break;
-	case DRM_FORMAT_XRGB1555:
-	case DRM_FORMAT_ARGB1555:
-		if (intel_crtc->primary_alpha)
-			dspcntr |= DISPPLANE_BGRA555;
-		else
-			dspcntr |= DISPPLANE_BGRX555;
-		break;
 	case DRM_FORMAT_RGB565:
 		dspcntr |= DISPPLANE_BGRX565;
 		break;
 	case DRM_FORMAT_XRGB8888:
-	case DRM_FORMAT_ARGB8888:
-		if (intel_crtc->primary_alpha)
-			dspcntr |= DISPPLANE_BGRA888;
-		else
-			dspcntr |= DISPPLANE_BGRX888;
+		dspcntr |= DISPPLANE_BGRX888;
 		break;
-	case DRM_FORMAT_XBGR8888:
-	case DRM_FORMAT_ABGR8888:
-		if (intel_crtc->primary_alpha)
-			dspcntr |= DISPPLANE_RGBA888;
+	case DRM_FORMAT_ARGB8888:
+		if (alpha_changed && !intel_crtc->alpha)
+			dspcntr |= DISPPLANE_BGRX888;
 		else
+			dspcntr |= DISPPLANE_BGRA888;
+	break;
+	case DRM_FORMAT_XBGR8888:
+		dspcntr |= DISPPLANE_RGBX888;
+		break;
+	case DRM_FORMAT_ABGR8888:
+		if (alpha_changed && !intel_crtc->alpha)
 			dspcntr |= DISPPLANE_RGBX888;
+		else
+			dspcntr |= DISPPLANE_RGBA888;
 		break;
 	case DRM_FORMAT_XRGB2101010:
-	case DRM_FORMAT_ARGB2101010:
 		dspcntr |= DISPPLANE_BGRX101010;
 		break;
-	case DRM_FORMAT_XBGR2101010:
-	case DRM_FORMAT_ABGR2101010:
-		if (intel_crtc->primary_alpha)
-			dspcntr |= DISPPLANE_RGBA101010;
+	case DRM_FORMAT_ARGB2101010:
+		if (alpha_changed && !intel_crtc->alpha)
+			dspcntr |= DISPPLANE_BGRX101010;
 		else
+			dspcntr |= DISPPLANE_BGRA101010;
+		break;
+	case DRM_FORMAT_XBGR2101010:
+		dspcntr |= DISPPLANE_RGBX101010;
+		break;
+	case DRM_FORMAT_ABGR2101010:
+		if (alpha_changed && !intel_crtc->alpha)
 			dspcntr |= DISPPLANE_RGBX101010;
+		else
+			dspcntr |= DISPPLANE_RGBA101010;
 		break;
 	default:
 		BUG();
@@ -9305,7 +9315,6 @@ static int intel_crtc_set_display(struct drm_crtc *crtc,
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_i915_plane_180_rotation *rotate;
 	struct drm_i915_set_plane_zorder *zorder;
-	struct drm_i915_set_plane_alpha *alpha;
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 	struct drm_mode_crtc_page_flip *flip;
 	struct drm_mode_set_plane *plane;
@@ -9448,6 +9457,13 @@ static int intel_crtc_set_display(struct drm_crtc *crtc,
 				flip->flags = disp->plane[i].flags;
 				flip->reserved = 0;
 				flip->user_data = disp->plane[i].user_data;
+				if (disp->plane[i].update_flag &
+						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA) {
+					intel_crtc->flags |=
+						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA;
+					intel_crtc->alpha =
+						disp->plane[i].alpha;
+				}
 				tmp_ret = drm_mode_page_flip_ioctl(dev, flip, file_priv);
 				if (tmp_ret) {
 					DRM_ERROR("drm_mode_page_flio_ioctl failed\n");
@@ -9501,6 +9517,14 @@ static int intel_crtc_set_display(struct drm_crtc *crtc,
 					intel_plane->rrb2_enable =
 						disp->plane[i].rrb2_enable;
 				}
+				if (disp->plane[i].update_flag &
+						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA) {
+					intel_plane->flags |=
+						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA;
+					intel_plane->alpha =
+						disp->plane[i].alpha;
+				}
+				/* pass alpha information */
 
 				tmp_ret = drm_mode_setplane(dev, plane, file_priv);
 				if (tmp_ret) {
@@ -9541,33 +9565,8 @@ static int intel_crtc_set_display(struct drm_crtc *crtc,
 	}
 	/* Write to all display registers */
 	for (i = disp->num_planes-1; i >= 0; i--) {
-		int plane_id = disp->plane[i].obj_id - 2;
 		if (!(disp->update_flag & DRM_MODE_SET_DISPLAY_UPDATE_PLANE(i)))
 			continue;
-		if (disp->plane[i].update_flag &
-				DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA) {
-			alpha = kzalloc(sizeof(struct drm_i915_set_plane_alpha),
-					GFP_KERNEL);
-			if (!alpha) {
-				DRM_ERROR("Failed to alloc memory-set alpha\n");
-				disp->errored |= (1 << i);
-				ret = -ENOMEM;
-			} else {
-				alpha->alpha = disp->plane[i].alpha;
-				alpha->plane = plane_id;
-				tmp_ret = i915_set_plane_alpha(dev, (void *)alpha, NULL);
-				if (tmp_ret) {
-					DRM_ERROR("i915_set_plane_alpha failed\n");
-					DRM_ERROR("::plane %u(obj id %u)alpha %u ret %d SKIPPED\n",
-						alpha->plane,
-						disp->plane[i].obj_id,
-						alpha->alpha, tmp_ret);
-					ret = -EINVAL;
-					disp->errored |= (1 << i);
-				}
-				kfree(alpha);
-			}
-		}
 		if (disp->plane[i].update_flag &
 				DRM_MODE_SET_DISPLAY_PLANE_UPDATE_PRESENT) {
 			if (disp->plane[i].obj_type == DRM_MODE_OBJECT_CRTC) {
@@ -11200,10 +11199,6 @@ static void intel_crtc_init(struct drm_device *dev, int pipe)
 
 	drm_crtc_helper_add(&intel_crtc->base, &intel_helper_funcs);
 	intel_crtc->sprite_unpin_work = NULL;
-
-	intel_crtc->primary_alpha = false;
-	intel_crtc->sprite0_alpha = true;
-	intel_crtc->sprite1_alpha = true;
 
 	/* Disable both bend spread initially */
 	dev_priv->clockspread = false;

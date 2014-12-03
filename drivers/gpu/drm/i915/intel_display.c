@@ -2303,9 +2303,6 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 	intel_fb = to_intel_framebuffer(fb);
 	obj = intel_fb->obj;
 
-	if (!dev_priv->atomic_update)
-		intel_update_watermarks(dev);
-
 	reg = DSPCNTR(plane);
 	/*
 	 * In case of atomic update, primary enable/disable is already cached as
@@ -2505,9 +2502,6 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 	} else
 		I915_WRITE(DSPADDR(plane), i915_gem_obj_ggtt_offset(obj) + linear_offset);
 	POSTING_READ(reg);
-
-	if (!dev_priv->atomic_update)
-		intel_update_watermarks(dev);
 
 	return 0;
 }
@@ -4232,10 +4226,7 @@ static void valleyview_crtc_enable(struct drm_crtc *crtc)
 	intel_crtc->active = true;
 	if (dev_priv->s0ixstat == true)
 		intel_crtc->s0ix_suspend_state = false;
-	if (!dev_priv->atomic_update)
-		intel_update_watermarks(dev);
-	else
-		vlv_update_watermarks(dev_priv);
+	vlv_update_watermarks(dev_priv);
 
 	for_each_encoder_on_crtc(dev, crtc, encoder)
 		if (encoder->pre_pll_enable)
@@ -4325,8 +4316,6 @@ static void i9xx_crtc_enable(struct drm_crtc *crtc)
 
 	intel_update_fbc(dev);
 	intel_update_drrs(dev);
-	if (!dev_priv->atomic_update)
-		intel_update_watermarks(dev);
 
 	for_each_encoder_on_crtc(dev, crtc, encoder)
 		encoder->enable(encoder);
@@ -4426,8 +4415,6 @@ static void i9xx_crtc_disable(struct drm_crtc *crtc)
 		intel_crtc->s0ix_suspend_state = true;
 	intel_update_fbc(dev);
 	intel_update_drrs(dev);
-	if (!dev_priv->atomic_update)
-		intel_update_watermarks(dev);
 
 	if ((pipe == 0) && (dev_priv->is_mipi || dev_priv->is_hdmi)) {
 		/* Ensure that port, plane, pipe, pf, pll are all disabled
@@ -5813,8 +5800,6 @@ static int i9xx_crtc_mode_set(struct drm_crtc *crtc,
 
 	ret = intel_pipe_set_base(crtc, x, y, fb);
 
-	if (!dev_priv->atomic_update)
-		intel_update_watermarks(dev);
 	/* Added for HDMI Audio */
 	if (IS_VALLEYVIEW(dev) && intel_pipe_has_type(crtc,
 		INTEL_OUTPUT_HDMI)) {
@@ -8573,8 +8558,6 @@ void intel_unpin_work_fn(struct work_struct *__work)
 	 * to push work by another x seconds
 	 */
 	intel_update_drrs(dev);
-	if (!dev_priv->atomic_update)
-		intel_update_watermarks(dev);
 
 	mutex_unlock(&dev->struct_mutex);
 

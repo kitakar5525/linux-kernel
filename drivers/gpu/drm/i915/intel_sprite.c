@@ -1047,8 +1047,6 @@ intel_enable_primary(struct drm_plane *dplane, struct drm_crtc *crtc)
 	intel_crtc->primary_disabled = false;
 	intel_update_fbc(dev);
 	intel_update_drrs(dev);
-	if (!dev_priv->atomic_update)
-		intel_update_watermarks(dev);
 
 	intel_crtc->reg.cntr = I915_READ(reg) | DISPLAY_PLANE_ENABLE;
 	intel_plane->reg.dspcntr = I915_READ(reg) | DISPLAY_PLANE_ENABLE;

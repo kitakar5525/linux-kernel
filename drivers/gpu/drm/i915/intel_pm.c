@@ -1957,7 +1957,6 @@ static void valleyview_update_wm(struct drm_device *dev)
 		      planeb_wm, cursorb_wm,
 		      plane_sr, cursor_sr);
 #endif
-
 	I915_WRITE(DSPFW1,
 		   (DSPFW_SR_VAL << DSPFW_SR_SHIFT) |
 		   (DSPFW_CURSORB_VAL << DSPFW_CURSORB_SHIFT) |
@@ -1979,12 +1978,7 @@ static void valleyview_update_wm(struct drm_device *dev)
 	/* Maxfifo in vallvyview is supported only in set_display atomic path */
 	if (IS_VALLEYVIEW(dev))
 		return;
-	/*
-	 * TODO: when in linear memory dont enable maxfifo. Need to check with
-	 * the hardware team on this. This solves the FADiag app flicker
-	 */
-	if (is_maxfifo_needed(dev_priv) & !dev_priv->maxfifo_enabled &
-			dev_priv->is_tiled) {
+	if (is_maxfifo_needed(dev_priv) & !dev_priv->maxfifo_enabled) {
 		I915_WRITE(FW_BLC_SELF_VLV, FW_CSPWRDWNEN);
 		dev_priv->maxfifo_enabled = true;
 	} else if (dev_priv->maxfifo_enabled && !is_maxfifo_needed(dev_priv)) {
@@ -3641,8 +3635,7 @@ static void valleyview_update_sprite_wm(struct drm_plane *plane,
 	/* Maxfifo in vallvyview is supported only in set_display atomic path */
 	if (IS_VALLEYVIEW(dev))
 		return;
-	if (is_maxfifo_needed(dev_priv) & !dev_priv->maxfifo_enabled &
-			dev_priv->is_tiled) {
+	if (is_maxfifo_needed(dev_priv) & !dev_priv->maxfifo_enabled) {
 		I915_WRITE(FW_BLC_SELF_VLV, FW_CSPWRDWNEN);
 		dev_priv->maxfifo_enabled = true;
 	} else if (dev_priv->maxfifo_enabled && !is_maxfifo_needed(dev_priv)) {

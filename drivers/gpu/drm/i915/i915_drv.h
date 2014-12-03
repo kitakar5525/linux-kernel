@@ -1441,7 +1441,6 @@ typedef struct drm_i915_private {
 	bool clockbend;
 	bool unplug;
 	bool maxfifo_enabled;
-	bool is_tiled;
 	bool atomic_update;
 	bool pri_update;
 	bool wait_vbl;

@@ -3298,6 +3298,8 @@ static int drm_mode_connector_set_obj_prop(struct drm_mode_object *obj,
 
 	struct drm_connector *connector = obj_to_connector(obj);
 	struct drm_device *dev = connector->dev;
+
+	cancel_delayed_work_sync(&dev->mode_config.dpms_work);
 	gobj = obj;
 	mutex_lock(&gvalue_lock);
 	if (value == DRM_MODE_DPMS_ASYNC_ON)

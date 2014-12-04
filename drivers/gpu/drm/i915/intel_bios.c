@@ -432,6 +432,8 @@ parse_general_definitions(struct drm_i915_private *dev_priv,
 			  struct bdb_header *bdb)
 {
 	struct bdb_general_definitions *general;
+	struct child_device_config *p_child;
+	int i, child_device_num, count;
 	struct child_device_config *device_config;
 
 	general = find_section(bdb, BDB_GENERAL_DEFINITIONS);
@@ -454,6 +456,32 @@ parse_general_definitions(struct drm_i915_private *dev_priv,
 		} else {
 			DRM_DEBUG_KMS("BDB_GD too small (%d). Invalid.\n",
 				      block_size);
+		}
+
+		if (general->child_dev_size != sizeof(*p_child)) {
+			/* different child dev size . Ignore it */
+			DRM_DEBUG_KMS("different child size is found. Invalid.\n");
+			return;
+		}
+		/* get the block size of general definitions */
+		block_size = get_blocksize(general);
+		/* get the number of child device */
+		child_device_num = (block_size - sizeof(*general)) /
+					sizeof(*p_child);
+
+		count = 0;
+		for (i = 0; i < child_device_num; i++) {
+			p_child = &(general->devices[i]);
+
+			/* skip the device block if device type is not HDMI */
+			if (p_child->device_type != DEVICE_TYPE_HDMI)
+				continue;
+
+			dev_priv->vbt.hdmi_level_shifter =
+					p_child->hdmi_level_shifter &
+						HDMI_LEVEL_SHIFTER_MASK;
+			DRM_DEBUG_KMS("vbt.hdmi_level_shifter : %d\n",
+					dev_priv->vbt.hdmi_level_shifter);
 		}
 	}
 }
@@ -531,12 +559,6 @@ parse_sdvo_device_mapping(struct drm_i915_private *dev_priv,
 		} else {
 			DRM_DEBUG_KMS("Maybe one SDVO port is shared by "
 					 "two SDVO device.\n");
-		}
-		if (p_child->slave2_addr) {
-			/* Maybe this is a SDVO device with multiple inputs */
-			/* And the mapping info is not added */
-			DRM_DEBUG_KMS("there exists the slave2_addr. Maybe this"
-				" is a SDVO device with multiple inputs.\n");
 		}
 		count++;
 	}

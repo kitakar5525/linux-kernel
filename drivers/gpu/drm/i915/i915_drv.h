@@ -1248,6 +1248,9 @@ struct intel_vbt_data {
 	int edp_bpp;
 	struct edp_power_seq edp_pps;
 
+	/* HDMI pre-emp Vswing Setting; */
+	int hdmi_level_shifter;
+
 	/* MIPI DSI */
 	struct {
 		u8 seq_version;

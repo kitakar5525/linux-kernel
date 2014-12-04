@@ -206,10 +206,19 @@ struct bdb_general_features {
 #define EDP_SUPPORT           0x1806
 #define MIPI_SUPPORT          0x1400
 
+#define HDMI_LEVEL_SHIFTER_MASK	0x1F
+
 struct child_device_config {
 	u16 handle;
 	u16 device_type;
-	u8  device_id[10]; /* ascii string */
+	u8  i2c_speed;
+	u8  dp_onboard_redriver;
+	u8  dp_ondock_redriver;
+	u8  hdmi_level_shifter;
+	u16 dtd_buf_ptr;
+	u8  efp_edidless_enable;
+	u16 reserved_2byte;
+	u8  reserved_1byte;
 	u16 addin_offset;
 	u8  dvo_port; /* See Device_PORT_* above */
 	u8  i2c_pin;
@@ -217,13 +226,13 @@ struct child_device_config {
 	u8  ddc_pin;
 	u16 edid_ptr;
 	u8  dvo_cfg; /* See DEVICE_CFG_* above */
-	u8  dvo2_port;
-	u8  i2c2_pin;
-	u8  slave2_addr;
-	u8  ddc2_pin;
+	u8  flag1;
+	u8  compatibility;
+	u8  aux_channel;
+	u8  dongle_detect;
 	u8  capabilities;
 	u8  dvo_wiring;/* See DEVICE_WIRE_* above */
-	u8  dvo2_wiring;
+	u8  mipi_bridge_type;
 	u16 extended_type;
 	u8  dvo_function;
 } __attribute__((packed));

@@ -1484,28 +1484,24 @@ static void vlv_set_hdmi_level_shifter_settings(struct intel_encoder *encoder)
 	u32 pre_emp_reg_val = 0;
 	u32 clk_de_emp_reg_val = 0;
 
-
 	/*
-	 * FIXME: Need to get HDMI pre-emp, vswing settings from VBT.
+	 * Obtaining HDMI pre-emp, vswing settings from VBT.
 	 * definitions:
-	 * 0 = 1000MV_2DB
-	 * 1 = 1000MV_0DB
-	 * 2 = 800MV_0DB
-	 * 3 = 600MV_2DB
-	 * 4 = 600MV_0DB
+	 * 0 = 1000MV_2DB, 1 = 1000MV_0DB, 2 = 800MV_0DB,
+	 * 3 =  600MV_2DB, 4 =  600MV_0DB
 	 */
-	u8 pre_emp_vswing_setting = 0;
-
+	u8 pre_emp_vswing_setting = dev_priv->vbt.hdmi_level_shifter;
+	DRM_DEBUG_KMS("HDMI pre_emp vswing setting from VBT : %d\n",
+						pre_emp_vswing_setting);
 
 	/*
 	 * As per EV requirement need to set 1000MV_0DB for pixel clock
 	 * < 74.250 Mhz
 	 */
-	if (adjusted_mode->clock < 74250)
-		pre_emp_vswing_setting = 1;	/* 1 = 1000MV_0DB */
-	else
-		/* Customize the below variable as per customer requirement */
-		pre_emp_vswing_setting = 0;	/* 0 = 1000MV_2DB */
+	if (adjusted_mode->clock < 74250) {
+		pre_emp_vswing_setting = 1;
+		DRM_DEBUG_KMS("Forcing HDMI vswing setting to 1V_0DB\n");
+	}
 
 	/*FIXME: The Application notes doesn't have pcs_ctrl_reg_val for
 	 * settings 1V_0DB, 0.8V_0DB, 0.6V_0DB. The pcs_ctrl_reg_val value

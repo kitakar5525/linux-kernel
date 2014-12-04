@@ -629,9 +629,19 @@ static int get_battery_status(struct power_supply *psy)
 		}
 	}
 	pr_devel("%s: Set status=%d for %s\n", __func__, status, psy->name);
-	pr_err("%s: Set status=%d for %s\n", __func__, status, psy->name);
 
 	return status;
+}
+
+static inline void cache_cur_chrgr_prop_force(struct power_supply *psy)
+{
+	struct charger_props chrgr_prop;
+
+	if (!IS_CHARGER(psy))
+		return;
+
+	get_cur_chrgr_prop(psy, &chrgr_prop);
+	cache_chrgr_prop(&chrgr_prop);
 }
 
 static void update_charger_online(struct power_supply *psy)
@@ -688,6 +698,7 @@ static void update_sysfs(struct power_supply *psy)
 					 * properties
 					 */
 					cache_cur_batt_prop_force(psb);
+					cache_cur_chrgr_prop_force(psy);
 		}
 	}
 }
@@ -945,7 +956,6 @@ static int select_chrgr_cable(struct device *dev, void *data)
 
 		/* update battery properties */
 		update_sysfs(psy);
-
 		mutex_unlock(&psy_chrgr.evt_lock);
 		power_supply_changed(psy);
 		return 0;

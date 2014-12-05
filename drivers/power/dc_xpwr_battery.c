@@ -81,11 +81,9 @@
 #define CV_4350				4350	/* 4350mV */
 
 #define DC_FG_VLTFW_REG			0x3C
-#define FG_VLTFW_N5C			0xD3	/* -5 DegC */
 #define FG_VLTFW_0C			0xA5	/* 0 DegC */
 #define DC_FG_VHTFW_REG			0x3D
-#define FG_VHTFW_60C			0x13	/* 60 DegC */
-#define FG_VHTFW_56C			0x15	/* 56 DegC */
+#define FG_VHTFW_56C			0x1E	/* 45 DegC */
 
 #define DC_TEMP_IRQ_CFG_REG		0x42
 #define TEMP_IRQ_CFG_QWBTU		(1 << 0)

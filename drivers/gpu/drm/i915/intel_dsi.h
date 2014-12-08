@@ -469,6 +469,8 @@ struct intel_dsi_dev_ops {
 	void (*destroy) (struct intel_dsi_device *dsi);
 
 	void (*dump_regs)(struct intel_dsi_device *dsi);
+	void (*power_on)(struct intel_dsi_device *dsi);
+	void (*power_off)(struct intel_dsi_device *dsi);
 };
 
 struct intel_dsi {

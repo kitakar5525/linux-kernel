@@ -936,10 +936,7 @@ void intel_config_backlight(struct drm_device *dev)
 #endif
 		return;
 	}
-#ifdef CONFIG_MRD7
-	dev_priv->pwm_type = INTEL_SIO_PWM;
-	return;
-#endif
+
 	dev_priv->pwm_type = INTEL_PWM_BLC_CTL;
 
 }

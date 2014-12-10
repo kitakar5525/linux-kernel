@@ -298,7 +298,6 @@ vlv_update_plane(struct drm_plane *dplane, struct drm_crtc *crtc,
 	u32 sprctl;
 	u32 mask, shift;
 	bool rotate = false;
-	bool alpha_changed = false;
 
 	sprctl = I915_READ(SPCNTR(pipe, plane));
 	/* Mask out pixel format bits in case we change it */
@@ -306,11 +305,6 @@ vlv_update_plane(struct drm_plane *dplane, struct drm_crtc *crtc,
 	sprctl &= ~SP_YUV_BYTE_ORDER_MASK;
 	sprctl &= ~SP_TILED;
 
-	/* Update plane alpha */
-	if (intel_plane->flags & DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA) {
-		alpha_changed = true;
-		intel_plane->flags &= ~DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA;
-	}
 	switch (fb->pixel_format) {
 	case DRM_FORMAT_YUYV:
 		sprctl |= SP_FORMAT_YUV422 | SP_YUV_ORDER_YUYV;
@@ -331,7 +325,7 @@ vlv_update_plane(struct drm_plane *dplane, struct drm_crtc *crtc,
 		sprctl |= SP_FORMAT_BGRX8888;
 		break;
 	case DRM_FORMAT_ARGB8888:
-		if (alpha_changed && !intel_plane->alpha)
+		if (!intel_plane->alpha)
 			sprctl |= SP_FORMAT_BGRX8888;
 		else
 			sprctl |= SP_FORMAT_BGRA8888;
@@ -340,7 +334,7 @@ vlv_update_plane(struct drm_plane *dplane, struct drm_crtc *crtc,
 		sprctl |= SP_FORMAT_RGBX1010102;
 		break;
 	case DRM_FORMAT_ABGR2101010:
-		if (alpha_changed && !intel_plane->alpha)
+		if (!intel_plane->alpha)
 			sprctl |= SP_FORMAT_RGBX1010102;
 		else
 			sprctl |= SP_FORMAT_RGBA1010102;
@@ -349,7 +343,7 @@ vlv_update_plane(struct drm_plane *dplane, struct drm_crtc *crtc,
 		sprctl |= SP_FORMAT_RGBX8888;
 		break;
 	case DRM_FORMAT_ABGR8888:
-		if (alpha_changed && !intel_plane->alpha)
+		if (!intel_plane->alpha)
 			sprctl |= SP_FORMAT_RGBX8888;
 		else
 			sprctl |= SP_FORMAT_RGBA8888;
@@ -522,7 +516,15 @@ vlv_update_plane(struct drm_plane *dplane, struct drm_crtc *crtc,
 		I915_WRITE_BITS(VLV_DDL(pipe), 0x00, mask);
 
 	intel_plane->reg.cntr = sprctl;
+	intel_plane->reg.surf = I915_READ(SPSURF(pipe, plane));
+	/* mask the surface base addr offset bits */
+	intel_plane->reg.surf &= ~DISP_BASEADDR_MASK;
 	intel_plane->reg.surf |= i915_gem_obj_ggtt_offset(obj) + sprsurf_offset;
+	/* update the rrb2 bit status */
+	if (intel_plane->rrb2_enable)
+		intel_plane->reg.surf |= PLANE_RESERVED_REG_BIT_2_ENABLE;
+	else
+		intel_plane->reg.surf &= ~PLANE_RESERVED_REG_BIT_2_ENABLE;
 	if (!dev_priv->atomic_update) {
 		I915_WRITE(SPCNTR(pipe, plane), sprctl);
 		I915_MODIFY_DISPBASE(SPSURF(pipe, plane), i915_gem_obj_ggtt_offset(obj) +
@@ -562,7 +564,9 @@ vlv_disable_plane(struct drm_plane *dplane, struct drm_crtc *crtc)
 		I915_WRITE(FW_BLC_SELF_VLV, FW_CSPWRDWNEN);
 #endif
 	/* Activate double buffered register update */
-	intel_plane->reg.surf = 0;
+	intel_plane->reg.surf = I915_READ(SPSURF(pipe, plane));
+	/* mask the surface base addr offset bits */
+	intel_plane->reg.surf &= ~DISP_BASEADDR_MASK;
 	if (!dev_priv->atomic_update) {
 		I915_MODIFY_DISPBASE(SPSURF(pipe, plane), 0);
 		POSTING_READ(SPSURF(pipe, plane));

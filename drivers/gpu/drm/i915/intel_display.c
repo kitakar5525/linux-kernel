@@ -2283,7 +2283,6 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 	int pipe = intel_crtc->pipe;
 	unsigned long linear_offset;
 	bool rotate = false;
-	bool alpha_changed = false;
 	u32 dspcntr;
 	u32 reg;
 	u32 mask;
@@ -2313,11 +2312,6 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 		intel_crtc->pri_update = false;
 	} else
 		dspcntr = I915_READ(reg);
-	/* Update plane alpha */
-	if (intel_crtc->flags & DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA) {
-		alpha_changed = true;
-		intel_crtc->flags &= ~DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA;
-	}
 	/* Mask out pixel format bits in case we change it */
 	dspcntr &= ~DISPPLANE_PIXFORMAT_MASK;
 	switch (fb->pixel_format) {
@@ -2331,7 +2325,7 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 		dspcntr |= DISPPLANE_BGRX888;
 		break;
 	case DRM_FORMAT_ARGB8888:
-		if (alpha_changed && !intel_crtc->alpha)
+		if (!intel_crtc->alpha)
 			dspcntr |= DISPPLANE_BGRX888;
 		else
 			dspcntr |= DISPPLANE_BGRA888;
@@ -2340,7 +2334,7 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 		dspcntr |= DISPPLANE_RGBX888;
 		break;
 	case DRM_FORMAT_ABGR8888:
-		if (alpha_changed && !intel_crtc->alpha)
+		if (!intel_crtc->alpha)
 			dspcntr |= DISPPLANE_RGBX888;
 		else
 			dspcntr |= DISPPLANE_RGBA888;
@@ -2349,7 +2343,7 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 		dspcntr |= DISPPLANE_BGRX101010;
 		break;
 	case DRM_FORMAT_ARGB2101010:
-		if (alpha_changed && !intel_crtc->alpha)
+		if (!intel_crtc->alpha)
 			dspcntr |= DISPPLANE_BGRX101010;
 		else
 			dspcntr |= DISPPLANE_BGRA101010;
@@ -2358,7 +2352,7 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 		dspcntr |= DISPPLANE_RGBX101010;
 		break;
 	case DRM_FORMAT_ABGR2101010:
-		if (alpha_changed && !intel_crtc->alpha)
+		if (!intel_crtc->alpha)
 			dspcntr |= DISPPLANE_RGBX101010;
 		else
 			dspcntr |= DISPPLANE_RGBA101010;
@@ -9178,7 +9172,7 @@ static void i915_commit(struct drm_i915_private *dev_priv,
 	struct drm_crtc *crtc = dev_priv->pipe_to_crtc_mapping[pipe];
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 	struct intel_disp_reg *reg;
-	int plane = 0, val = 0;
+	int plane = 0;
 
 	if (type == SPRITE_PLANE) {
 		reg = &intel_plane->reg;
@@ -9218,19 +9212,7 @@ static void i915_commit(struct drm_i915_private *dev_priv,
 		I915_WRITE(SPLINOFF(pipe, plane), reg->linoff);
 		I915_WRITE(SPSIZE(pipe, plane),	reg->size);
 		I915_WRITE_BITS(SPCNTR(pipe, plane), reg->cntr, 0xBFFFFFF8);
-		I915_MODIFY_DISPBASE(SPSURF(pipe, plane), reg->surf);
-		if (intel_plane->flags & DRM_MODE_SET_DISPLAY_PLANE_UPDATE_RRB2) {
-			if (intel_plane->rrb2_enable) {
-				val = I915_READ(SPSURF(pipe, plane));
-				val |= PLANE_RESERVED_REG_BIT_2_ENABLE;
-				I915_WRITE(SPSURF(pipe, plane), val);
-			} else {
-				val = I915_READ(SPSURF(pipe, plane));
-				val &= ~PLANE_RESERVED_REG_BIT_2_ENABLE;
-				I915_WRITE(SPSURF(pipe, plane), val);
-			}
-			intel_plane->flags &= ~DRM_MODE_SET_DISPLAY_PLANE_UPDATE_RRB2;
-		}
+		I915_WRITE(SPSURF(pipe, plane), reg->surf);
 		if (intel_plane->pri_update) {
 			I915_WRITE(DSPCNTR(pipe), reg->dspcntr);
 			I915_MODIFY_DISPBASE(DSPSURF(pipe), I915_READ(DSPSURF(pipe)));
@@ -9433,13 +9415,10 @@ static int intel_crtc_flip_prepare(struct drm_crtc *crtc,
 				flip->flags = disp->plane[i].flags;
 				flip->reserved = 0;
 				flip->user_data = disp->plane[i].user_data;
+				/* pass alpha information */
 				if (disp->plane[i].update_flag &
-						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA) {
-					intel_crtc->flags |=
-						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA;
-					intel_crtc->alpha =
-						disp->plane[i].alpha;
-				}
+						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA)
+					intel_crtc->alpha = disp->plane[i].alpha;
 				tmp_ret = drm_mode_page_flip_ioctl(dev, flip, file_priv);
 				if (tmp_ret) {
 					DRM_ERROR("drm_mode_page_flio_ioctl failed\n");
@@ -9487,20 +9466,13 @@ static int intel_crtc_flip_prepare(struct drm_crtc *crtc,
 				intel_plane = to_intel_plane(drm_plane);
 				/* pass rrb2 information */
 				if (disp->plane[i].update_flag &
-						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_RRB2) {
-					intel_plane->flags |=
-						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_RRB2;
+						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_RRB2)
 					intel_plane->rrb2_enable =
-						disp->plane[i].rrb2_enable;
-				}
-				if (disp->plane[i].update_flag &
-						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA) {
-					intel_plane->flags |=
-						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA;
-					intel_plane->alpha =
-						disp->plane[i].alpha;
-				}
+								disp->plane[i].rrb2_enable;
 				/* pass alpha information */
+				if (disp->plane[i].update_flag &
+						DRM_MODE_SET_DISPLAY_PLANE_UPDATE_ALPHA)
+					intel_plane->alpha = disp->plane[i].alpha;
 
 				tmp_ret = drm_mode_setplane(dev, plane, file_priv);
 				if (tmp_ret) {

@@ -378,8 +378,13 @@ int intel_calculate_dsi_pll_mnp(struct intel_dsi *intel_dsi,
 		struct drm_display_mode *mode,
 			struct intel_dsi_mnp *intel_dsi_mnp, u32 dsi_clk)
 {
-	if (dsi_clk == 0)
-		get_dsi_clk(intel_dsi, mode, &dsi_clk);
+	int ret;
+
+	if (dsi_clk == 0) {
+		ret = get_dsi_clk(intel_dsi, mode, &dsi_clk);
+		if (ret < 0)
+			return ret;
+	}
 
 	return dsi_calc_mnp(dsi_clk, intel_dsi_mnp);
 }
@@ -399,7 +404,7 @@ int intel_configure_dsi_pll(struct intel_dsi *intel_dsi,
 
 	ret = intel_calculate_dsi_pll_mnp(intel_dsi, mode,
 					&config->dsi_mnp, intel_dsi->dsi_clock_freq);
-	if (ret != 0)
+	if (ret < 0)
 		return ret;
 
 	/* In case of DRRS, Calculating the divider values for downclock_mode */
@@ -407,7 +412,7 @@ int intel_configure_dsi_pll(struct intel_dsi *intel_dsi,
 		dev_priv->drrs_state.type >= SEAMLESS_DRRS_SUPPORT) {
 		ret = intel_calculate_dsi_pll_mnp(intel_dsi,
 			intel_connector->panel.downclock_mode, &config->dsi_mnp2, 0);
-		if (ret != 0)
+		if (ret < 0)
 			return ret;
 	}
 

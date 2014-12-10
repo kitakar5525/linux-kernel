@@ -230,9 +230,10 @@ static irqreturn_t intel_sst_intr_mfld(int irq, void *context)
 	unsigned int size = 0;
 	struct intel_sst_drv *drv = (struct intel_sst_drv *) context;
 
+	header.full = sst_shim_read(drv->shim, drv->ipc_reg.ipcx);
 	/* Interrupt arrived, check src */
 	isr.full = sst_shim_read(drv->shim, SST_ISRX);
-	if (isr.part.done_interrupt) {
+	if (isr.part.done_interrupt || header.part.done) {
 		/* Mask all interrupts till this one is processsed */
 		set_imr_interrupts(drv, false);
 		/* Clear done bit */
@@ -250,7 +251,8 @@ static irqreturn_t intel_sst_intr_mfld(int irq, void *context)
 		set_imr_interrupts(drv, true);
 		retval = IRQ_HANDLED;
 	}
-	if (isr.part.busy_interrupt) {
+	header.full = sst_shim_read(drv->shim, drv->ipc_reg.ipcd);
+	if (isr.part.busy_interrupt || header.part.busy) {
 		/* Mask all interrupts till we process it in bottom half */
 		set_imr_interrupts(drv, false);
 		header.full = sst_shim_read(drv->shim, drv->ipc_reg.ipcd);

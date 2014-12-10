@@ -73,6 +73,7 @@ enum sst_algo_ops {
 };
 
 #define SST_BLOCK_TIMEOUT	1000
+#define SST_BLOCK_TIMEOUT_2SEC	2000
 
 /* SST register map */
 #define SST_CSR			0x00

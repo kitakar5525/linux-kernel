@@ -222,6 +222,12 @@ extern struct intel_dsi_dev_ops jdi_lpm070w425b_dsi_display_ops;
 extern struct intel_dsi_dev_ops vbt_generic_dsi_display_ops;
 void intel_dsi_clear_device_ready(struct intel_encoder *encoder);
 
+extern void adjust_pclk_for_dual_link(struct intel_dsi *intel_dsi,
+			struct drm_display_mode *mode, u32 *pclk);
+extern void adjust_pclk_for_burst_mode(u32 *pclk,
+				u16 burst_mode_ratio);
+extern int intel_get_bits_per_pixel(struct intel_dsi *intel_dsi);
+
 #define	MIPI_DSI_UNDEFINED_PANEL_ID			0x00
 #define	MIPI_DSI_GENERIC_PANEL_ID			0x01
 #define	MIPI_DSI_AUO_B101UAN01_PANEL_ID			0x02

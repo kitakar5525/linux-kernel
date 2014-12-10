@@ -38,6 +38,7 @@
 #include "intel_dsi.h"
 #include "intel_dsi_cmd.h"
 #include "dsi_mod_vbt_generic.h"
+#include "intel_dsi_pll.h"
 
 struct gpio_table gtable[] = {
 	{ GPI0_NC_0_HV_DDI0_HPD, GPIO_NC_0_HV_DDI0_PAD, 0 },
@@ -236,13 +237,13 @@ bool generic_init(struct intel_dsi_device *dsi)
 	struct mipi_config *mipi_config = dev_priv->vbt.dsi.config;
 	struct mipi_pps_data *pps = dev_priv->vbt.dsi.pps;
 	struct drm_display_mode *mode = dev_priv->vbt.lfp_lvds_vbt_mode;
-	u32 bits_per_pixel = 24;
+	int bits_per_pixel = 24;
 	u32 tlpx_ns, extra_byte_count, bitrate, tlpx_ui;
 	u32 ui_num, ui_den;
 	u32 prepare_cnt, exit_zero_cnt, clk_zero_cnt, trail_cnt;
 	u32 ths_prepare_ns, tclk_trail_ns;
 	u32 tclk_prepare_clkzero, ths_prepare_hszero;
-	u32 pclk, computed_ddr;
+	u32 pclk;
 	u16 burst_mode_ratio;
 
 	DRM_DEBUG_KMS("\n");
@@ -253,30 +254,7 @@ bool generic_init(struct intel_dsi_device *dsi)
 	intel_dsi->pixel_format = mipi_config->videomode_color_format << 7;
 	intel_dsi->dual_link = mipi_config->dual_link;
 	intel_dsi->pixel_overlap = mipi_config->pixel_overlap;
-
 	intel_dsi->port = 0;
-
-	if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB666)
-		bits_per_pixel = 18;
-	else if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB565)
-		bits_per_pixel = 16;
-
-	pclk = mode->clock;
-
-	/* In dual link mode each port needs half of pixel clock */
-	if (intel_dsi->dual_link) {
-		pclk = pclk / 2;
-
-		/* in case of C0 and above setting we can enable pixel_overlap
-		 * if needed by panel. In this case we need to increase the pixel
-		 * clock for extra pixels
-		 */
-		if (IS_VALLEYVIEW_C0(dev) &&
-				(intel_dsi->dual_link & MIPI_DUAL_LINK_FRONT_BACK)) {
-			pclk += ceil_div(mode->vtotal * intel_dsi->pixel_overlap * 60,
-				1000);
-		}
-	}
 	intel_dsi->operation_mode = mipi_config->cmd_mode;
 	intel_dsi->video_mode_type = mipi_config->vtm;
 	intel_dsi->escape_clk_div = mipi_config->byte_clk_sel;
@@ -287,24 +265,35 @@ bool generic_init(struct intel_dsi_device *dsi)
 	intel_dsi->bw_timer = mipi_config->dbi_bw_timer;
 	intel_dsi->video_frmt_cfg_bits = mipi_config->bta ? DISABLE_VIDEO_BTA : 0;
 
+	pclk = mode->clock;
+
+	if (intel_dsi->dual_link)
+		adjust_pclk_for_dual_link(intel_dsi, mode, &pclk);
+
 	/* Burst Mode Ratio
 	 * Target ddr frequency from VBT / non burst ddr freq
 	 * multiply by 100 to preserver remainder
 	 */
 	if (intel_dsi->video_mode_type == DSI_VIDEO_BURST) {
 		if (mipi_config->target_burst_mode_freq) {
-			computed_ddr = (pclk * bits_per_pixel) /
-								intel_dsi->lane_count;
-			if (mipi_config->target_burst_mode_freq <
-							computed_ddr) {
+			bits_per_pixel = intel_get_bits_per_pixel(intel_dsi);
+			if (bits_per_pixel < 0) {
+				DRM_ERROR("Unsupported pixel format\n");
+				return false;
+			}
+			bitrate = (pclk * bits_per_pixel) /
+						intel_dsi->lane_count;
+
+			if (mipi_config->target_burst_mode_freq < bitrate) {
 				DRM_ERROR("DDR clock is less than computed\n");
 				return false;
 			}
 
-			burst_mode_ratio = ceil_div(
+			burst_mode_ratio = DIV_ROUND_UP(
 				mipi_config->target_burst_mode_freq * 100,
-				computed_ddr);
-			pclk = ceil_div(pclk * burst_mode_ratio, 100);
+				bitrate);
+
+			adjust_pclk_for_burst_mode(&pclk, burst_mode_ratio);
 		} else {
 			DRM_ERROR("Burst mode target is not set\n");
 			return false;
@@ -319,8 +308,11 @@ bool generic_init(struct intel_dsi_device *dsi)
 	/* FIX ME:
 	 * Check if pixel clock required is within the limits
 	 */
+	if (intel_get_dsi_clk(intel_dsi, mode, &bitrate) < 0)
+		return false;
 
-	bitrate	= (pclk * bits_per_pixel) / intel_dsi->lane_count;
+	/* Convert Mbps -> Kbps */
+	bitrate *= 1000;
 
 	switch (intel_dsi->escape_clk_div) {
 	case 0:

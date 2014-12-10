@@ -92,6 +92,48 @@ static void intel_dsi_hot_plug(struct intel_encoder *encoder)
 	DRM_DEBUG_KMS("\n");
 }
 
+int intel_get_bits_per_pixel(struct intel_dsi *intel_dsi)
+{
+	int bits_per_pixel;		/* in bits */
+
+	if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB888)
+		bits_per_pixel = 24;
+	else if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB666_LOOSE)
+		bits_per_pixel = 24;
+	else if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB666)
+		bits_per_pixel = 18;
+	else if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB565)
+		bits_per_pixel = 16;
+	else
+		return -ECHRNG;
+
+	return bits_per_pixel;
+}
+
+void adjust_pclk_for_dual_link(struct intel_dsi *intel_dsi,
+				struct drm_display_mode *mode, u32 *pclk)
+{
+	struct drm_device *dev = intel_dsi->base.base.dev;
+
+	/* In dual link mode each port needs half of pixel clock */
+	*pclk = *pclk / 2;
+
+	/* in case of C0 and above setting we can enable pixel_overlap
+	 * if needed by panel. In this case we need to increase the pixel
+	 * clock for extra pixels
+	 */
+	if (IS_VALLEYVIEW_C0(dev) && (intel_dsi->dual_link &
+					MIPI_DUAL_LINK_FRONT_BACK)) {
+		*pclk += DIV_ROUND_UP(mode->vtotal * intel_dsi->pixel_overlap *
+							mode->vrefresh, 1000);
+	}
+}
+
+void adjust_pclk_for_burst_mode(u32 *pclk, u16 burst_mode_ratio)
+{
+	*pclk = DIV_ROUND_UP(*pclk * burst_mode_ratio, 100);
+}
+
 static bool intel_dsi_compute_config(struct intel_encoder *encoder,
 				     struct intel_crtc_config *config)
 {

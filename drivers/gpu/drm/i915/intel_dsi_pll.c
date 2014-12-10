@@ -65,33 +65,99 @@ struct dsi_clock_table dsi_clk_tbl[] = {
 		{1000, 80, 2},		/* dsi clock frequency in Mhz*/
 };
 
+int intel_get_bits_per_pixel(struct intel_dsi *intel_dsi)
+{
+	int bits_per_pixel;		/* in bits */
+
+	if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB888)
+		bits_per_pixel = 24;
+	else if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB666_LOOSE)
+		bits_per_pixel = 24;
+	else if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB666)
+		bits_per_pixel = 18;
+	else if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB565)
+		bits_per_pixel = 16;
+	else
+		return -ECHRNG;
+
+	return bits_per_pixel;
+}
+
+void adjust_pclk_for_dual_link(struct intel_dsi *intel_dsi,
+				struct drm_display_mode *mode, u32 *pclk)
+{
+	struct drm_device *dev = intel_dsi->base.base.dev;
+
+	/* In dual link mode each port needs half of pixel clock */
+	*pclk = *pclk / 2;
+
+	/* in case of C0 and above setting we can enable pixel_overlap
+	 * if needed by panel. In this case we need to increase the pixel
+	 * clock for extra pixels
+	 */
+	if (IS_VALLEYVIEW_C0(dev) && (intel_dsi->dual_link &
+					MIPI_DUAL_LINK_FRONT_BACK)) {
+		*pclk += DIV_ROUND_UP(mode->vtotal * intel_dsi->pixel_overlap *
+							mode->vrefresh, 1000);
+	}
+}
+
+void adjust_pclk_for_burst_mode(u32 *pclk, u16 burst_mode_ratio)
+{
+	*pclk = DIV_ROUND_UP(*pclk * burst_mode_ratio, 100);
+}
+
+/* To recalculate the pclk considering dual link and Burst mode */
+int intel_drrs_calc_pclk(struct intel_dsi *intel_dsi,
+		struct drm_display_mode *mode, u32 *pclk)
+{
+	int pkt_pixel_size;		/* in bits */
+
+	*pclk = mode->clock;
+
+	pkt_pixel_size = intel_get_bits_per_pixel(intel_dsi);
+	if (pkt_pixel_size < 0) {
+		DRM_ERROR("Unsupported pixel format\n");
+		return pkt_pixel_size;
+	}
+
+	/* In dual link mode each port needs half of pixel clock */
+	if (intel_dsi->dual_link)
+		adjust_pclk_for_dual_link(intel_dsi, mode, pclk);
+
+	/* Retaining the same Burst mode ratio for DRRS. Need to be tested */
+	if (intel_dsi->video_mode_type == DSI_VIDEO_BURST)
+		adjust_pclk_for_burst_mode(pclk, intel_dsi->burst_mode_ratio);
+
+	DRM_DEBUG_KMS("mode->clock : %d, pclk : %d\n", mode->clock, *pclk);
+	return 0;
+}
+
 /* Get DSI clock from pixel clock */
 int dsi_clk_from_pclk(struct intel_dsi *intel_dsi,
 		struct drm_display_mode *mode, u32 *dsi_clk) {
 	u32 dsi_bit_clock_hz;
-	u32 pkt_pixel_size;		/* in bits */
+	int pkt_pixel_size;		/* in bits */
 	struct drm_device *dev = intel_dsi->base.base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	int pclk;
+	u32 pclk;
+	int ret;
 
-	if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB888)
-		pkt_pixel_size = 24;
-	else if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB666_LOOSE)
-		pkt_pixel_size = 24;
-	else if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB666)
-		pkt_pixel_size = 18;
-	else if (intel_dsi->pixel_format == VID_MODE_FORMAT_RGB565)
-		pkt_pixel_size = 16;
-	else
-		return -ECHRNG;
+	pkt_pixel_size = intel_get_bits_per_pixel(intel_dsi);
+	if (pkt_pixel_size < 0) {
+		DRM_ERROR("Unsupported pixel format\n");
+		return pkt_pixel_size;
+	}
 
 	/* For Acer AUO B080XAT panel, use a fixed DSI data rate of 513 Mbps */
 	if (dev_priv->mipi_panel_id == MIPI_DSI_AUO_B080XAT_PANEL_ID) {
 		*dsi_clk = 513;
 		return 0;
 	}
-	pclk = intel_dsi->pclk;
-	DRM_DEBUG_DRIVER("intel_dsi->pclk = %d\n", pclk);
+
+	ret = intel_drrs_calc_pclk(intel_dsi, mode, &pclk);
+	if (ret < 0)
+		return ret;
 
 	/* DSI data rate = pixel clock * bits per pixel / lane count
 	   pixel clock is converted from KHz to Hz */

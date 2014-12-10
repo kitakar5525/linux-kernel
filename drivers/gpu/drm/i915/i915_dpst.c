@@ -178,7 +178,8 @@ i915_dpst_disable_hist_interrupt(struct drm_device *dev, bool reset_adjustment)
 		dev_priv->dpst.enabled = false;
 		dev_priv->dpst.blc_adjustment = DPST_MAX_FACTOR;
 	/* Setting blc level to what it would be without dpst adjustment */
-		intel_panel_direct_set_backlight(dev, dev_priv->backlight.level);
+		intel_panel_actually_set_backlight(dev,
+					dev_priv->backlight.level);
 	}
 
 	return 0;
@@ -215,7 +216,10 @@ i915_dpst_apply_luma(struct drm_device *dev,
 	ioctl_data->ie_container.dpst_blc_factor;
 
 	level = i915_dpst_compute_brightness(dev, dev_priv->backlight.level);
-	intel_panel_direct_set_backlight(dev, level);
+	if (dev_priv->is_mipi)
+		intel_panel_actually_set_mipi_backlight(dev, level);
+	else
+		intel_panel_actually_set_backlight(dev, level);
 
 	/* Enable Image Enhancement Table */
 	blm_hist_ctl = I915_READ(BLC_HIST_CTL);

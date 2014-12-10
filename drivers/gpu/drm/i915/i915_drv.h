@@ -1368,12 +1368,6 @@ struct i915_plane_stat {
 	bool sprite_d;
 };
 
-enum intel_backlight_pwm {
-	INTEL_PWM_PMIC,
-	INTEL_PWM_BLC_CTL,
-	INTEL_SIO_PWM,
-};
-
 typedef struct drm_i915_private {
 	struct drm_device *dev;
 	struct kmem_cache *slab;
@@ -1679,7 +1673,7 @@ typedef struct drm_i915_private {
 	u16 is_mipi;
 	u16 mipi_panel_id;
 	u16 mipi_fw;
-	enum intel_backlight_pwm pwm_type;
+
 	unsigned int fwlogo_size;
 	unsigned int fwlogo_offset;
 	struct drm_mm_node *fwlogo_gtt_node;
@@ -2568,8 +2562,7 @@ int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
 u32 intel_panel_get_max_backlight(struct drm_device *dev);
 void intel_panel_actually_set_backlight(struct drm_device *dev, u32 level);
 void intel_panel_actually_set_mipi_backlight(struct drm_device *dev, u32 level);
-void intel_panel_pwm_blc_ctl_set_backlight(struct drm_device *dev, u32 level);
-void intel_panel_direct_set_backlight(struct drm_device *dev, u32 level);
+
 /* i915_gem_gtt.c */
 void i915_gem_cleanup_aliasing_ppgtt(struct drm_device *dev);
 void i915_ppgtt_bind_object(struct i915_hw_ppgtt *ppgtt,

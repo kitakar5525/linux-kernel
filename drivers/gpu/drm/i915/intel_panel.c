@@ -606,6 +606,9 @@ void intel_panel_set_backlight(struct drm_device *dev, u32 level, u32 max)
 
 	if (dev_priv->is_mipi)
 		intel_panel_actually_set_mipi_backlight(dev, level);
+	/* TODO: the below value is quite good for FFRD8, but BYT CR needs
+	MIPI panle some more tuning. Also need to check is it a HW limitation*/
+	usleep_range(2000, 3000);
 }
 
 void intel_panel_disable_backlight(struct drm_device *dev)

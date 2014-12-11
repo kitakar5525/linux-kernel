@@ -1281,6 +1281,8 @@ END(\sym)
 #ifdef CONFIG_LBR_DUMP_ON_EXCEPTION
 	testl $1, lbr_dump_on_exception
 	jz 1f
+	testl $3, CS(%rsp)		/* Kernel Space? */
+	jnz 1f
 	push %rax
 	push %rcx
 	push %rdx
@@ -1299,6 +1301,8 @@ END(\sym)
 #ifdef CONFIG_LBR_DUMP_ON_EXCEPTION
 	testl $1, lbr_dump_on_exception
 	jz 1f
+	testl $3, CS(%rsp)		/* Kernel Space? */
+	jnz 1f
 	push %rax
 	push %rcx
 	push %rdx

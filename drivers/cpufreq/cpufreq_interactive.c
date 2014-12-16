@@ -144,7 +144,7 @@ struct cpufreq_interactive_tunables {
 };
 
 /* For cases where we have single governor instance for system */
-struct cpufreq_interactive_tunables *common_tunables;
+static struct cpufreq_interactive_tunables *common_tunables;
 
 static struct attribute_group *get_sysfs_attr(void);
 
@@ -1454,19 +1454,6 @@ static struct notifier_block cpufreq_interactive_idle_nb = {
 	.notifier_call = cpufreq_interactive_idle_notifier,
 };
 
-/*
- * hack copied from cpufreq_govenor to get this hacked implemenation to compile
- * after updating against Nov 13 2013 merge with common.git/android-3.10
- */
-static struct kobject *get_governor_parent_kobj(struct cpufreq_policy *policy)
-{
-	if (have_governor_per_policy())
-		return &policy->kobj;
-	else
-		return cpufreq_global_kobject;
-}
-
-
 static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		unsigned int event)
 {
@@ -1501,13 +1488,6 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			return -ENOMEM;
 		}
 
-		rc = sysfs_create_group(get_governor_parent_kobj(policy),
-				get_sysfs_attr());
-		if (rc) {
-			kfree(tunables);
-			return rc;
-		}
-
 		tunables->usage_count = 1;
 		tunables->above_hispeed_delay = default_above_hispeed_delay;
 		tunables->nabove_hispeed_delay =
@@ -1532,15 +1512,25 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		spin_lock_init(&tunables->target_loads_lock);
 		spin_lock_init(&tunables->above_hispeed_delay_lock);
 
+		policy->governor_data = tunables;
+		if (!have_governor_per_policy())
+			common_tunables = tunables;
+
+		rc = sysfs_create_group(get_governor_parent_kobj(policy),
+				get_sysfs_attr());
+		if (rc) {
+			kfree(tunables);
+			policy->governor_data = NULL;
+			if (!have_governor_per_policy())
+				common_tunables = NULL;
+			return rc;
+		}
+
 		if (!policy->governor->initialized) {
 			idle_notifier_register(&cpufreq_interactive_idle_nb);
 			cpufreq_register_notifier(&cpufreq_notifier_block,
 					CPUFREQ_TRANSITION_NOTIFIER);
 		}
-
-		policy->governor_data = tunables;
-		if (!have_governor_per_policy())
-			common_tunables = tunables;
 
 		break;
 

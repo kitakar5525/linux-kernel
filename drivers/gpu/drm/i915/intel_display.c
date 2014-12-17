@@ -9466,7 +9466,8 @@ static int intel_crtc_flip_prepare(struct drm_crtc *crtc,
 						flip->crtc_id, flip->fb_id, flip->flags,
 						flip->user_data, tmp_ret);
 					disp->errored |= (1 << i);
-					ret = -EINVAL;
+					kfree(flip);
+					return tmp_ret;
 				} else {
 					disp->presented |= (1 << i);
 				}
@@ -9525,8 +9526,9 @@ static int intel_crtc_flip_prepare(struct drm_crtc *crtc,
 							plane->src_x, plane->src_y,
 							plane->src_h, plane->src_w,
 							plane->user_data, tmp_ret);
-					ret = -EINVAL;
 					disp->errored |= (1<<i);
+					kfree(plane);
+					return tmp_ret;
 				} else {
 					disp->presented |= (1<<i);
 				}

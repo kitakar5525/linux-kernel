@@ -1202,8 +1202,10 @@ intel_update_plane(struct drm_plane *plane, struct drm_crtc *crtc,
 	struct intel_unpin_work *work = NULL;
 
 	/* Avoid update plane operation if shutdown is in progress */
-	if (dev_priv->pm.shutdown_in_progress)
+	if (dev_priv->pm.shutdown_in_progress) {
+		DRM_ERROR("shutdown in progress, cant proceed with flip req\n");
 		return -EINVAL;
+	}
 
 	intel_fb = to_intel_framebuffer(fb);
 	obj = intel_fb->obj;
@@ -1390,8 +1392,10 @@ intel_update_plane(struct drm_plane *plane, struct drm_crtc *crtc,
 		INIT_WORK(&work->work, intel_unpin_sprite_work_fn);
 
 		ret = drm_vblank_get(dev, intel_crtc->pipe);
-		if (ret)
+		if (ret) {
+			DRM_ERROR("get vblank failed with %d\n", ret);
 			goto free_work;
+		}
 
 		/* We borrow the event spin lock for protecting unpin_work */
 		spin_lock_irqsave(&dev->event_lock, flags);
@@ -1428,7 +1432,13 @@ intel_update_plane(struct drm_plane *plane, struct drm_crtc *crtc,
 	drm_gem_object_reference(&obj->base);
 	ret = intel_pin_and_fence_fb_obj(dev, obj, NULL);
 	if (ret) {
+		DRM_ERROR("pin and fence of fb failed with %d\n", ret);
 		drm_gem_object_unreference(&obj->base);
+		spin_lock_irqsave(&dev->event_lock, flags);
+		intel_crtc->sprite_unpin_work = NULL;
+		spin_unlock_irqrestore(&dev->event_lock, flags);
+		if (event)
+			drm_vblank_put(dev, intel_crtc->pipe);
 		goto out_unlock;
 	}
 	intel_plane->old_obj = intel_plane->obj;

@@ -135,9 +135,9 @@ static bool mrfld_nc_sc_status_check(void)
 		((cur_pmsss.pmu2_states[3] & S0IX_TARGET_SSS3_MASK) ==
 					 (S0IX_TARGET_SSS3)))) {
 		sc_status = false;
-		pr_warn("SC device/devices not in d0i3!!\n");
+		pr_info("Some SC device(s) not in d0i3\n");
 		for (i = 0; i < 4; i++)
-			pr_warn("pmu2_states[%d] = %08X\n", i,
+			pr_info("pmu2_states[%d] = %08X\n", i,
 					cur_pmsss.pmu2_states[i]);
 	}
 
@@ -152,9 +152,9 @@ static bool mrfld_nc_sc_status_check(void)
 			val = nc_pwr_sts & 3;
 			if (val != 3) {
 				nc_status = false;
-				pr_warn("NC device (%s) is not in d0i3!!\n",
+				pr_info("NC device (%s) is not in d0i3\n",
 							mrfl_nc_devices[i]);
-				pr_warn("nc_pm_sss = %08X\n", nc_pwr_sts);
+				pr_info("nc_pm_sss = %08X\n", nc_pwr_sts);
 				break;
 			}
 			nc_pwr_sts >>= BITS_PER_LSS;

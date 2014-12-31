@@ -52,6 +52,7 @@ enum panel_type {
 	SHARP_25x16_CMD,
 	SDC_16x25_CMD,
 	SDC_25x16_CMD,
+	AUO_CMD,
 	GCT_DETECT
 };
 

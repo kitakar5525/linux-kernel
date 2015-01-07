@@ -891,7 +891,11 @@ static bool update_nc_device_states(int i, pci_power_t state)
 			reg);
 		if (status)
 			return false;
+#ifdef CONFIG_EXTERNAL_CAMERA
 		mid_pmu_cxt->camera_off = (state != PCI_D0);
+#else /* !CONFIG_EXTERNAL_CAMERA */
+		mid_pmu_cxt->camera_off = true;
+#endif
 		return true;
 	}
 
@@ -900,8 +904,12 @@ static bool update_nc_device_states(int i, pci_power_t state)
 
 void init_nc_device_states(void)
 {
-#if !IS_ENABLED(CONFIG_VIDEO_ATOMISP)
+#ifdef CONFIG_EXTERNAL_CAMERA
+#ifndef CONFIG_VIDEO_ATOMISP
 	mid_pmu_cxt->camera_off = false;
+#endif
+#else /* !CONFIG_EXTERNAL_CAMERA */
+	mid_pmu_cxt->camera_off = true;
 #endif
 
 #ifndef GFX_ENABLE
@@ -1636,19 +1644,25 @@ retry:
 	WARN_ON(chk_val != new_value);
 
 nc_done:
-#if !IS_ENABLED(CONFIG_VIDEO_ATOMISP)
+#ifndef CONFIG_VIDEO_ATOMISP
 	/* ATOMISP is always powered up on system-resume path. It needs
 	 * to be turned off here if there is no driver to do it. */
 	if (!mid_pmu_cxt->camera_off) {
 		/* power down isp */
 		pmu_nc_set_power_state(APM_ISP_ISLAND | APM_IPH_ISLAND,
 				       OSPM_ISLAND_DOWN, APM_REG_TYPE);
-		/* power down DPHY */
-		new_value = intel_mid_msgbus_read32(0x09, 0x03);
-		new_value |= 0x300;
-		intel_mid_msgbus_write32(0x09, 0x03, new_value);
 		mid_pmu_cxt->camera_off = true;
 	}
+	/*
+	* IUNIT DPHY is located in an always-power-on island on system-resume
+	* path. HW design needs all CSI ports to be disabled before powering
+	* down the IUNIT and it needs to be turned off here if there is no
+	* driver to do it.
+	*/
+	/* power down DPHY */
+	new_value = intel_mid_msgbus_read32(0x09, 0x03);
+	new_value |= 0x300;
+	intel_mid_msgbus_write32(0x09, 0x03, new_value);
 #endif
 
 unlock:
@@ -2121,7 +2135,11 @@ static int standby_enter(void)
 	writel(mid_pmu_cxt->ss_config->wake_state.wake_enable[1],
 		       &mid_pmu_cxt->pmu_reg->pm_wkc[1]);
 
+#ifdef CONFIG_EXTERNAL_CAMERA
 	mid_pmu_cxt->camera_off = 0;
+#else /* !CONFIG_EXTERNAL_CAMERA */
+	mid_pmu_cxt->camera_off = true;
+#endif
 	mid_pmu_cxt->display_off = 0;
 
 	if (platform_is(INTEL_ATOM_MRFLD) || platform_is(INTEL_ATOM_MOORFLD))

@@ -3314,8 +3314,10 @@ static int drm_mode_connector_set_obj_prop(struct drm_mode_object *obj,
 			if ((value == DRM_MODE_DPMS_ASYNC_ON) ||
 				(value == DRM_MODE_DPMS_ASYNC_OFF)) {
 				DRM_ERROR("ASYNC DPMS flag ON\n");
+				drm_object_property_set_value(&connector->base, property, value);
 				queue_delayed_work(system_nrt_wq,
 					&dev->mode_config.dpms_work, 0);
+				return 0;
 			} else
 				(*connector->funcs->dpms)(connector,
 					(int)value);

@@ -14,6 +14,14 @@ config TOUCHSCREEN_R69001_I2C
 		Say Y here if you have a R69001 touchscreen
 		If unsure, say N.
 
+config TOUCHSCREEN_IT7258
+	tristate "ITE 7258 touchscreen"
+	depends on I2C
+	default n
+	help
+		Say Y here if you have an IT7258 touchscreen
+		If unsure, say N.
+
 config TOUCHSCREEN_ATMEL_MXT_FORK
 	tristate "Atmel mXT I2C Touchscreen"
 	depends on I2C

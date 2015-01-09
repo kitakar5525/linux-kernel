@@ -82,6 +82,7 @@
 #include "device_libs/platform_bq24192.h"
 #include "device_libs/platform_bq24261.h"
 #include "device_libs/platform_r69001.h"
+#include "device_libs/platform_it7260.h"
 #include "device_libs/platform_pn544.h"
 #include "device_libs/platform_fdp.h"
 #include "device_libs/platform_l3g4200d.h"
@@ -198,6 +199,7 @@ struct devs_id __initconst device_ids[] = {
 	{"mpu3050", SFI_DEV_TYPE_I2C, 1, &mpu3050_platform_data, NULL},
 	{"i2c_disp_brig", SFI_DEV_TYPE_I2C, 0, &tc35876x_platform_data, NULL},
 	{"r69001-ts-i2c", SFI_DEV_TYPE_I2C, 0, &r69001_platform_data, NULL},
+	{"it7260_ts_i2c", SFI_DEV_TYPE_I2C, 0, &it7260_platform_data, NULL},
 	{"synaptics_3202", SFI_DEV_TYPE_I2C, 0, &rmi4_platform_data, NULL},
 	{"syn_3400_cgs", SFI_DEV_TYPE_I2C, 0, &rmi4_platform_data, NULL},
 	{"syn_3400_igzo", SFI_DEV_TYPE_I2C, 0, &rmi4_platform_data, NULL},

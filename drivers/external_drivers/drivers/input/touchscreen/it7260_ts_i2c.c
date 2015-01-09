@@ -28,14 +28,12 @@
 #include <linux/timer.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
-#include <linux/sync.h>
 #include <linux/proc_fs.h>
-#include <linux/notifier.h>
-#include <linux/asus_utility.h>
 #include <linux/wakelock.h>
+#include <linux/it7260_ts.h>
 
 #define MAX_BUFFER_SIZE			144
-#define DEVICE_NAME			"IT7260"
+#define DEVICE_NAME			"it7260_ts_i2c"
 #define SCREEN_X_RESOLUTION		320
 #define SCREEN_Y_RESOLUTION		320
 
@@ -155,8 +153,7 @@ static struct class *ite7260_class;
 static dev_t ite7260_dev;
 static struct input_dev *input_dev;
 static struct device *class_dev;
-static int suspend_touch_down;
-static int suspend_touch_up;
+static struct device_attribute device_attr;
 static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
 
@@ -393,37 +390,6 @@ static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
 	return ret;
 }
 
-/* fix touch will not wake up system in suspend mode */
-static void chipLowPowerMode(bool low)
-{
-	int allow_irq_wake = !(isDeviceSleeping);
-	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
-	uint8_t dummy;
-
-	if (devicePresent) {
-		LOGI("low power %s\n", low ? "enter" : "exit");
-
-		if (low) {
-			if (allow_irq_wake) {
-				smp_wmb();
-				enable_irq_wake(gl_ts->client->irq);
-			}
-			isDeviceSleeping = true;
-			wake_unlock(&touch_lock);
-			i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
-		} else {
-			if (!allow_irq_wake) {
-				smp_wmb();
-				disable_irq_wake(gl_ts->client->irq);
-			}
-			isDeviceSleeping = false;
-			isDeviceSuspend = false;
-			wake_unlock(&touch_lock);
-			i2cReadNoReadyCheck(BUF_QUERY, &dummy, sizeof(dummy));
-		}
-	}
-}
-
 static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	const struct firmware *fw, *cfg;
@@ -650,23 +616,6 @@ void sendCalibrationCmd(void)
 }
 EXPORT_SYMBOL(sendCalibrationCmd);
 
-
-static int mode_notify_sys(struct notifier_block *notif, unsigned long code, void *data)
-{
-	switch (code) {
-	case 0: /* FB_BLANK_ENTER_NON_INTERACTIVE */
-		chipLowPowerMode(1);
-		break;
-	case 1: /* FB_BLANK_ENTER_INTERACTIVE */
-		chipLowPowerMode(0);
-		break;
-	default:
-		break;
-	}
-
-	return 0;
-}
-
 static void readFingerData(uint16_t *xP, uint16_t *yP, uint8_t *pressureP, const struct FingerData *fd)
 {
 	uint16_t x = fd->xLo;
@@ -681,21 +630,6 @@ static void readFingerData(uint16_t *xP, uint16_t *yP, uint8_t *pressureP, const
 		*yP = y;
 	if (pressureP)
 		*pressureP = fd->pressure & FD_PRESSURE_BITS;
-}
-
-static uint64_t getMsTime(void)
-{
-	struct timespec ts;
-	uint64_t ret;
-
-	getnstimeofday(&ts);
-
-	/* convert nsec to msec */
-	ret = ts.tv_nsec;
-	do_div(ret, 1000000UL);
-
-	/* add in sec */
-	return ret + ts.tv_sec * 1000ULL;
 }
 
 static void readTouchDataPoint(void)
@@ -795,9 +729,15 @@ static bool chipIdentifyIT7260(void)
 static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	static const uint8_t cmdStart[] = {CMD_UNKNOWN_7};
-	struct IT7260_i2c_platform_data *pdata;
 	uint8_t rsp[2];
 	int ret = -1;
+	struct it7260_platform_data *pdata = client->dev.platform_data;
+
+	if (!pdata) {
+		LOGE("No touch platform data\n");
+		ret = -EINVAL;
+		goto err_out;
+	}
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		LOGE("need I2C_FUNC_I2C\n");
@@ -805,11 +745,8 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_out;
 	}
 
-	if (!client->irq) {
-		LOGE("need IRQ\n");
-		ret = -ENODEV;
-		goto err_out;
-	}
+	if (!client->irq)
+		client->irq = gpio_to_irq(pdata->gpio);
 
 	gl_ts = kzalloc(sizeof(*gl_ts), GFP_KERNEL);
 	if (!gl_ts) {
@@ -864,7 +801,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_input_register;
 	}
 
-	if (request_threaded_irq(client->irq, NULL, IT7260_ts_threaded_handler, IRQF_TRIGGER_LOW | IRQF_ONESHOT, client->name, gl_ts)) {
+	if (request_threaded_irq(client->irq, NULL, IT7260_ts_threaded_handler, pdata->irq_type, client->name, gl_ts)) {
 		dev_err(&client->dev, "request_irq failed\n");
 		goto err_irq_reg;
 	}
@@ -1020,10 +957,6 @@ static const struct of_device_id IT7260_match_table[] = {
 	{},
 };
 
-static struct notifier_block display_mode_notifier = {
-	.notifier_call =    mode_notify_sys,
-};
-
 static int IT7260_ts_resume(struct i2c_client *i2cdev)
 {
 	isDeviceSuspend	= false;
@@ -1086,8 +1019,6 @@ static int __init IT7260_ts_init(void)
 		goto err_file_create;
 	}
 
-	register_mode_notifier(&display_mode_notifier);
-
 	LOGI("=========================================\n");
 	LOGI("register IT7260 cdev, major: %d, minor: %d\n", ite7260_major, ite7260_minor);
 	LOGI("=========================================\n");
@@ -1095,7 +1026,6 @@ static int __init IT7260_ts_init(void)
 	if (!i2c_add_driver(&IT7260_ts_driver))
 		return 0;
 
-	unregister_mode_notifier(&display_mode_notifier);
 	device_remove_file(class_dev, &device_attr);
 
 err_file_create:
@@ -1119,7 +1049,6 @@ static void __exit IT7260_ts_exit(void)
 	dev_t dev = MKDEV(ite7260_major, ite7260_minor);
 
 	i2c_del_driver(&IT7260_ts_driver);
-	unregister_mode_notifier(&display_mode_notifier);
 	device_remove_file(class_dev, &device_attr);
 	device_destroy(ite7260_class, ite7260_dev);
 	class_destroy(ite7260_class);

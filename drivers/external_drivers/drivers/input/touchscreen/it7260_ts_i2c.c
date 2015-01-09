@@ -148,12 +148,7 @@ static bool isDeviceSleeping;
 static bool isDeviceSuspend;
 static int ite7260_major;
 static int ite7260_minor;
-static struct cdev ite7260_cdev;
-static struct class *ite7260_class;
-static dev_t ite7260_dev;
 static struct input_dev *input_dev;
-static struct device *class_dev;
-static struct device_attribute device_attr;
 static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
 
@@ -984,76 +979,15 @@ static struct i2c_driver IT7260_ts_driver = {
 
 static int __init IT7260_ts_init(void)
 {
-	dev_t dev;
-
-
-	if (alloc_chrdev_region(&dev, 0, 1, DEVICE_NAME)) {
-		LOGE("cdev can't get major number\n");
-		goto err_cdev_alloc;
-	}
-	ite7260_major = MAJOR(dev);
-
-	cdev_init(&ite7260_cdev, &ite7260_fops);
-	ite7260_cdev.owner = THIS_MODULE;
-
-	if (cdev_add(&ite7260_cdev, MKDEV(ite7260_major, ite7260_minor), 1)) {
-		LOGE("cdev can't get minor number\n");
-		goto err_cdev_add;
-	}
-
-	ite7260_class = class_create(THIS_MODULE, DEVICE_NAME);
-	if (IS_ERR(ite7260_class)) {
-		LOGE("failed in creating class.\n");
-		goto err_class_create;
-	}
-
-	class_dev = device_create(ite7260_class, NULL, MKDEV(ite7260_major, ite7260_minor), NULL, DEVICE_NAME);
-	if (!class_dev) {
-
-		LOGE("failed in creating device.\n");
-		goto err_dev_create;
-	}
-
-	if (device_create_file(class_dev, &device_attr) < 0) {
-		LOGE("failed in creating file.\n");
-		goto err_file_create;
-	}
-
-	LOGI("=========================================\n");
-	LOGI("register IT7260 cdev, major: %d, minor: %d\n", ite7260_major, ite7260_minor);
-	LOGI("=========================================\n");
-
 	if (!i2c_add_driver(&IT7260_ts_driver))
 		return 0;
-
-	device_remove_file(class_dev, &device_attr);
-
-err_file_create:
-	device_destroy(ite7260_class, ite7260_dev);
-
-err_dev_create:
-	class_destroy(ite7260_class);
-
-err_class_create:
-	cdev_del(&ite7260_cdev);
-
-err_cdev_add:
-	unregister_chrdev_region(dev, 1);
-
-err_cdev_alloc:
-	return -1;
+	else
+		return -EBUSY;
 }
 
 static void __exit IT7260_ts_exit(void)
 {
-	dev_t dev = MKDEV(ite7260_major, ite7260_minor);
-
 	i2c_del_driver(&IT7260_ts_driver);
-	device_remove_file(class_dev, &device_attr);
-	device_destroy(ite7260_class, ite7260_dev);
-	class_destroy(ite7260_class);
-	cdev_del(&ite7260_cdev);
-	unregister_chrdev_region(dev, 1);
 	wake_lock_destroy(&touch_lock);
 	if (IT7260_wq)
 		destroy_workqueue(IT7260_wq);

@@ -45,6 +45,7 @@
 #include "displays/sdc25x16_cmd.h"
 #include "displays/jdi25x16_vid.h"
 #include "displays/jdi25x16_cmd.h"
+#include "displays/auo_cmd.h"
 #include "psb_drv.h"
 #include "android_hdmi.h"
 
@@ -62,6 +63,7 @@ static struct intel_mid_panel_list panel_list[] = {
 	{JDI_25x16_CMD, MDFLD_DSI_ENCODER_DBI, jdi25x16_cmd_init},
 	{SDC_16x25_CMD, MDFLD_DSI_ENCODER_DBI, sdc16x25_8_cmd_init},
 	{SDC_25x16_CMD, MDFLD_DSI_ENCODER_DBI, sdc25x16_cmd_init},
+	{AUO_CMD, MDFLD_DSI_ENCODER_DBI, auo_cmd_init},
 };
 
 enum panel_type get_panel_type(struct drm_device *dev, int pipe)

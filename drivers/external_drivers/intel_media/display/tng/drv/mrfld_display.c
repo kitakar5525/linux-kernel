@@ -280,7 +280,8 @@ static void mrfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 				(get_panel_type(dev, pipe) == JDI_7x12_VID) ||
 				(get_panel_type(dev, pipe) == SHARP_25x16_VID) ||
 				(get_panel_type(dev, pipe) == JDI_25x16_CMD) ||
-				(get_panel_type(dev, pipe) == JDI_25x16_VID))) {
+				(get_panel_type(dev, pipe) == JDI_25x16_VID) ||
+				(get_panel_type(dev, pipe) == AUO_CMD))) {
 		return;
 	}
 #endif

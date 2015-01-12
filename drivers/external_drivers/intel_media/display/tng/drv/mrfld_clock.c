@@ -367,6 +367,11 @@ void mrfld_setup_pll(struct drm_device *dev, int pipe, int clk)
 				clk_n = 1;
 				clock.m = 144;
 				break;
+		case AUO_CMD:
+				clock.p1 = 3;
+				clk_n = 1;
+				clock.m = 120;
+				break;
 		default:
 			/* for JDI_7x12_CMD */
 				clock.p1 = 4;

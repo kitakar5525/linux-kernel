@@ -4172,6 +4172,7 @@ static void i9xx_pfit_enable(struct intel_crtc *crtc)
 
 static void vlv_update_watermarks(struct drm_i915_private *dev_priv)
 {
+	I915_WRITE(DSPARB, DSPARB_VLV_DEFAULT);
 	I915_WRITE(DSPFW1,
 		   (DSPFW_SR_VAL << DSPFW_SR_SHIFT) |
 		   (DSPFW_CURSORB_VAL << DSPFW_CURSORB_SHIFT) |
@@ -4197,7 +4198,6 @@ static void vlv_update_watermarks(struct drm_i915_private *dev_priv)
 			(DSPFW7_SPRITED_VAL << DSPFW7_SPRITED_SHIFT) |
 			(DSPFW7_SPRITEC1_VAL << DSPFW7_SPRITEC1_SHIFT) |
 			DSPFW7_SPRITEC_VAL);
-	I915_WRITE(DSPARB, DSPARB_VLV_DEFAULT);
 }
 
 static void valleyview_crtc_enable(struct drm_crtc *crtc)

@@ -1954,6 +1954,7 @@ static void valleyview_update_wm(struct drm_device *dev)
 		      planeb_wm, cursorb_wm,
 		      plane_sr, cursor_sr);
 #endif
+	I915_WRITE(DSPARB, DSPARB_VLV_DEFAULT);
 	I915_WRITE(DSPFW1,
 		   (DSPFW_SR_VAL << DSPFW_SR_SHIFT) |
 		   (DSPFW_CURSORB_VAL << DSPFW_CURSORB_SHIFT) |
@@ -1971,7 +1972,6 @@ static void valleyview_update_wm(struct drm_device *dev)
 			(DSPFW5_CURSORB_VAL << DSPFW5_CURSORB_SHIFT) |
 			DSPFW5_CURSORSR_VAL);
 	I915_WRITE(DSPFW6, DSPFW6_DISPLAYSR_VAL);
-	I915_WRITE(DSPARB, DSPARB_VLV_DEFAULT);
 	/* Maxfifo in vallvyview is supported only in set_display atomic path */
 	if (IS_VALLEYVIEW(dev))
 		return;

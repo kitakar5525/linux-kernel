@@ -36,6 +36,7 @@
 #include <linux/pwm.h>
 #include <linux/platform_data/lp855x.h>
 #include <asm/spid.h>
+#include "intel_dsi.h"
 
 #define PCI_LBPC 0xf4 /* legacy/combination backlight modes */
 
@@ -625,8 +626,10 @@ void intel_panel_disable_backlight(struct drm_device *dev)
 			cancel_delayed_work_sync(&dev_priv->bkl_delay_enable_work);
 
 			/* disable the backlight enable signal */
-			vlv_gpio_nc_write(dev_priv, 0x40E0, 0x2000CC00);
-			vlv_gpio_nc_write(dev_priv, 0x40E8, 0x00000004);
+			vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+					PANEL1_BKLTEN_GPIONC_10_PCONF0, 0x2000CC00);
+			vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+					PANEL1_BKLTEN_GPIONC_10_PAD, 0x00000004);
 			udelay(500);
 			lpio_bl_write_bits(0, LPIO_PWM_CTRL, 0x00, 0x80000000);
 		} else {
@@ -733,13 +736,15 @@ void intel_panel_enable_backlight(struct drm_device *dev,
 		/* For BYT-CR */
 		if (dev_priv->vbt.dsi.config->pmic_soc_blc) {
 			/* GPIOC_94 config to PWM0 function */
-			val = vlv_gps_core_read(dev_priv, 0x40A0);
-			vlv_gps_core_write(dev_priv, 0x40A0, 0x2000CC01);
-			vlv_gps_core_write(dev_priv, 0x40A8, 0x5);
+			val = vlv_gps_core_read(dev_priv, GP_CAMERASB07_GPIONC_22_PCONF0);
+			vlv_gps_core_write(dev_priv, GP_CAMERASB07_GPIONC_22_PCONF0,
+					0x2000CC01);
+			vlv_gps_core_write(dev_priv, GP_CAMERASB07_GPIONC_22_PAD, 0x5);
 
-			/* PWM enable
-			* Assuming only 1 LFP
-			*/
+			/*
+			 * PWM enable
+			 * Assuming only 1 LFP
+			 */
 			pwm_base = compute_pwm_base(dev_priv->vbt.pwm_frequency);
 			pwm_base = pwm_base << 8;
 			lpio_bl_write(0, LPIO_PWM_CTRL, pwm_base);
@@ -749,8 +754,11 @@ void intel_panel_enable_backlight(struct drm_device *dev,
 			lpio_bl_update(0, LPIO_PWM_CTRL);
 
 			/* Backlight enable */
-			vlv_gpio_nc_write(dev_priv, 0x40E0, 0x2000CC00);
-			vlv_gpio_nc_write(dev_priv, 0x40E8, 0x00000005);
+			vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+					PANEL1_BKLTEN_GPIONC_10_PCONF0, 0x2000CC00);
+			vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+					PANEL1_BKLTEN_GPIONC_10_PAD, 0x00000005);
+
 			udelay(500);
 
 			if (lpdata)

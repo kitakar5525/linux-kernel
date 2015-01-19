@@ -223,12 +223,16 @@ void intel_dsi_device_ready(struct intel_encoder *encoder)
 #ifdef CONFIG_CRYSTAL_COVE
 	if (BYT_CR_CONFIG) {
 		/*  cabc disable */
-		vlv_gpio_nc_write(dev_priv, GPIO_NC_9_PCONF0, 0x2000CC00);
-		vlv_gpio_nc_write(dev_priv, GPIO_NC_9_PAD, 0x00000004);
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+					PANEL1_VDDEN_GPIONC_9_PCONF0, 0x2000CC00);
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+					PANEL1_VDDEN_GPIONC_9_PAD, 0x00000004);
 
 		/* panel enable */
-		vlv_gpio_nc_write(dev_priv, GPIO_NC_11_PCONF0, 0x2000CC00);
-		vlv_gpio_nc_write(dev_priv, GPIO_NC_11_PAD, 0x00000005);
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+					PANEL1_BKLTCTL_GPIONC_11_PCONF0, 0x2000CC00);
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+					PANEL1_BKLTCTL_GPIONC_11_PAD, 0x00000005);
 		udelay(500);
 	} else
 		intel_mid_pmic_writeb(PMIC_PANEL_EN, 0x01);
@@ -491,8 +495,10 @@ void intel_dsi_clear_device_ready(struct intel_encoder *encoder)
 #ifdef CONFIG_CRYSTAL_COVE
 	if (BYT_CR_CONFIG) {
 		/* Disable Panel */
-		vlv_gpio_nc_write(dev_priv, GPIO_NC_11_PCONF0, 0x2000CC00);
-		vlv_gpio_nc_write(dev_priv, GPIO_NC_11_PAD, 0x00000004);
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+					PANEL1_BKLTCTL_GPIONC_11_PCONF0, 0x2000CC00);
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+					PANEL1_BKLTCTL_GPIONC_11_PAD, 0x00000004);
 		udelay(500);
 	} else
 		intel_mid_pmic_writeb(PMIC_PANEL_EN, 0x00);

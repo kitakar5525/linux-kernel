@@ -223,7 +223,7 @@ static void parse_backlight_data(struct drm_i915_private *dev_priv,
 	}
 	DRM_DEBUG_KMS("Found backlight BDB");
 	entry = &backlight_data->data[panel_type];
-	dev_priv->vbt.pwm_frequency = entry->pwm_freq;
+	dev_priv->vbt.pwm_frequency = entry->pwm_freq_hz;
 	dev_priv->vbt.init_backlight_level = backlight_data->level[panel_type];
 }
 
@@ -353,6 +353,34 @@ parse_lfp_panel_data(struct drm_i915_private *dev_priv,
 			DRM_ERROR("VBT scaling too ambitious !!\n");
 		}
 	}
+}
+
+static void
+parse_lfp_backlight(struct drm_i915_private *dev_priv, struct bdb_header *bdb)
+{
+	const struct bdb_lfp_backlight_data *backlight_data;
+	const struct bdb_lfp_backlight_data_entry *entry;
+
+	backlight_data = find_section(bdb, BDB_LVDS_BACKLIGHT);
+	if (!backlight_data)
+		return;
+
+	if (backlight_data->entry_size != sizeof(backlight_data->data[0])) {
+		DRM_DEBUG_KMS("Unsupported backlight data entry size %u\n",
+			      backlight_data->entry_size);
+		return;
+	}
+
+	entry = &backlight_data->data[panel_type];
+
+	dev_priv->vbt.backlight.pwm_freq_hz = entry->pwm_freq_hz;
+	dev_priv->vbt.backlight.active_low_pwm = entry->active_low_pwm;
+	DRM_DEBUG_KMS("VBT backlight PWM modulation frequency %u Hz, "
+		      "active %s, min brightness %u, level %u\n",
+		      dev_priv->vbt.backlight.pwm_freq_hz,
+		      dev_priv->vbt.backlight.active_low_pwm ? "low" : "high",
+		      entry->min_brightness,
+		      backlight_data->level[panel_type]);
 }
 
 /* Try to find sdvo panel data */
@@ -1149,6 +1177,7 @@ intel_parse_bios(struct drm_device *dev)
 	parse_general_features(dev_priv, bdb);
 	parse_general_definitions(dev_priv, bdb);
 	parse_lfp_panel_data(dev_priv, bdb);
+	parse_lfp_backlight(dev_priv, bdb);
 	parse_sdvo_panel_data(dev_priv, bdb);
 	parse_sdvo_device_mapping(dev_priv, bdb);
 	parse_device_mapping(dev_priv, bdb);

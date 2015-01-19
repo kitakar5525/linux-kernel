@@ -294,24 +294,6 @@ struct bdb_lvds_options {
 	u32 blt_control_type_bits;
 } __attribute__((packed));
 
-struct bdb_lfp_backlight_data_entry {
-	/* Backlight control parameters */
-	u8 type:2;
-	u8 inverter_pol:1;
-	u8 gpio:3;
-	u8 gmbus:2;
-	u16 pwm_freq;
-	u8 minbrightness;
-	u8 i2c_slave_addr;
-	u8 brightnesscmd;
-} __packed;
-
-struct bdb_lfp_backlight_data {
-	u8 entry_size;
-	struct bdb_lfp_backlight_data_entry data[16];
-	u8 level[16];
-} __packed;
-
 /* LFP pointer table contains entries to the struct below */
 struct bdb_lvds_lfp_data_ptr {
 	u16 fp_timing_offset; /* offsets are from start of bdb */
@@ -394,6 +376,22 @@ struct bdb_lvds_lfp_data {
 	u16 scaling_enabling_bits;
 	u8 seamless_drrs_min_vrefresh[16];
 } __attribute__((packed));
+
+struct bdb_lfp_backlight_data_entry {
+	u8 type:2;
+	u8 active_low_pwm:1;
+	u8 obsolete1:5;
+	u16 pwm_freq_hz;
+	u8 min_brightness;
+	u8 obsolete2;
+	u8 obsolete3;
+} __packed;
+
+struct bdb_lfp_backlight_data {
+	u8 entry_size;
+	struct bdb_lfp_backlight_data_entry data[16];
+	u8 level[16];
+} __packed;
 
 struct aimdb_header {
 	char signature[16];

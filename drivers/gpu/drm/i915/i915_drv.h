@@ -1257,6 +1257,11 @@ struct intel_vbt_data {
 	/* HDMI pre-emp Vswing Setting; */
 	int hdmi_level_shifter;
 
+	struct {
+		u16 pwm_freq_hz;
+		bool active_low_pwm;
+	} backlight;
+
 	/* MIPI DSI */
 	struct {
 		u8 seq_version;

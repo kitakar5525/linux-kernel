@@ -842,7 +842,7 @@ static int sst_swm_mixer_event(struct snd_soc_dapm_widget *w,
 	{ mix_name, "fm_in",		"fm_in" }
 
 
-/* 18 SBA mixers */
+/* 23 SBA mixers */
 SST_SBA_DECLARE_MIX_CONTROLS(sst_mix_pcm0_controls, SST_MIX_PCM0);
 SST_SBA_DECLARE_MIX_CONTROLS(sst_mix_pcm1_controls, SST_MIX_PCM1);
 SST_SBA_DECLARE_MIX_CONTROLS(sst_mix_pcm2_controls, SST_MIX_PCM2);
@@ -865,6 +865,7 @@ SST_SBA_DECLARE_MIX_CONTROLS(sst_mix_codec1_controls, SST_MIX_CODEC1);
 SST_SBA_DECLARE_MIX_CONTROLS(sst_mix_bt_controls, SST_MIX_BT);
 SST_SBA_DECLARE_MIX_CONTROLS(sst_mix_fm_controls, SST_MIX_FM);
 SST_SBA_DECLARE_MIX_CONTROLS(sst_mix_modem_controls, SST_MIX_MODEM);
+SST_SBA_DECLARE_MIX_CONTROLS(sst_mix_low_pcm0_out_controls, SST_MIX_LL_PCM0);
 
 void sst_handle_vb_timer(struct snd_soc_platform *p, bool enable)
 {
@@ -1629,6 +1630,7 @@ static const struct snd_soc_dapm_widget sst_dapm_widgets[] = {
 	SST_PATH_OUTPUT("pcm3_out", SST_TASK_SBA, SST_SWM_OUT_PCM3, sst_set_media_path),
 	SST_PATH_OUTPUT("pcm4_out", SST_TASK_SBA, SST_SWM_OUT_PCM4, sst_set_media_path),
 	SST_PATH_INPUT("low_pcm0_in", SST_TASK_SBA, SST_SWM_IN_LOW_PCM0, sst_set_media_path),
+	SST_PATH_OUTPUT("low_pcm0_out", SST_TASK_SBA, SST_SWM_OUT_LOW_PCM0, sst_set_media_path),
 
 	SST_PATH_INPUT("voip_in", SST_TASK_SBA, SST_SWM_IN_VOIP, sst_set_media_path),
 	SST_PATH_OUTPUT("voip_out", SST_TASK_SBA, SST_SWM_OUT_VOIP, sst_set_media_path),
@@ -1672,6 +1674,9 @@ static const struct snd_soc_dapm_widget sst_dapm_widgets[] = {
 		      sst_mix_pcm3_controls, sst_swm_mixer_event),
 	SST_SWM_MIXER("pcm4_out mix 0", SST_MIX_PCM4, SST_TASK_SBA, SST_SWM_OUT_PCM4,
 		      sst_mix_pcm4_controls, sst_swm_mixer_event),
+	SST_SWM_MIXER("low_pcm0_out mix 0", SST_MIX_LL_PCM0, SST_TASK_SBA, SST_SWM_OUT_LOW_PCM0,
+		      sst_mix_low_pcm0_out_controls, sst_swm_mixer_event),
+
 
 	/* SBA Loop mixers */
 	SST_SWM_MIXER("sprot_loop_out mix 0", SST_MIX_LOOP0, SST_TASK_SBA, SST_SWM_OUT_SPROT_LOOP,
@@ -1746,6 +1751,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	SST_SBA_MIXER_GRAPH_MAP("pcm3_out mix 0"),
 	{"pcm4_out", NULL, "pcm4_out mix 0"},
 	SST_SBA_MIXER_GRAPH_MAP("pcm4_out mix 0"),
+
+	{"Low Latency Capture", NULL, "low_pcm0_out"},
+	{"low_pcm0_out", NULL, "low_pcm0_out mix 0"},
+	SST_SBA_MIXER_GRAPH_MAP("low_pcm0_out mix 0"),
 
 	{"media_loop1_in", NULL, "media_loop1_out"},
 	{"media_loop1_out", NULL, "media_loop1_out mix 0"},
@@ -1915,7 +1924,7 @@ static const struct snd_kcontrol_new sst_probe_controls[] = {
 		SST_MODULE_ID_VOLUME, path_id, instance, task_id,			\
 		sst_gain_tlv_common, gain_var)
 
-#define SST_NUM_GAINS 37
+#define SST_NUM_GAINS 38
 static struct sst_gain_value sst_gains[SST_NUM_GAINS];
 
 static const struct snd_kcontrol_new sst_gain_controls[] = {
@@ -1961,6 +1970,7 @@ static const struct snd_kcontrol_new sst_gain_controls[] = {
 	SST_GAIN("pcm4_out", SST_PATH_INDEX_PCM4_OUT, SST_TASK_SBA, 0, &sst_gains[34]),
 	SST_GAIN("hf_sns_3_out", SST_PATH_INDEX_HF_SNS_3_OUT, SST_TASK_SBA, 0, &sst_gains[35]),
 	SST_GAIN("hf_sns_4_out", SST_PATH_INDEX_HF_SNS_4_OUT, SST_TASK_SBA, 0, &sst_gains[36]),
+	SST_GAIN("low_pcm0_out", SST_PATH_INDEX_LOW_PCM0_OUT, SST_TASK_SBA, 0, &sst_gains[37]),
 };
 
 static const struct snd_kcontrol_new sst_algo_controls[] = {

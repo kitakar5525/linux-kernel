@@ -83,6 +83,7 @@ enum sst_audio_device_id_mrfld {
 	PIPE_PROBE6_OUT = 0x1E,
 	PIPE_PROBE7_OUT = 0x1F,
 	PIPE_PROBE8_OUT = 0x20,
+	PIPE_LOW_PCM0_OUT = 0x25,  /* Low Latency 0 Capture Pipeline */
 	/* Input Pipeline IDs */
 	PIPE_ID_IN_START = 0x80,
 	PIPE_MODEM_IN = 0x80,

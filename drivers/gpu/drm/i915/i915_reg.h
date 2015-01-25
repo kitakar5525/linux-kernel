@@ -505,6 +505,9 @@
 #define DPIO_OPCODE_REG_WRITE		1
 #define DPIO_OPCODE_REG_READ		0
 
+#define GPIO_DEVFN			0
+#define GPS_DEVFN			0
+
 #define DPIO_CTL			(VLV_DISPLAY_BASE + 0x2110)
 #define  DPIO_MODSEL1			(1<<3) /* if ref clk b == 27 */
 #define  DPIO_MODSEL0			(1<<2) /* if ref clk a == 27 */

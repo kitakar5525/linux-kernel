@@ -3867,6 +3867,7 @@ ssize_t gpio_control_write(struct file *file, const char *buffer,
 	}
 	return count;
 }
+#endif /* CONFIG_SUPPORT_HDMI */
 
 static ssize_t csc_control_read(struct file *file, char __user *buf,
 				    size_t nbytes,loff_t *ppos)
@@ -3926,6 +3927,7 @@ static const struct file_operations psb_csc_proc_fops = {
        .write = csc_control_write,
 };
 
+#ifdef CONFIG_SUPPORT_HDMI
 static int psb_hdmi_proc_open(struct inode *inode, struct file *file)
 {
 	return 0;

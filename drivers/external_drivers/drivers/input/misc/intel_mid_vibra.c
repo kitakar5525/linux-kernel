@@ -37,6 +37,11 @@
 #include <linux/input/intel_mid_vibra.h>
 #include <trace/events/power.h>
 #include "mid_vibra.h"
+#ifdef CONFIG_ANDROID_TIMED_OUTPUT
+#include <linux/timer.h>
+#include <linux/hrtimer.h>
+#include <../../../drivers/staging/android/timed_output.h>
+#endif /* CONFIG_ANDROID_TIMED_OUTPUT */
 
 union sst_pwmctrl_reg {
 	struct {
@@ -169,10 +174,11 @@ static void vibra_disable(struct vibra_info *info)
 	pr_debug("%s: Disable", __func__);
 	trace_vibrator(0);
 	mutex_lock(&info->lock);
+	info->pwm_configure(info, false);
 	vibra_gpio_set_value_cansleep(info, 0);
 	info->enabled = false;
-	info->pwm_configure(info, false);
 	pm_runtime_put(info->dev);
+	usleep_range(9500, 10000);
 	mutex_unlock(&info->lock);
 }
 
@@ -239,6 +245,63 @@ static const struct attribute_group vibra_attr_group = {
 	.attrs = vibra_attrs,
 };
 
+#ifdef CONFIG_ANDROID_TIMED_OUTPUT
+/*******************************************************************************
+ * timed output                                                                *
+ *******************************************************************************/
+struct timed_vibra {
+	struct hrtimer timer;
+	struct work_struct work;
+	struct timed_output_dev dev_timed;
+	struct vibra_info *info;
+};
+
+static int vibrator_get_time(struct timed_output_dev *dev)
+{
+	struct timed_vibra *vibra_timed;
+	vibra_timed = container_of(dev, struct timed_vibra, dev_timed);
+	if (hrtimer_active(&(vibra_timed->timer))) {
+		ktime_t r = hrtimer_get_remaining(&(vibra_timed->timer));
+		return ktime_to_ms(r);
+	}
+	return 0;
+}
+
+static void vibrator_work(struct work_struct *work)
+{
+	struct timed_vibra *vibra_timed;
+	vibra_timed = container_of(work, struct timed_vibra, work);
+	vibra_timed->info->disable(vibra_timed->info);
+}
+
+static enum hrtimer_restart vibra_disable_timer(struct hrtimer *timer)
+{
+	struct timed_vibra *vibra_timed;
+	vibra_timed = container_of(timer, struct timed_vibra, timer);
+	schedule_work(&(vibra_timed->work));
+	return HRTIMER_NORESTART;
+}
+
+static void vibrator_enable_timer(struct timed_output_dev *sdev, int timeout)
+{
+	u64 timeout_ns;
+	struct timed_vibra *vibra_timed;
+	vibra_timed = container_of(sdev, struct timed_vibra, dev_timed);
+	mutex_lock(&(vibra_timed->info->lock));
+	if (vibra_timed->info->enabled == 1)
+		hrtimer_cancel(&(vibra_timed->timer));
+	mutex_unlock(&(vibra_timed->info->lock));
+	if ((timeout == 0) && (vibra_timed->info->enabled == 1))
+		vibra_timed->info->disable(vibra_timed->info);
+	if (timeout > 0) {
+		if (vibra_timed->info->enabled == 0)
+			vibra_timed->info->enable(vibra_timed->info);
+		timeout_ns = timeout * NSEC_PER_MSEC;
+		hrtimer_start(&(vibra_timed->timer), ns_to_ktime(timeout_ns), HRTIMER_MODE_REL);
+	}
+}
+#endif /* CONFIG_ANDROID_TIMED_OUTPUT */
+
 /*** Module ***/
 #if CONFIG_PM
 static int intel_vibra_runtime_suspend(struct device *dev)
@@ -256,7 +319,8 @@ static int intel_vibra_runtime_resume(struct device *dev)
 	return 0;
 }
 
-static void intel_vibra_complete(struct device *dev) {
+static void intel_vibra_complete(struct device *dev)
+{
 	pr_debug("In %s\n", __func__);
 	intel_vibra_runtime_resume(dev);
 }
@@ -412,6 +476,9 @@ static int intel_mid_vibra_probe(struct pci_dev *pci,
 	struct device *dev = &pci->dev;
 	struct mid_vibra_pdata *data;
 	int ret;
+#ifdef CONFIG_ANDROID_TIMED_OUTPUT
+	struct timed_vibra *vibra_timed;
+#endif /* CONFIG_ANDROID_TIMED_OUTPUT */
 
 	pr_debug("Probe for DID %x\n", pci->device);
 
@@ -441,6 +508,24 @@ static int intel_mid_vibra_probe(struct pci_dev *pci,
 			goto out;
 		}
 	}
+
+#ifdef CONFIG_ANDROID_TIMED_OUTPUT
+	info->tmr = devm_kzalloc(dev, sizeof(struct timed_vibra), GFP_KERNEL);
+	vibra_timed = (struct timed_vibra *)info->tmr;
+	vibra_timed->info = info;
+	vibra_timed->dev_timed.name = "vibrator";
+	vibra_timed->dev_timed.get_time = vibrator_get_time;
+	vibra_timed->dev_timed.enable = vibrator_enable_timer;
+	ret = timed_output_dev_register(&(vibra_timed->dev_timed));
+
+	if (ret < 0) {
+		pr_err("drv260x: fail to create timed output dev:%d\n", ret);
+		goto do_freegpio_vibra_enable;
+	}
+	hrtimer_init(&(vibra_timed->timer), CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	vibra_timed->timer.function = vibra_disable_timer;
+	INIT_WORK(&(vibra_timed->work), vibrator_work);
+#endif /* CONFIG_ANDROID_TIMED_OUTPUT */
 
 	/* Init the device */
 	ret = pci_enable_device(pci);
@@ -490,6 +575,15 @@ out:
 static void intel_mid_vibra_remove(struct pci_dev *pci)
 {
 	struct vibra_info *info = pci_get_drvdata(pci);
+#ifdef CONFIG_ANDROID_TIMED_OUTPUT
+	struct timed_vibra *vibra_timed = (struct timed_vibra *)info->tmr;
+
+	hrtimer_cancel(&(vibra_timed->timer));
+	destroy_hrtimer_on_stack(&(vibra_timed->timer));
+	destroy_work_on_stack(&(vibra_timed->work));
+	timed_output_dev_unregister(&(vibra_timed->dev_timed));
+#endif /* CONFIG_ANDROID_TIMED_OUTPUT */
+
 	vibra_gpio_free(info);
 	sysfs_remove_group(&info->dev->kobj, info->vibra_attr_group);
 	iounmap(info->shim);

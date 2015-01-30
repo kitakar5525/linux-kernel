@@ -60,7 +60,6 @@
 #define SST_MIX_HF_SNS_3	SST_MIX(21)
 #define SST_MIX_HF_SNS_4	SST_MIX(22)
 #define SST_MIX_LL_PCM0		SST_MIX(23)
-
 #define SST_MIX_MEDIA0          SST_MIX(24)
 #define SST_MIX_MEDIA1          SST_MIX(25)
 

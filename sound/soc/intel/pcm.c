@@ -137,7 +137,6 @@ static struct sst_dev_stream_map dpcm_strm_map_mrfld[] = {
 	/* stream ID 25 used by Aware, but no device exposed to userspace */
 };
 
-
 static int sst_platform_ihf_set_tdm_slot(struct snd_soc_dai *dai,
 			unsigned int tx_mask, unsigned int rx_mask,
 			int slots, int slot_width) {
@@ -1190,7 +1189,6 @@ static struct snd_soc_platform_driver sst_soc_platform_drv  = {
 	.read		= sst_soc_read,
 	.write		= sst_soc_write,
 #endif
-
 };
 
 static int sst_platform_async_cb(struct sst_platform_cb_params *params)

@@ -120,6 +120,36 @@ static struct sst_dev_stream_map dpcm_strm_map[] = {
 	/* stream ID 25 used by Aware, but no device exposed to userspace */
 };
 
+static struct sst_dev_stream_map dpcm_strm_map_mrfld[] = {
+	{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, /* Reserved, not in use */
+	{MERR_DPCM_AUDIO, 0, SNDRV_PCM_STREAM_PLAYBACK, PIPE_MEDIA1_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_DB,    0, SNDRV_PCM_STREAM_PLAYBACK, PIPE_MEDIA3_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_LL,    0, SNDRV_PCM_STREAM_PLAYBACK, PIPE_LOW_PCM0_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_COMPR, 0, SNDRV_PCM_STREAM_PLAYBACK, PIPE_MEDIA0_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_VOIP,  0, SNDRV_PCM_STREAM_PLAYBACK, PIPE_VOIP_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 0, SNDRV_PCM_STREAM_PLAYBACK, PIPE_PROBE1_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 1, SNDRV_PCM_STREAM_PLAYBACK, PIPE_PROBE2_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 2, SNDRV_PCM_STREAM_PLAYBACK, PIPE_PROBE3_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 3, SNDRV_PCM_STREAM_PLAYBACK, PIPE_PROBE4_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 4, SNDRV_PCM_STREAM_PLAYBACK, PIPE_PROBE5_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 5, SNDRV_PCM_STREAM_PLAYBACK, PIPE_PROBE6_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 6, SNDRV_PCM_STREAM_PLAYBACK, PIPE_PROBE7_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 7, SNDRV_PCM_STREAM_PLAYBACK, PIPE_PROBE8_IN, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_AUDIO, 0, SNDRV_PCM_STREAM_CAPTURE, PIPE_PCM1_OUT, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_VOIP,  0, SNDRV_PCM_STREAM_CAPTURE, PIPE_VOIP_OUT, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_CAPTURE, 0, SNDRV_PCM_STREAM_CAPTURE, PIPE_PCM2_OUT, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 0, SNDRV_PCM_STREAM_CAPTURE, PIPE_PROBE1_OUT, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 1, SNDRV_PCM_STREAM_CAPTURE, PIPE_PROBE2_OUT, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 2, SNDRV_PCM_STREAM_CAPTURE, PIPE_PROBE3_OUT, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 3, SNDRV_PCM_STREAM_CAPTURE, PIPE_PROBE4_OUT, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 4, SNDRV_PCM_STREAM_CAPTURE, PIPE_PROBE5_OUT, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 5, SNDRV_PCM_STREAM_CAPTURE, PIPE_PROBE6_OUT, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 6, SNDRV_PCM_STREAM_CAPTURE, PIPE_PROBE7_OUT, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	{MERR_DPCM_PROBE, 7, SNDRV_PCM_STREAM_CAPTURE, PIPE_PROBE8_OUT, SST_TASK_ID_MEDIA, SST_DEV_MAP_IN_USE},
+	/* stream ID 25 used by Aware, but no device exposed to userspace */
+};
+
+
 static int sst_platform_ihf_set_tdm_slot(struct snd_soc_dai *dai,
 			unsigned int tx_mask, unsigned int rx_mask,
 			int slots, int slot_width) {
@@ -1155,8 +1185,14 @@ static struct snd_soc_platform_driver sst_soc_platform_drv  = {
 	.compr_ops	= &sst_platform_compr_ops,
 	.pcm_new	= sst_pcm_new,
 	.pcm_free	= sst_pcm_free,
+#ifdef CONFIG_SST_DPCM
+	.read		= sst_dpcm_soc_read,
+	.write		= sst_dpcm_soc_write,
+#else
 	.read		= sst_soc_read,
 	.write		= sst_soc_write,
+#endif
+
 };
 
 static int sst_platform_async_cb(struct sst_platform_cb_params *params)
@@ -1273,6 +1309,11 @@ static int sst_platform_probe(struct platform_device *pdev)
 	if (dpcm_enable == 1) {
 		pr_info("dpcm enabled; overriding stream map\n");
 		pdata->pdev_strm_map = dpcm_strm_map;
+
+		if (INTEL_MID_BOARD(1, PHONE, MRFL) || INTEL_MID_BOARD(1, TABLET, MRFL)) {
+			pdata->pdev_strm_map = dpcm_strm_map_mrfld;
+			pr_info("override dpcm stream map for sand\n");
+		}
 		pdata->strm_map_size = ARRAY_SIZE(dpcm_strm_map);
 	}
 	sst_pdev = &pdev->dev;

@@ -36,6 +36,27 @@
 
 struct sst_cmd_sba_hw_set_ssp ssp_cmd[SST_NUM_SSPS];
 
+unsigned int sst_dpcm_soc_read(struct snd_soc_platform *platform,
+			unsigned int reg)
+{
+	struct sst_data *sst = snd_soc_platform_get_drvdata(platform);
+
+	pr_debug("%s: reg[%d] = %#x\n", __func__, reg, sst->widget[reg]);
+	BUG_ON(reg > (SST_NUM_WIDGETS - 1));
+	return sst->widget[reg];
+}
+
+int sst_dpcm_soc_write(struct snd_soc_platform *platform,
+		  unsigned int reg, unsigned int val)
+{
+	struct sst_data *sst = snd_soc_platform_get_drvdata(platform);
+
+	pr_debug("%s: reg[%d] = %#x\n", __func__, reg, val);
+	BUG_ON(reg > (SST_NUM_WIDGETS - 1));
+	sst->widget[reg] = val;
+	return 0;
+}
+
 static inline void sst_fill_byte_control(char *param,
 					 u8 ipc_msg, u8 block,
 					 u8 task_id, u8 pipe_id,
@@ -679,6 +700,10 @@ static const uint swm_mixer_input_ids[SST_SWM_INPUT_COUNT] = {
 	[SST_IP_PCM2]		= SST_SWM_IN_PCM2,
 	[SST_IP_LOW_PCM0]	= SST_SWM_IN_LOW_PCM0,
 	[SST_IP_FM]		= SST_SWM_IN_FM,
+	[SST_IP_MEDIA0]         = SST_SWM_IN_MEDIA0,
+	[SST_IP_MEDIA1]         = SST_SWM_IN_MEDIA1,
+	[SST_IP_MEDIA2]         = SST_SWM_IN_MEDIA2,
+	[SST_IP_MEDIA3]         = SST_SWM_IN_MEDIA3,
 };
 
 /**
@@ -1924,7 +1949,7 @@ static const struct snd_kcontrol_new sst_probe_controls[] = {
 		SST_MODULE_ID_VOLUME, path_id, instance, task_id,			\
 		sst_gain_tlv_common, gain_var)
 
-#define SST_NUM_GAINS 38
+#define SST_NUM_GAINS 42
 static struct sst_gain_value sst_gains[SST_NUM_GAINS];
 
 static const struct snd_kcontrol_new sst_gain_controls[] = {
@@ -1971,6 +1996,10 @@ static const struct snd_kcontrol_new sst_gain_controls[] = {
 	SST_GAIN("hf_sns_3_out", SST_PATH_INDEX_HF_SNS_3_OUT, SST_TASK_SBA, 0, &sst_gains[35]),
 	SST_GAIN("hf_sns_4_out", SST_PATH_INDEX_HF_SNS_4_OUT, SST_TASK_SBA, 0, &sst_gains[36]),
 	SST_GAIN("low_pcm0_out", SST_PATH_INDEX_LOW_PCM0_OUT, SST_TASK_SBA, 0, &sst_gains[37]),
+	SST_GAIN("media0_in", SST_PATH_INDEX_MEDIA0_IN, SST_TASK_MMX, 0, &sst_gains[38]),
+	SST_GAIN("media1_in", SST_PATH_INDEX_MEDIA1_IN, SST_TASK_MMX, 0, &sst_gains[39]),
+	SST_GAIN("media2_in", SST_PATH_INDEX_MEDIA2_IN, SST_TASK_MMX, 0, &sst_gains[40]),
+	SST_GAIN("media3_in", SST_PATH_INDEX_MEDIA3_IN, SST_TASK_MMX, 0, &sst_gains[41]),
 };
 
 static const struct snd_kcontrol_new sst_algo_controls[] = {

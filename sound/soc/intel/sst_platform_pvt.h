@@ -95,6 +95,8 @@ int sst_fill_ssp_slot(struct sst_data *sst, unsigned int tx_mask, unsigned int r
 int sst_fill_ssp_config(struct sst_data *sst, unsigned int id, unsigned int fmt, bool enable);
 unsigned int sst_soc_read(struct snd_soc_platform *platform, unsigned int reg);
 int sst_soc_write(struct snd_soc_platform *platform, unsigned int reg, unsigned int val);
+unsigned int sst_dpcm_soc_read(struct snd_soc_platform *platform, unsigned int reg);
+int sst_dpcm_soc_write(struct snd_soc_platform *platform, unsigned int reg, unsigned int val);
 unsigned int sst_reg_read(struct sst_data *sst, unsigned int reg,
 			  unsigned int shift, unsigned int max);
 unsigned int sst_reg_write(struct sst_data *sst, unsigned int reg,

@@ -134,3 +134,23 @@ void *merfld_wm8958_audio_platform_data(void *info)
 
 	return NULL;
 }
+
+void *merfld_sst_audio_platform_data(void *info)
+{
+	struct platform_device *pdev;
+	int ret;
+
+	ret = add_sst_platform_device();
+	if (ret < 0) {
+		pr_err("%s failed to sst_platform device\n", __func__);
+		return NULL;
+	}
+
+	pdev = platform_device_register_simple("merr_dpcm_mvn", 0, NULL, 0);
+	if (!pdev) {
+		pr_err("failed to register merr_dpcm_mvn platform device\n");
+		return NULL;
+	}
+
+	return NULL;
+}

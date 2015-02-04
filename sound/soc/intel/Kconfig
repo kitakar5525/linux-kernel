@@ -191,6 +191,13 @@ config SST_DPCM
 	help
 	  This adds an option to enable the DPCM based machine driver
 
+config SST_DFW
+	bool "Use Dynamic Firmware"
+	depends on SST_DPCM
+	default n
+	help
+	  This adds an option to enable the Dynamic Firmware
+
 config SND_SST_MACHINE
 	tristate
 

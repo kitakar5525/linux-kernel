@@ -1075,28 +1075,28 @@ static int sst_get_ssp_protocol(unsigned int fmt, struct sst_cmd_sba_hw_set_ssp 
 		cmd->ssp_protocol = SSP_MODE_PCM;
 		cmd->mode = sst_get_ssp_mode(fmt) | (SSP_PCM_MODE_NETWORK << 1);
 		cmd->start_delay = 0;
-		cmd->data_polarity = 1;
+		cmd->data_polarity = SSP_DRV_RISING_SAMPL_FALL_IDLE_LO;
 		cmd->frame_sync_width = 1;
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
 		cmd->ssp_protocol = SSP_MODE_PCM;
 		cmd->mode = sst_get_ssp_mode(fmt) | (SSP_PCM_MODE_NETWORK << 1);
 		cmd->start_delay = 1;
-		cmd->data_polarity = 1;
+		cmd->data_polarity = SSP_DRV_RISING_SAMPL_FALL_IDLE_LO;
 		cmd->frame_sync_width = 1;
 		break;
 	case SND_SOC_DAIFMT_I2S:
 		cmd->ssp_protocol = SSP_MODE_I2S;
 		cmd->mode = sst_get_ssp_mode(fmt) | (SSP_PCM_MODE_NORMAL << 1);
 		cmd->start_delay = 1;
-		cmd->data_polarity = 0;
+		cmd->data_polarity = SSP_DRV_FALL_SAMPL_RISING_IDLE_LO;
 		cmd->frame_sync_width = cmd->nb_bits_per_slots;
 		break;
 	case SND_SOC_DAIFMT_LEFT_J:
 		cmd->ssp_protocol = SSP_MODE_I2S;
 		cmd->mode = sst_get_ssp_mode(fmt) | (SSP_PCM_MODE_NORMAL << 1);
 		cmd->start_delay = 0;
-		cmd->data_polarity = 1;
+		cmd->data_polarity = SSP_DRV_RISING_SAMPL_FALL_IDLE_LO;
 		cmd->frame_sync_width = cmd->nb_bits_per_slots;
 		break;
 	default:

@@ -247,6 +247,13 @@ enum sst_ssp_fs_polarity {
 	SSP_FS_ACTIVE_HIGH = 1,
 };
 
+enum sst_ssp_data_polarity {
+	SSP_DRV_FALL_SAMPL_RISING_IDLE_LO = 0,
+	SSP_DRV_RISING_SAMPL_FALL_IDLE_LO = 1,
+	SSP_DRV_RISING_SAMPL_FALL_IDLE_HI = 2,
+	SSP_DRV_FALL_SAMPL_RISING_IDLE_HI = 3,
+};
+
 enum sst_ssp_protocol {
 	SSP_MODE_PCM = 0,
 	SSP_MODE_I2S = 1,

@@ -1265,6 +1265,11 @@ static int sst_platform_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+#ifdef CONFIG_SST_DPCM
+	dpcm_enable = 1;
+	dfw_enable = 1;
+#endif
+
 	if (dpcm_enable == 1) {
 		pr_info("dpcm enabled; overriding stream map\n");
 		pdata->pdev_strm_map = dpcm_strm_map;

@@ -30,6 +30,13 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 
+struct mvn_slot_info {
+	unsigned int tx_mask;
+	unsigned int rx_mask;
+	int slots;
+	int slot_width;
+};
+
 #ifdef CONFIG_PM_SLEEP
 static int snd_merr_dpcm_prepare(struct device *dev)
 {
@@ -72,6 +79,12 @@ static struct snd_pcm_hw_constraint_list constraints_48000 = {
 	.list  = rates_48000,
 };
 
+#define CONFIG_SLOT(slot_tx_mask, slot_rx_mask, num_slot, width)\
+	(struct mvn_slot_info){ .tx_mask = slot_tx_mask,\
+				  .rx_mask = slot_rx_mask,\
+				  .slots = num_slot,\
+				  .slot_width = width, }
+
 static int merr_mvn_startup(struct snd_pcm_substream *substream)
 {
 	return snd_pcm_hw_constraint_list(substream->runtime, 0,
@@ -83,7 +96,55 @@ static struct snd_soc_ops merr_mvn_ops = {
 		.startup = merr_mvn_startup,
 };
 
+static int merr_mvn_set_slot_and_format(struct snd_soc_dai *dai,
+			struct mvn_slot_info *slot_info, unsigned int fmt)
+{
+	int ret;
+
+	ret = snd_soc_dai_set_tdm_slot(dai, slot_info->tx_mask,
+		slot_info->rx_mask, slot_info->slots, slot_info->slot_width);
+	if (ret < 0) {
+		pr_err("can't set codec pcm format %d\n", ret);
+		return ret;
+	}
+
+	ret = snd_soc_dai_set_fmt(dai, fmt);
+	if (ret < 0) {
+		pr_err("can't set codec DAI configuration %d\n", ret);
+		return ret;
+	}
+
+	return ret;
+}
+
+static int ssp0_config_fixup(struct snd_soc_dai_link *dai_link, struct snd_soc_dai *dai)
+{
+	int ret = 0;
+	unsigned int fmt;
+	struct mvn_slot_info *info;
+
+	pr_err("Invoked %s for dailink %s\n", __func__, dai_link->name);
+
+	/* I2S | framesync active high | master mode */
+	fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_IF | SND_SOC_DAIFMT_CBS_CFS;
+	/* tx_mask = 3 | rx_mask = 3 | 2 slots | 24 bits */
+	info = &CONFIG_SLOT(0x3, 0x3, 2, SNDRV_PCM_FORMAT_S24_LE);
+
+	ret = merr_mvn_set_slot_and_format(dai, info, fmt);
+
+	return ret;
+}
+
+static const struct snd_soc_pcm_stream ssp0_dai_params = {
+	.formats = SNDRV_PCM_FMTBIT_S24_LE,
+	.rate_min = SNDRV_PCM_RATE_16000,
+	.rate_max = SNDRV_PCM_RATE_16000,
+	.channels_min = 2,
+	.channels_max = 2,
+};
+
 struct snd_soc_dai_link merr_msic_dailink[] = {
+	/* front ends */
 	[MERR_DPCM_AUDIO] = {
 		.name = "Media Audio Port",
 		.stream_name = "Marvin Audio",
@@ -95,25 +156,34 @@ struct snd_soc_dai_link merr_msic_dailink[] = {
 		.dynamic = 1,
 		.ops = &merr_mvn_ops,
 	},
-	/* back ends */
+	/* back-end <-> back-end link */
 	{
-		.name = "SSP2-Codec",
-		.be_id = 1,
-		.cpu_dai_name = "ssp2-codec",
+		.name = "DMIC-Loop Port",
+		.stream_name = "Marvin DMIC-Loop",
+		.cpu_dai_name = "ssp0-port",
 		.platform_name = "sst-platform",
-		.no_pcm = 1,
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
+		.params = &ssp0_dai_params,
+		.be_fixup = ssp0_config_fixup,
+		.dsp_loopback = true,
+	},
+	/* back-ends */
+	{
+		.name = "SSP0-DMIC",
+		.be_id = 3,
+		.cpu_dai_name = "snd-soc-dummy-dai",
+		.platform_name = "snd-soc-dummy",
+		.no_pcm = 1,
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
 		.ignore_suspend = 1,
 	},
-
 };
 
 static const struct snd_soc_dapm_route map[] = {
-	{ "Dummy Playback", NULL, "codec_out0"  },
-	{ "Dummy Playback", NULL, "codec_out1"  },
-	{ "codec_in0", NULL, "Dummy Capture" },
-	{ "codec_in1", NULL, "Dummy Capture" },
+	{ "ssp0 Tx", NULL, "modem_out"},
+	{ "modem_in", NULL, "ssp0 Rx" },
 };
 
 /* SoC card */

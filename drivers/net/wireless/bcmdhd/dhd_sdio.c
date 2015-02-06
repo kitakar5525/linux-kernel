@@ -7337,6 +7337,20 @@ dhdsdio_download_firmware(struct dhd_bus *bus, osl_t *osh, void *sdh)
 	int ret;
 
 
+	if (!bus || !bus->sih)
+		return BCME_ERROR;
+
+	if ((bus->sih->chip == BCM43430_CHIP_ID) && (bus->sih->chiprev == 0)) {
+		strlcat(bus->fw_path, "_43430_a0", PATH_MAX);
+		strlcat(bus->nv_path, "_43430_a0", PATH_MAX);
+	} else if ((bus->sih->chip == BCM43430_CHIP_ID) && (bus->sih->chiprev == 1)) {
+		strlcat(bus->fw_path, "_43430_a1", PATH_MAX);
+		strlcat(bus->nv_path, "_43430_a1", PATH_MAX);
+	} else {
+			DHD_ERROR(("%s: UNKNOWN chip_id/Rev: 0x%x/%d\n",
+				__FUNCTION__, bus->sih->chip, bus->sih->chiprev));
+	}
+
 	DHD_TRACE_HW4(("%s: firmware path=%s, nvram path=%s\n",
 		__FUNCTION__, bus->fw_path, bus->nv_path));
 	DHD_OS_WAKE_LOCK(bus->dhd);

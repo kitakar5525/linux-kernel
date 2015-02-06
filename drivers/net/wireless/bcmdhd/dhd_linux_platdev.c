@@ -37,7 +37,7 @@
 #include <dhd_linux.h>
 #include <wl_android.h>
 
-#define WIFI_PLAT_NAME		"bcmdhd_wlan"
+#define WIFI_PLAT_NAME		"wlan"
 #define WIFI_PLAT_NAME2		"bcm4329_wlan"
 #define WIFI_PLAT_EXT		"bcmdhd_wifi_platform"
 
@@ -52,7 +52,10 @@ extern struct wifi_platform_data dhd_wlan_control;
 #else
 static bool dts_enabled = FALSE;
 struct resource dhd_wlan_resources = {0};
-struct wifi_platform_data dhd_wlan_control = {0};
+extern int bcmsdh_sdmmc_set_power(int on);
+struct wifi_platform_data dhd_wlan_control = {
+	.set_power = bcmsdh_sdmmc_set_power,
+};
 #endif /* CONFIG_OF && !defined(CONFIG_ARCH_MSM) */
 
 static int dhd_wifi_platform_load(void);
@@ -240,14 +243,20 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 	ASSERT(dhd_wifi_platdata->num_adapters == 1);
 	adapter = &dhd_wifi_platdata->adapters[0];
 	adapter->wifi_plat_data = (struct wifi_platform_data *)(pdev->dev.platform_data);
-
-	resource = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "bcmdhd_wlan_irq");
-	if (resource == NULL)
-		resource = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "bcm4329_wlan_irq");
-	if (resource) {
-		adapter->irq_num = resource->start;
-		adapter->intr_flags = resource->flags & IRQF_TRIGGER_MASK;
+	if (!adapter->wifi_plat_data) {
+		DHD_ERROR(("%s: unable to get platform data !\n", __FUNCTION__));
+		return -ENODATA;
 	}
+	((struct wifi_platform_data *)(adapter->wifi_plat_data))->set_power = bcmsdh_sdmmc_set_power;
+
+	resource = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (resource == NULL) {
+		DHD_ERROR(("%s: unable to get IORESOURCE_IRQ !\n", __FUNCTION__));
+		return -ENODATA;
+	}
+
+	adapter->irq_num = resource->start;
+	adapter->intr_flags = resource->flags & IRQF_TRIGGER_MASK;
 
 	wifi_plat_dev_probe_ret = dhd_wifi_platform_load();
 	return wifi_plat_dev_probe_ret;

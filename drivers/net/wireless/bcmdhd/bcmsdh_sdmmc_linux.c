@@ -71,6 +71,9 @@
 #if !defined(SDIO_DEVICE_ID_BROADCOM_43239)
 #define SDIO_DEVICE_ID_BROADCOM_43239    43239
 #endif /* !defined(SDIO_DEVICE_ID_BROADCOM_43239) */
+#if !defined(SDIO_DEVICE_ID_BROADCOM_43430)
+#define SDIO_DEVICE_ID_BROADCOM_43430    0xa9a6
+#endif /* !defined(SDIO_DEVICE_ID_BROADCOM_43430) */
 
 extern void wl_cfg80211_set_parent_dev(void *dev);
 extern void sdioh_sdmmc_devintr_off(sdioh_info_t *sd);
@@ -88,6 +91,7 @@ void sdio_function_cleanup(void);
 /* module param defaults */
 static int clockoverride = 0;
 
+static struct sdio_func *gfunc;
 module_param(clockoverride, int, 0644);
 MODULE_PARM_DESC(clockoverride, "SDIO card clock override");
 
@@ -95,6 +99,24 @@ MODULE_PARM_DESC(clockoverride, "SDIO card clock override");
 #define BCMSDH_SDMMC_MAX_DEVICES 1
 
 extern volatile bool dhd_mmc_suspend;
+
+int bcmsdh_sdmmc_set_power(int on)
+{
+	static struct sdio_func *sdio_func;
+	struct sdhci_host *host;
+
+	if (gfunc) {
+		sdio_func = gfunc;
+
+		host = (struct sdhci_host *)sdio_func->card->host;
+
+		if (on)
+			mmc_power_restore_host(sdio_func->card->host);
+		else
+			mmc_power_save_host(sdio_func->card->host);
+	}
+	return 0;
+}
 
 static int sdioh_probe(struct sdio_func *func)
 {
@@ -176,8 +198,10 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 	sd_info(("Function#: 0x%04x\n", func->num));
 
 	/* 4318 doesn't have function 2 */
-	if ((func->num == 2) || (func->num == 1 && func->device == 0x4))
+	if ((func->num == 2) || (func->num == 1 && func->device == 0x4)) {
+		gfunc = func;
 		ret = sdioh_probe(func);
+	}
 
 	return ret;
 }
@@ -201,10 +225,7 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 
 /* devices we support, null terminated */
 static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
-	{ 	.class	= SDIO_CLASS_NONE,
-		.vendor	= SDIO_VENDOR_ID_BROADCOM,
-		.device	= SDIO_ANY_ID
-	},
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_43430) },
 	{ /* end: all zeroes */                         },
 };
 
@@ -252,10 +273,14 @@ static int bcmsdh_sdmmc_resume(struct device *pdev)
 {
 	sdioh_info_t *sdioh;
 	struct sdio_func *func = dev_to_sdio_func(pdev);
+	struct mmc_host *host;
 
 	sd_err(("%s Enter\n", __FUNCTION__));
 	if (func->num != 2)
 		return 0;
+
+	host = func->card->host;
+	host->pm_flags &= ~MMC_PM_KEEP_POWER;
 
 	sdioh = sdio_get_drvdata(func);
 	dhd_mmc_suspend = FALSE;

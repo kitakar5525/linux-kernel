@@ -114,6 +114,7 @@ static const struct sst_probe_config sst_probes[] = {
 	{ "media2_out bmf", SST_PATH_INDEX_MEDIA2_OUT , SST_MODULE_ID_MEDIA_BMF, SST_TASK_MMX, { 1, 2, 1 } },
 	{ "media2_out wnr", SST_PATH_INDEX_MEDIA2_OUT , SST_MODULE_ID_MEDIA_WNR, SST_TASK_MMX, { 1, 2, 1 } },
 	{ "media2_out agc", SST_PATH_INDEX_MEDIA2_OUT , SST_MODULE_ID_MEDIA_AGC, SST_TASK_MMX, { 1, 2, 1 } },
+	{ "media2_out mdrp", SST_PATH_INDEX_MEDIA2_OUT , SST_MODULE_ID_MDRP, SST_TASK_MMX, { 1, 2, 1 } },
 
 	/* ASRC */
 	{ "modem_out asrc", SST_PATH_INDEX_MODEM_OUT, SST_MODULE_ID_ASRC, SST_TASK_SBA, { 1, 2, 1 } },

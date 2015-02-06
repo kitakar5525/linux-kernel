@@ -65,6 +65,9 @@
 #if !defined(SDIO_DEVICE_ID_BROADCOM_4334)
 #define SDIO_DEVICE_ID_BROADCOM_4334    0x4334
 #endif /* !defined(SDIO_DEVICE_ID_BROADCOM_4334) */
+#if !defined(SDIO_DEVICE_ID_BROADCOM_4335)
+#define SDIO_DEVICE_ID_BROADCOM_4335    0x4335
+#endif /* !defined(SDIO_DEVICE_ID_BROADCOM_4335) */
 #if !defined(SDIO_DEVICE_ID_BROADCOM_4324)
 #define SDIO_DEVICE_ID_BROADCOM_4324    0x4324
 #endif /* !defined(SDIO_DEVICE_ID_BROADCOM_4324) */
@@ -225,6 +228,7 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 
 /* devices we support, null terminated */
 static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4335) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_43430) },
 	{ /* end: all zeroes */                         },
 };

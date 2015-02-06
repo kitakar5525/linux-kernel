@@ -7346,6 +7346,20 @@ dhdsdio_download_firmware(struct dhd_bus *bus, osl_t *osh, void *sdh)
 	} else if ((bus->sih->chip == BCM43430_CHIP_ID) && (bus->sih->chiprev == 1)) {
 		strlcat(bus->fw_path, "_43430_a1", PATH_MAX);
 		strlcat(bus->nv_path, "_43430_a1", PATH_MAX);
+	} else if ((bus->sih->chip == BCM4339_CHIP_ID) && (bus->sih->chiprev == 1)) {
+		strlcat(bus->fw_path, "_4339_a0", PATH_MAX);
+		strlcat(bus->nv_path, "_4339_a0", PATH_MAX);
+#ifdef HW_OOB
+		strlcat(bus->nv_path, "_level", PATH_MAX);
+#else
+		strlcat(bus->nv_path, "_edge", PATH_MAX);
+#endif
+#ifdef LOW_POWER_NVRAM
+		strlcat(bus->nv_path, "_lp", PATH_MAX);
+#endif
+#ifdef LOW_POWER_NVRAM_V1
+		strlcat(bus->nv_path, "_lp_v1", PATH_MAX);
+#endif
 	} else {
 			DHD_ERROR(("%s: UNKNOWN chip_id/Rev: 0x%x/%d\n",
 				__FUNCTION__, bus->sih->chip, bus->sih->chiprev));

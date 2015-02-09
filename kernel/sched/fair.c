@@ -5444,16 +5444,8 @@ static inline int find_new_ilb(int call_cpu)
 {
 #ifdef CONFIG_WORKLOAD_CONSOLIDATION
 	struct cpumask *nonshielded = __get_cpu_var(local_cpu_mask);
-	int ilb, weight;
 
-	/*
-	 * Optimize for the case when we have no idle CPUs or only one
-	 * idle CPU. Don't walk the sched_domain hierarchy in such cases
-	 */
-	if (cpumask_weight(nohz.idle_cpus_mask) < 2)
-		return nr_cpu_ids;
-
-	ilb = cpumask_first(nohz.idle_cpus_mask);
+	int ilb = cpumask_first(nohz.idle_cpus_mask);
 
 	if (ilb < nr_cpu_ids && idle_cpu(ilb)) {
 
@@ -5462,11 +5454,6 @@ static inline int find_new_ilb(int call_cpu)
 		rcu_read_lock();
 		workload_consolidation_nonshielded_mask(call_cpu, nonshielded);
 		rcu_read_unlock();
-
-		weight = cpumask_weight(nonshielded);
-
-		if (weight < 2)
-			return nr_cpu_ids;
 
 		/*
 		 * get idle load balancer again

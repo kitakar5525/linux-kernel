@@ -59,6 +59,16 @@
 
 #define PMIC_PANEL_EN	0x52
 #define PMIC_PWM_EN	0x51
+#define PMIC_BKL_EN	0x4B
+#define PMIC_PWM_LEVEL	0x4E
+
+
+#define VLV_GPIO_CFG		0x2000CC00
+#define VLV_GPIO_INPUT_DIS	0x04
+#define VLV_GPIO_INPUT_EN	0x05
+
+#define LPIO_PWM_ENABLE_MASK	0x80000000
+
 
 #define HV_DDI0_HPD_GPIONC_0_PCONF0		0x4130
 #define HV_DDI0_HPD_GPIONC_0_PAD		0x4138
@@ -421,7 +431,7 @@ struct intel_dsi_device {
 	const char *name;
 	int type;
 	unsigned int lane_count;
-	const struct intel_dsi_dev_ops *dev_ops;
+	struct intel_dsi_dev_ops *dev_ops;
 	void *dev_priv;
 };
 
@@ -448,6 +458,8 @@ struct intel_dsi_dev_ops {
 	void (*disable)(struct intel_dsi_device *dsi);
 
 	void (*enable_backlight)(struct intel_dsi_device *dsi);
+
+	void (*disable_backlight)(struct intel_dsi_device *dsi);
 
 	int (*mode_valid)(struct intel_dsi_device *dsi,
 			  struct drm_display_mode *mode);
@@ -550,6 +562,8 @@ extern struct intel_dsi_dev_ops panasonic_vvx09f006a00_dsi_display_ops;
 extern struct intel_dsi_dev_ops auo_b080xat_dsi_display_ops;
 extern struct intel_dsi_dev_ops jdi_lpm070w425b_dsi_display_ops;
 extern struct intel_dsi_dev_ops vbt_generic_dsi_display_ops;
+void generic_enable_bklt(struct intel_dsi_device *dsi);
+void generic_disable_bklt(struct intel_dsi_device *dsi);
 void intel_dsi_clear_device_ready(struct intel_encoder *encoder);
 
 extern void adjust_pclk_for_dual_link(struct intel_dsi *intel_dsi,

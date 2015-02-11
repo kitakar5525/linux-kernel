@@ -1012,6 +1012,16 @@ void generic_power_off(struct intel_dsi_device *dsi)
 	generic_exec_sequence(intel_dsi, sequence);
 }
 
+void generic_disable_bklt(struct intel_dsi_device *dsi)
+{
+	struct intel_dsi *intel_dsi = container_of(dsi, struct intel_dsi, dev);
+	struct drm_device *dev = intel_dsi->base.base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	char *sequence = dev_priv->vbt.dsi.sequence[MIPI_SEQ_BACKLIGHT_OFF];
+	generic_exec_sequence(intel_dsi, sequence);
+}
+
 void generic_dump_regs(struct intel_dsi_device *dsi) { }
 
 void generic_destroy(struct intel_dsi_device *dsi) { }
@@ -1030,6 +1040,7 @@ struct intel_dsi_dev_ops vbt_generic_dsi_display_ops = {
 	.enable = generic_enable,
 	.disable = generic_disable,
 	.enable_backlight = generic_enable_bklt,
+	.disable_backlight = generic_disable_bklt,
 	.detect = generic_detect,
 	.get_hw_state = generic_get_hw_state,
 	.get_modes = generic_get_modes,

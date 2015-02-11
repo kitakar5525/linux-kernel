@@ -461,7 +461,7 @@ static int lp855x_suspend(struct early_suspend *h)
 		getregulator = false;
 	}
 
-	if (lp->v3p3s_reg != NULL && regulator_is_enabled(lp->v3p3s_reg)) {
+	if (lp->v3p3s_reg != NULL) {
 		rgrt = regulator_disable(lp->v3p3s_reg);
 		if (rgrt)
 			pr_err("Failed to turn OFF 3P3SX\n");
@@ -475,7 +475,7 @@ static int lp855x_resume(struct early_suspend *h)
 	struct lp855x *lp = i2c_get_clientdata(cl);
 	int rgrt = 0;
 	int cnt = 0;
-	if (lp->v3p3s_reg != NULL && !regulator_is_enabled(lp->v3p3s_reg)) {
+	if (lp->v3p3s_reg != NULL) {
 		rgrt = regulator_enable(lp->v3p3s_reg);
 		pr_err("RESULT: Regulator enable=%d\n", rgrt);
 		if (rgrt) {

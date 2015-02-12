@@ -210,23 +210,6 @@ get_lvds_fp_timing(const struct bdb_header *bdb,
 	return (const struct lvds_fp_timing *)((const u8 *)bdb + ofs);
 }
 
-static void parse_backlight_data(struct drm_i915_private *dev_priv,
-						struct bdb_header *bdb)
-{
-	struct bdb_lfp_backlight_data *backlight_data = NULL;
-	struct bdb_lfp_backlight_data_entry *entry = NULL;
-
-	backlight_data = find_section(bdb, BDB_LVDS_BACKLIGHT);
-	if (!backlight_data) {
-		DRM_DEBUG_KMS("No backlight BDB found");
-		return;
-	}
-	DRM_DEBUG_KMS("Found backlight BDB");
-	entry = &backlight_data->data[panel_type];
-	dev_priv->vbt.pwm_frequency = entry->pwm_freq_hz;
-	dev_priv->vbt.init_backlight_level = backlight_data->level[panel_type];
-}
-
 /* Try to find integrated panel data */
 /* We use the data recovered from this section for MIPI as well
  * It is common for all LFPs. The structure names might confuse
@@ -1184,7 +1167,6 @@ intel_parse_bios(struct drm_device *dev)
 	parse_driver_features(dev_priv, bdb);
 	parse_edp(dev_priv, bdb);
 	parse_mipi(dev_priv, bdb);
-	parse_backlight_data(dev_priv, bdb);
 
 	if (bios)
 		pci_unmap_rom(pdev, bios);

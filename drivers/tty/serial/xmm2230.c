@@ -1174,7 +1174,7 @@ static int ifx_spi_spi_probe(struct spi_device *spi)
 
 	ret = request_irq(gpio_to_irq(ifx_dev->gpio.srdy),
 			  ifx_spi_srdy_interrupt,
-			  IRQF_TRIGGER_RISING, DRVNAME,
+			  IRQF_TRIGGER_RISING | IRQF_NO_SUSPEND, DRVNAME,
 			  (void *)ifx_dev);
 	if (ret) {
 		dev_err(&spi->dev, "Unable to get irq %x",
@@ -1275,7 +1275,21 @@ static void ifx_spi_spi_shutdown(struct spi_device *spi)
  */
 static int ifx_spi_pm_suspend(struct device *dev)
 {
-	return 0;
+	struct spi_device *spi = to_spi_device(dev);
+	struct ifx_spi_device *ifx_dev = spi_get_drvdata(spi);
+
+	dev_dbg(&ifx_dev->spi_dev->dev, "enter ifx_spi_pm_suspend\n");
+
+	if (!test_bit(IFX_SPI_STATE_IO_IN_PROGRESS, &ifx_dev->flags) && \
+		!test_bit(IFX_SPI_STATE_IO_READY, &ifx_dev->flags) && \
+		!test_bit(IFX_SPI_STATE_TIMER_PENDING, &ifx_dev->flags)) {
+		tasklet_disable(&ifx_dev->io_work_tasklet);
+		dev_dbg(&ifx_dev->spi_dev->dev, "exit ifx_spi_pm_suspend, tasklet disable\n");
+		return 0;
+	} else {
+		dev_dbg(&ifx_dev->spi_dev->dev, "ifx_spi_pm_suspend() return fail\n");
+		return -EBUSY;
+	}
 }
 
 /**
@@ -1288,6 +1302,11 @@ static int ifx_spi_pm_suspend(struct device *dev)
  */
 static int ifx_spi_pm_resume(struct device *dev)
 {
+	struct spi_device *spi = to_spi_device(dev);
+	struct ifx_spi_device *ifx_dev = spi_get_drvdata(spi);
+	dev_dbg(&ifx_dev->spi_dev->dev, "enter ifx_spi_pm_resume\n");
+	tasklet_enable(&ifx_dev->io_work_tasklet);
+	dev_dbg(&ifx_dev->spi_dev->dev, "exit ifx_spi_pm_resume\n");
 	return 0;
 }
 
@@ -1332,8 +1351,8 @@ static int ifx_spi_pm_runtime_idle(struct device *dev)
 }
 
 static const struct dev_pm_ops ifx_spi_pm = {
-	.resume = ifx_spi_pm_resume,
-	.suspend = ifx_spi_pm_suspend,
+	.resume_noirq = ifx_spi_pm_resume,
+	.suspend_noirq = ifx_spi_pm_suspend,
 	.runtime_resume = ifx_spi_pm_runtime_resume,
 	.runtime_suspend = ifx_spi_pm_runtime_suspend,
 	.runtime_idle = ifx_spi_pm_runtime_idle

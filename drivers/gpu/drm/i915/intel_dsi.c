@@ -203,6 +203,29 @@ static void band_gap_reset(struct drm_i915_private *dev_priv)
 	mutex_unlock(&dev_priv->dpio_lock);
 }
 
+static void intel_dsi_power_on(struct intel_dsi_device *dsi)
+{
+	struct intel_dsi *intel_dsi = container_of(dsi, struct intel_dsi, dev);
+	struct drm_device *dev = intel_dsi->base.base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	if (BYT_CR_CONFIG) {
+		/*  cabc disable */
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+				PANEL1_VDDEN_GPIONC_9_PCONF0, VLV_GPIO_CFG);
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+				PANEL1_VDDEN_GPIONC_9_PAD, VLV_GPIO_INPUT_DIS);
+
+		/* panel enable */
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+				PANEL1_BKLTCTL_GPIONC_11_PCONF0, VLV_GPIO_CFG);
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+				PANEL1_BKLTCTL_GPIONC_11_PAD, VLV_GPIO_INPUT_EN);
+		udelay(500);
+	} else
+		intel_mid_pmic_writeb(PMIC_PANEL_EN, 0x01);
+}
+
 void intel_dsi_device_ready(struct intel_encoder *encoder)
 {
 	struct drm_i915_private *dev_priv = encoder->base.dev->dev_private;
@@ -220,26 +243,9 @@ void intel_dsi_device_ready(struct intel_encoder *encoder)
 
 	band_gap_reset(dev_priv);
 
-#ifdef CONFIG_CRYSTAL_COVE
-	if (BYT_CR_CONFIG) {
-		/*  cabc disable */
-		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
-					PANEL1_VDDEN_GPIONC_9_PCONF0, 0x2000CC00);
-		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
-					PANEL1_VDDEN_GPIONC_9_PAD, 0x00000004);
+	if (intel_dsi->dev.dev_ops->power_on)
+		intel_dsi->dev.dev_ops->power_on(&intel_dsi->dev);
 
-		/* panel enable */
-		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
-					PANEL1_BKLTCTL_GPIONC_11_PCONF0, 0x2000CC00);
-		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
-					PANEL1_BKLTCTL_GPIONC_11_PAD, 0x00000005);
-		udelay(500);
-	} else
-		intel_mid_pmic_writeb(PMIC_PANEL_EN, 0x01);
-#else
-	/* need to code for BYT-CR for example where things have changed */
-	DRM_ERROR("PANEL Enable to supported yet\n");
-#endif
 	msleep(intel_dsi->panel_on_delay);
 
 	if (intel_dsi->dev.dev_ops->panel_reset)
@@ -441,6 +447,23 @@ static void intel_dsi_disable(struct intel_encoder *encoder)
 	}
 }
 
+static void intel_dsi_power_off(struct intel_dsi_device *dsi)
+{
+	struct intel_dsi *intel_dsi = container_of(dsi, struct intel_dsi, dev);
+	struct drm_device *dev = intel_dsi->base.base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	if (BYT_CR_CONFIG) {
+		/* Disable Panel */
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+				PANEL1_BKLTCTL_GPIONC_11_PCONF0, VLV_GPIO_CFG);
+		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
+				PANEL1_BKLTCTL_GPIONC_11_PAD, VLV_GPIO_INPUT_DIS);
+		udelay(500);
+	} else
+		intel_mid_pmic_writeb(PMIC_PANEL_EN, 0x00);
+}
+
 void intel_dsi_clear_device_ready(struct intel_encoder *encoder)
 {
 	struct drm_i915_private *dev_priv = encoder->base.dev->dev_private;
@@ -492,20 +515,9 @@ void intel_dsi_clear_device_ready(struct intel_encoder *encoder)
 	if (intel_dsi->dev.dev_ops->disable_panel_power)
 		intel_dsi->dev.dev_ops->disable_panel_power(&intel_dsi->dev);
 
-#ifdef CONFIG_CRYSTAL_COVE
-	if (BYT_CR_CONFIG) {
-		/* Disable Panel */
-		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
-					PANEL1_BKLTCTL_GPIONC_11_PCONF0, 0x2000CC00);
-		vlv_gpio_write(dev_priv, IOSF_PORT_GPIO_NC,
-					PANEL1_BKLTCTL_GPIONC_11_PAD, 0x00000004);
-		udelay(500);
-	} else
-		intel_mid_pmic_writeb(PMIC_PANEL_EN, 0x00);
-#else
-	/* need to code for BYT-CR for example where things have changed */
-	DRM_ERROR("PANEL Disable to supported yet\n");
-#endif
+	if (intel_dsi->dev.dev_ops->power_off)
+		intel_dsi->dev.dev_ops->power_off(&intel_dsi->dev);
+
 	msleep(intel_dsi->panel_off_delay);
 	msleep(intel_dsi->panel_pwr_cycle_delay);
 }
@@ -1407,6 +1419,13 @@ bool intel_dsi_init(struct drm_device *dev)
 			intel_dsi_drrs_init(intel_connector, downclock_mode);
 		else
 			DRM_DEBUG_KMS("Downclock_mode is not found\n");
+	}
+
+	if (dev_priv->vbt.dsi.seq_version < 3) {
+		intel_dsi->dev.dev_ops->power_on =
+				intel_dsi_power_on;
+		intel_dsi->dev.dev_ops->power_off =
+				intel_dsi_power_off;
 	}
 
 	intel_panel_init(&intel_connector->panel, fixed_mode, downclock_mode);

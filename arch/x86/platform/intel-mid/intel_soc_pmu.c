@@ -150,7 +150,11 @@ static inline bool pmu_power_down_lss_without_driver(int index,
 	 * Sometimes it is turned ON during resume in the absence of a driver
 	 */
 	if (platform_is(INTEL_ATOM_MRFLD))
+#ifdef CONFIG_INTEL_PSH_IPC
 		return ((sub_sys_index == 0x0) && (sub_sys_pos == 0x5));
+#else /* If PSH not used in MRFLD, ignore PSH Transition to DO */
+		return ((sub_sys_index == 0x0) && ((sub_sys_pos == 0x0) || (sub_sys_pos == 0x5)));
+#endif /*CONFIG_INTEL_PSH_IPC*/
 
 	/* For MOFD ignore D0i0 on LSS 5 */
 	if ((platform_is(INTEL_ATOM_MOORFLD)) && (sub_sys_index == 0x0))

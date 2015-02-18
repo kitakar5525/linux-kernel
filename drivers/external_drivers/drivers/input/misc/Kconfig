@@ -17,3 +17,10 @@ config INPUT_INTEL_MID_VIBRA_PF450CL
 
 	To compile this driver as a module, choose M here. The module will
 	be called intel_mid_vibra.
+
+config INPUT_DRV2605_VIBRA
+	tristate "Support for drv2605 vibrator"
+	default n
+	help
+	This option enables support for dvr2605. Say Y here if you want to
+	enable the vibrator functionality.

@@ -92,6 +92,7 @@
 #include "device_libs/platform_a1026.h"
 #include "device_libs/platform_pca9574.h"
 #include "device_libs/platform_hx8528_me372cl.h"
+#include "device_libs/platform_drv2605.h"
 
 /* SW devices */
 #include "device_libs/platform_panel.h"
@@ -223,6 +224,7 @@ struct devs_id __initconst device_ids[] = {
 	{"MNZX8000", SFI_DEV_TYPE_I2C, 0, &no_platform_data, NULL},
 	{"pca953x", SFI_DEV_TYPE_I2C, 0, &nxp_pca9574_platform_data, NULL},
 	{"hx8528", SFI_DEV_TYPE_I2C, 0, &hx8528_platform_data},
+	{"drv2605", SFI_DEV_TYPE_I2C, 0, &drv2605_platform_data, NULL},
 
 #ifdef CONFIG_ME372CG_BATTERY_SMB345
 #if defined(CONFIG_PF450CL)

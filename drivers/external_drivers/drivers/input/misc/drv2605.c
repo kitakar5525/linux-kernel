@@ -43,10 +43,10 @@
 #include <asm/uaccess.h>
 
 #include <linux/gpio.h>
-#include <mach/gpio-herring.h>
 
 #include <linux/sched.h>
 
+#include <linux/drv2605_vibra.h>
 #include "drv2605.h"
 
 #include <linux/spinlock_types.h>
@@ -67,21 +67,10 @@
 MODULE_AUTHOR("Immersion Corp.");
 MODULE_DESCRIPTION("Driver for "DEVICE_NAME);
 
-/* Address of our device */
-#define DEVICE_ADDR 0x5A
-
-/* i2c bus that it sits on */
-#define DEVICE_BUS      2
-
 /*
 	DRV2605 built-in effect bank/library
  */
 #define EFFECT_LIBRARY LIBRARY_A
-
-/*
-	GPIO port that enable power to the device
- */
-#define GPIO_PORT GPIO_VIBTONE_EN1
 
 /*
 	Rated Voltage:
@@ -148,6 +137,10 @@ MODULE_DESCRIPTION("Driver for "DEVICE_NAME);
 
 #define MAX_TIMEOUT 10000 /* 10s */
 
+/* define GPIO level */
+#define GPIO_LEVEL_HIGH	1
+#define GPIO_LEVEL_LOW	0
+
 static struct drv260x {
 	struct class *class;
 	struct device *device;
@@ -166,6 +159,7 @@ static struct vibrator {
 	struct work_struct work_play_eff;
 	unsigned char sequence[8];
 	volatile int should_stop;
+	unsigned gpio_en;
 } vibdata;
 
 static char g_effect_bank = EFFECT_LIBRARY;
@@ -452,16 +446,27 @@ static void setAudioHapticsEnabled(int enable)
 static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	char status;
+	struct drv2605_platform_data *pdata = client->dev.platform_data;
+	if (!pdata) {
+		printk(KERN_ALERT"No vibrator platform data\n");
+		return -EINVAL;
+	}
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		printk(KERN_ALERT "drv260x probe failed");
 		return -ENODEV;
 	}
 
+	vibdata.gpio_en = pdata->gpio_en;
 	drv260x->client = client;
 
+	if (gpio_request(vibdata.gpio_en, "drv2605") < 0) {
+		printk(KERN_ALERT "drv260x: error requesting gpio\n");
+		return -EINVAL;
+	}
+
 	/* Enable power to the chip */
-	gpio_direction_output(GPIO_PORT, GPIO_LEVEL_HIGH);
+	gpio_direction_output(vibdata.gpio_en, GPIO_LEVEL_HIGH);
 
 	/* Wait 30 us */
 	udelay(30);
@@ -551,10 +556,6 @@ static struct i2c_driver drv260x_driver = {
 	.id_table	= drv260x_id_table,
 	.probe		= drv260x_probe,
 	.remove		= drv260x_remove
-};
-
-static struct i2c_board_info info = {
-	I2C_BOARD_INFO(DEVICE_NAME, DEVICE_ADDR),
 };
 
 static struct timed_output_dev to_dev = {
@@ -702,13 +703,6 @@ static struct file_operations fops = {
 static int drv260x_init(void)
 {
 	int reval = -ENOMEM;
-	struct i2c_adapter *adapter;
-	struct i2c_client *client;
-
-	if (gpio_request(GPIO_VIBTONE_EN1, "vibrator-en") < 0) {
-		printk(KERN_ALERT "drv260x: error requesting gpio\n");
-		goto fail0;
-	}
 
 	drv260x = kmalloc(sizeof *drv260x, GFP_KERNEL);
 	if (!drv260x) {
@@ -716,41 +710,29 @@ static int drv260x_init(void)
 		goto fail0;
 	}
 
-	adapter = i2c_get_adapter(DEVICE_BUS);
-	if (!adapter) {
-		printk(KERN_ALERT "drv260x: Cannot get adapter\n");
-		goto fail1;
-	}
-
-	client = i2c_new_device(adapter, &info);
-	if (!client) {
-		printk(KERN_ALERT "drv260x: Cannot create new device \n");
-		goto fail1;
-	}
-
 	reval = i2c_add_driver(&drv260x_driver);
 	if (reval) {
 		printk(KERN_ALERT "drv260x driver initialization error \n");
-		goto fail2;
+		goto fail1;
 	}
 
 	drv260x->version = MKDEV(0, 0);
 	reval = alloc_chrdev_region(&drv260x->version, 0, 1, DEVICE_NAME);
 	if (reval < 0) {
 		printk(KERN_ALERT "drv260x: error getting major number %d\n", reval);
-		goto fail3;
+		goto fail2;
 	}
 
 	drv260x->class = class_create(THIS_MODULE, DEVICE_NAME);
 	if (!drv260x->class) {
 		printk(KERN_ALERT "drv260x: error creating class\n");
-		goto fail4;
+		goto fail3;
 	}
 
 	drv260x->device = device_create(drv260x->class, NULL, drv260x->version, NULL, DEVICE_NAME);
 	if (!drv260x->device) {
 		printk(KERN_ALERT "drv260x: error creating device 2605\n");
-		goto fail5;
+		goto fail4;
 	}
 
 	cdev_init(&drv260x->cdev, &fops);
@@ -760,12 +742,12 @@ static int drv260x_init(void)
 
 	if (reval) {
 		printk(KERN_ALERT "drv260x: fail to add cdev\n");
-		goto fail6;
+		goto fail5;
 	}
 
 	if (timed_output_dev_register(&to_dev) < 0) {
 		printk(KERN_ALERT "drv260x: fail to create timed output dev\n");
-		goto fail7;
+		goto fail6;
 	}
 
 	hrtimer_init(&vibdata.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
@@ -779,29 +761,27 @@ static int drv260x_init(void)
 	printk(KERN_ALERT "drv260x: initialized\n");
 	return 0;
 
-fail7:
-	unregister_chrdev_region(drv260x->version, 1);
 fail6:
-	device_destroy(drv260x->class, drv260x->version);
+	unregister_chrdev_region(drv260x->version, 1);
 fail5:
-	class_destroy(drv260x->class);
+	device_destroy(drv260x->class, drv260x->version);
 fail4:
-	gpio_direction_output(GPIO_VIBTONE_EN1, GPIO_LEVEL_LOW);
-	gpio_free(GPIO_VIBTONE_EN1);
+	class_destroy(drv260x->class);
 fail3:
-	i2c_del_driver(&drv260x_driver);
+	gpio_direction_output(vibdata.gpio_en, GPIO_LEVEL_LOW);
+	gpio_free(vibdata.gpio_en);
 fail2:
-	i2c_unregister_device(drv260x->client);
+	i2c_del_driver(&drv260x_driver);
 fail1:
-	kfree(drv260x);
+	i2c_unregister_device(drv260x->client);
 fail0:
 	return reval;
 }
 
 static void drv260x_exit(void)
 {
-	gpio_direction_output(GPIO_VIBTONE_EN1, GPIO_LEVEL_LOW);
-	gpio_free(GPIO_VIBTONE_EN1);
+	gpio_direction_output(vibdata.gpio_en, GPIO_LEVEL_LOW);
+	gpio_free(vibdata.gpio_en);
 	device_destroy(drv260x->class, drv260x->version);
 	class_destroy(drv260x->class);
 	unregister_chrdev_region(drv260x->version, 1);

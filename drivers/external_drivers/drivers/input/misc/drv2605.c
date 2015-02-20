@@ -70,7 +70,7 @@ MODULE_DESCRIPTION("Driver for "DEVICE_NAME);
 /*
 	DRV2605 built-in effect bank/library
  */
-#define EFFECT_LIBRARY LIBRARY_A
+#define EFFECT_LIBRARY LIBRARY_F
 
 /*
 	Rated Voltage:
@@ -110,7 +110,8 @@ MODULE_DESCRIPTION("Driver for "DEVICE_NAME);
 
 #define LRA_SEMCO1036                           0
 #define LRA_SEMCO0934                           1
-#define LRA_SELECTION                           LRA_SEMCO1036
+#define LRA_ROBBY                               2
+#define LRA_SELECTION                           LRA_ROBBY
 
 #if (LRA_SELECTION == LRA_SEMCO1036)
 #define LRA_RATED_VOLTAGE                       0x56
@@ -120,6 +121,11 @@ MODULE_DESCRIPTION("Driver for "DEVICE_NAME);
 #elif (LRA_SELECTION == LRA_SEMCO0934)
 #define LRA_RATED_VOLTAGE                       0x51
 #define LRA_OVERDRIVE_CLAMP_VOLTAGE             0x72
+#define LRA_RTP_STRENGTH                        0x7F /* 100% of rated voltage (closed loop)*/
+
+#elif (LRA_SELECTION == LRA_ROBBY)
+#define LRA_RATED_VOLTAGE                       0x5D
+#define LRA_OVERDRIVE_CLAMP_VOLTAGE             0x92
 #define LRA_RTP_STRENGTH                        0x7F /* 100% of rated voltage (closed loop)*/
 #endif
 

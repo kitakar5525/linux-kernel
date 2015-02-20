@@ -113,7 +113,7 @@ static void intel_mid_reboot(void)
 
 	if (force_cold_boot)
 #ifdef CONFIG_X86_MDFLD
-		rpmsg_send_generic_simple_command(IPCMSG_COLD_BOOT, 0);
+		intel_scu_ipc_raw_cmd(IPCMSG_COLD_BOOT, 0, NULL, 0, NULL, 0, 0, 0);
 #else
 		outb(RSTC_COLD_BOOT, RSTC_IO_PORT_ADDR);
 #endif
@@ -136,21 +136,21 @@ static void intel_mid_reboot(void)
 			}
 		case REBOOT_FORCE_COLD_RESET:
 #ifdef CONFIG_X86_MDFLD
-			rpmsg_send_generic_simple_command(IPCMSG_COLD_RESET, 0);
+			intel_scu_ipc_raw_cmd(IPCMSG_COLD_RESET, 0, NULL, 0, NULL, 0, 0, 0);
 #else
 			outb(RSTC_COLD_RESET, RSTC_IO_PORT_ADDR);
 #endif
 			break;
 		case REBOOT_FORCE_COLD_BOOT:
 #ifdef CONFIG_X86_MDFLD
-			rpmsg_send_generic_simple_command(IPCMSG_COLD_BOOT, 0);
+			intel_scu_ipc_raw_cmd(IPCMSG_COLD_BOOT, 0, NULL, 0, NULL, 0, 0, 0);
 #else
 			outb(RSTC_COLD_BOOT, RSTC_IO_PORT_ADDR);
 #endif
 			break;
 		default:
 #ifdef CONFIG_X86_MDFLD
-			rpmsg_send_generic_simple_command(IPCMSG_COLD_RESET, 0);
+			intel_scu_ipc_raw_cmd(IPCMSG_COLD_RESET, 0, NULL, 0, NULL, 0, 0, 0);
 #else
 			outb(RSTC_COLD_RESET, RSTC_IO_PORT_ADDR);
 #endif

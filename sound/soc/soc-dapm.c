@@ -2165,7 +2165,6 @@ static void dapm_free_widgets(struct snd_soc_dapm_context *dapm)
 			snd_soc_fw_dcontrols_remove_widget(w);
 
 		kfree(w->kcontrols);
-		kfree(w->sname);
 		kfree(w->name);
 		kfree(w);
 	}
@@ -3159,20 +3158,6 @@ snd_soc_dapm_new_control(struct snd_soc_dapm_context *dapm,
 			dapm->codec->name_prefix, widget->name);
 	else
 		snprintf((char *)w->name, name_len, "%s", widget->name);
-
-	if (widget->sname) {
-		name_len = strlen(widget->sname);
-		if (name_len != 0) {
-			w->sname = kmalloc(name_len+1, GFP_KERNEL);
-			if (w->sname == NULL) {
-				kfree(w->name);
-				kfree(w);
-				return NULL;
-			}
-			snprintf((char *)w->sname, name_len, "%s", widget->sname);
-		} else
-			w->sname = NULL;
-	}
 
 	switch (w->id) {
 	case snd_soc_dapm_switch:

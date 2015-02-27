@@ -46,17 +46,13 @@ INPUT subsystem: NOTE-> output data INCLUDE the sensitivity in accelerometer.
 
 #define	LIS3DSH_ACC_DEV_NAME			"lis3dsh_acc"
 
-
 /* Poll Interval */
 #define	LIS3DSH_ACC_MIN_POLL_PERIOD_MS		1
 
+/* Poll Interval with ODR 50Hz */
+#define LIS3DSH_ACC_POLL_PERIOD_MS_ODR50       20
 
 #ifdef	__KERNEL__
-
-/* Interrupt */
-#define LIS3DSH_ACC_DEFAULT_INT1_GPIO		(-EINVAL)
-#define LIS3DSH_ACC_DEFAULT_INT2_GPIO		(-EINVAL)
-
 
 /* Accelerometer Sensor Full Scale */
 #define LIS3DSH_ACC_G_2G			(0x00)

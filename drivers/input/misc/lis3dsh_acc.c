@@ -45,15 +45,26 @@
 #include	<linux/gpio.h>
 #include	<linux/interrupt.h>
 #include	<linux/slab.h>
+#include	<linux/wakelock.h>
+#include	<linux/input/lis3dsh.h>
+#include	<asm/intel_scu_flis.h>
+#include	<linux/random.h>
 
-#include	"lis3dsh.h"
+/* TILT_WAKELOCK_HOLD_MS defines time to hold wakelock to allow receiver of
+ * tilt event to grab their own wakelock
+ */
+#define TILT_WAKELOCK_HOLD_MS	(HZ / 2)
+#define TILT_LOCK_NAME			"tilt_detect"
 
-/* #define	DEBUG */
+#define	DEBUG
 
 #define LOAD_STATE_PROGRAM1
 #define LOAD_SP1_PARAMETERS
-/* #define LOAD_STATE_PROGRAM2 */
-/* #define LOAD_SP2_PARAMETERS */
+
+#if 0 /* Define to enable SM2 */
+#define LOAD_STATE_PROGRAM2
+#define LOAD_SP2_PARAMETERS
+#endif
 
 #define G_MAX			23920640	/* ug */
 #define	I2C_RETRY_DELAY		5		/* Waiting for signals [ms] */
@@ -91,6 +102,9 @@
 #define LIS3DSH_HIST1_MASK		0xE0
 #define LIS3DSH_SM1INT_PIN_MASK		0x08
 #define LIS3DSH_SM1INT_PINB		0x08
+#define LIS3DSH_SM1INT_PINA		0x00
+#define LIS3DSH_SM1_EN_MASK		0x01
+#define LIS3DSH_SM1_EN_ON		0x01
 #define LIS3DSH_SM1INT_PINA		0x00
 #define LIS3DSH_SM1_EN_MASK		0x01
 #define LIS3DSH_SM1_EN_ON		0x01
@@ -176,7 +190,7 @@
 #define	LIS3DSH_TC_1		0X5D	/*	SPr1		2bytes	*/
 #define	LIS3DSH_OUTS_1		0X5F	/*	SPr1			*/
 
-	/* state program 2 */
+/* state program 2 */
 #define	LIS3DSH_STATEPR2	0X60	/*	State Program 2 16 bytes */
 
 #define	LIS3DSH_TIM4_2		0X70	/*	SPr2 Timer4		*/
@@ -195,6 +209,44 @@
 #define	LIS3DSH_OUTS_2		0X7F	/*	SPr2			*/
 /*	end CONTROL REGISTRES	*/
 
+/* LIS3DSH State Machine Opcodes */
+#define	NOP		0x00	/* No operation */
+#define	TI1_OPCODE	0x01	/* Timer 1 (8-bit value) valid */
+#define	TI2_OPCODE	0x02	/* Timer 2 (8-bit value) valid */
+#define	TI3_OPCODE	0x03	/* Timer 3 (8-bit value) valid */
+#define	TI4_OPCODE	0x04	/* Timer 4 (8-bit value) valid */
+#define	GNTH1_OPCODE	0x05	/* Any/triggered axis > THRS1 */
+#define	GNTH2_OPCODE	0x06	/* Any/triggered axis > THRS2 */
+#define	LNTH1_OPCODE	0x07	/* Any/triggered axis <= THRS1 */
+#define	LNTH2_OPCODE	0x08	/* Any/triggered axis <= THRS2 */
+#define	GTTH1_OPCODE	0x09	/* Any/triggered axis > THRS1 but using MASK1 */
+#define	LLTH2_OPCODE	0x0A	/* All axis <= to THRS2 */
+#define	GRTH1_OPCODE	0x0B	/* Any/triggered axis > reversed THRS1 */
+#define	LRTH1_OPCODE	0x0C	/* Any/triggered axis <= reversed THRS1 */
+#define	GRTH2_OPCODE	0x0D	/* Any/triggered axis > reversed THRS2 */
+#define	LRTH2_OPCODE	0x0E	/* Any/triggered axis <= reversed THRS2 */
+#define	NZERO_OPCODE	0x0F	/* Any axis zero crossed */
+/* LIS3DSH State Machine Commands */
+#define	STOP_CMD	0x00	/* Stops execution, and resets to start */
+#define	CONT_CMD	0x11	/* Continues execution from RESET- POINT */
+#define	JMP_CMD		0x22
+#define	SRP_CMD		0x33
+#define	CRP_CMD		0x44
+#define	SETP_CMD	0x55
+#define	SETS1_CMD	0x66
+#define	STHR1_CMD	0x77
+#define	OUTC_CMD	0x88
+#define	OUTW_CMD	0x99
+#define	STHR2_CMD	0xAA
+#define	DEC_CMD		0xBB
+#define	SISW_CMD	0xCC
+#define	REL_CMD		0xDD
+#define	STHR3_CMD	0xEE
+#define	SSYNC_CMD	0xFF
+#define	SABS0_CMD	0x12	/* Set SETTy(ABS=0) (unsigned threshold) */
+#define	SABS1_CMD	0x13	/* Set SETTy(ABS=1) (signed threshold) */
+#define	SELMA_CMD	0x14	/* Set mask to MASK_A */
+#define	SELSA_CMD	0x24	/* Set mask to MASK_B */
 
 /* RESUME STATE INDICES */
 #define	LIS3DSH_RES_LC_L			0
@@ -276,8 +328,6 @@ static const struct lis3dsh_acc_platform_data default_lis3dsh_acc_pdata = {
 	.negate_z = 0,
 	.poll_interval = 100,
 	.min_interval = LIS3DSH_ACC_MIN_POLL_PERIOD_MS,
-	.gpio_int1 = LIS3DSH_ACC_DEFAULT_INT1_GPIO,
-	.gpio_int2 = LIS3DSH_ACC_DEFAULT_INT2_GPIO,
 };
 
 struct lis3dsh_acc_data {
@@ -285,7 +335,6 @@ struct lis3dsh_acc_data {
 	struct lis3dsh_acc_platform_data *pdata;
 
 	struct mutex lock;
-	struct delayed_work input_work;
 
 	struct input_dev *input_dev;
 
@@ -304,88 +353,54 @@ struct lis3dsh_acc_data {
 	u8 resume_stmach_program2[LIS3DSH_STATE_PR_SIZE];
 
 	int irq1;
-	struct work_struct irq1_work;
-	struct workqueue_struct *irq1_work_queue;
 	int irq2;
-	struct work_struct irq2_work;
-	struct workqueue_struct *irq2_work_queue;
+	struct wake_lock tilt_wakelock;
 
 #ifdef DEBUG
 	u8 reg_addr;
 #endif
 };
 
+static int lis3dsh_acc_disable(struct lis3dsh_acc_data *acc);
+static void report_motion(struct lis3dsh_acc_data *acc);
 
 /* sets default init values to be written in registers at probe stage */
 static void lis3dsh_acc_set_init_register_values(struct lis3dsh_acc_data *acc)
 {
-	acc->resume_state[LIS3DSH_RES_LC_L] = 0x00;
+	acc->resume_state[LIS3DSH_RES_LC_L] = 0x01;
 	acc->resume_state[LIS3DSH_RES_LC_H] = 0x00;
 
-	acc->resume_state[LIS3DSH_RES_CTRL_REG2] = LIS3DSH_INT_ACT_H;
-	acc->resume_state[LIS3DSH_RES_CTRL_REG1] = 0x00;
-	acc->resume_state[LIS3DSH_RES_CTRL_REG4] = 0x00;
-	acc->resume_state[LIS3DSH_RES_CTRL_REG1] = 0x8f;
+	acc->resume_state[LIS3DSH_RES_CTRL_REG2] = 0x01;
+	acc->resume_state[LIS3DSH_RES_CTRL_REG1] = 0x57;
+	acc->resume_state[LIS3DSH_RES_CTRL_REG4] = 0x58;
+	acc->resume_state[LIS3DSH_RES_CTRL_REG3] = 0x00;
 	acc->resume_state[LIS3DSH_RES_CTRL_REG5] = 0x00;
 }
 
 static void lis3dsh_acc_set_init_statepr1_inst(struct lis3dsh_acc_data *acc)
 {
 #ifdef LOAD_STATE_PROGRAM1
-	acc->resume_stmach_program1[0] = 0x07;
-	acc->resume_stmach_program1[1] = 0x08;
-	acc->resume_stmach_program1[2] = 0X06;
-	acc->resume_stmach_program1[3] = 0X05;
-	acc->resume_stmach_program1[4] = 0x11;
-	acc->resume_stmach_program1[5] = 0x00;
-	acc->resume_stmach_program1[6] = 0x00;
-	acc->resume_stmach_program1[7] = 0x00;
-	acc->resume_stmach_program1[8] = 0x00;
-	acc->resume_stmach_program1[9] = 0x00;
-	acc->resume_stmach_program1[10] = 0x00;
-	acc->resume_stmach_program1[11] = 0x00;
-	acc->resume_stmach_program1[12] = 0x00;
-	acc->resume_stmach_program1[13] = 0x00;
-	acc->resume_stmach_program1[14] = 0x00;
-	acc->resume_stmach_program1[15] = 0x00;
-#else
-	acc->resume_stmach_program1[0] = 0x00;
-	acc->resume_stmach_program1[1] = 0x00;
-	acc->resume_stmach_program1[2] = 0X00;
-	acc->resume_stmach_program1[3] = 0X00;
-	acc->resume_stmach_program1[4] = 0x00;
-	acc->resume_stmach_program1[5] = 0x00;
-	acc->resume_stmach_program1[6] = 0x00;
-	acc->resume_stmach_program1[7] = 0x00;
-	acc->resume_stmach_program1[8] = 0x00;
-	acc->resume_stmach_program1[9] = 0x00;
-	acc->resume_stmach_program1[10] = 0x00;
-	acc->resume_stmach_program1[11] = 0x00;
-	acc->resume_stmach_program1[12] = 0x00;
-	acc->resume_stmach_program1[13] = 0x00;
-	acc->resume_stmach_program1[14] = 0x00;
+	acc->resume_stmach_program1[0] = GNTH1_OPCODE;
+	acc->resume_stmach_program1[1] = 0x71;
+	acc->resume_stmach_program1[2] = SETP_CMD;
+	acc->resume_stmach_program1[3] = 0x50;
+	acc->resume_stmach_program1[4] = 0x01;
+	acc->resume_stmach_program1[5] = OUTC_CMD;
+	acc->resume_stmach_program1[6] = SRP_CMD;
+	acc->resume_stmach_program1[7] = LNTH1_OPCODE;
+	acc->resume_stmach_program1[8] = 0x51;
+	acc->resume_stmach_program1[9] = SETP_CMD;
+	acc->resume_stmach_program1[10] = 0x50;
+	acc->resume_stmach_program1[11] = 0x02;
+	acc->resume_stmach_program1[12] = OUTC_CMD;
+	acc->resume_stmach_program1[13] = CRP_CMD;
+	acc->resume_stmach_program1[14] = CONT_CMD;
 	acc->resume_stmach_program1[15] = 0x00;
 #endif
 }
 
 static void lis3dsh_acc_set_init_statepr2_inst(struct lis3dsh_acc_data *acc)
 {
-	acc->resume_stmach_program2[0] = 0x00;
-	acc->resume_stmach_program2[1] = 0x00;
-	acc->resume_stmach_program2[2] = 0X00;
-	acc->resume_stmach_program2[3] = 0X00;
-	acc->resume_stmach_program2[4] = 0x00;
-	acc->resume_stmach_program2[5] = 0x00;
-	acc->resume_stmach_program2[6] = 0x00;
-	acc->resume_stmach_program2[7] = 0x00;
-	acc->resume_stmach_program2[8] = 0x00;
-	acc->resume_stmach_program2[9] = 0x00;
-	acc->resume_stmach_program2[10] = 0x00;
-	acc->resume_stmach_program2[11] = 0x00;
-	acc->resume_stmach_program2[12] = 0x00;
-	acc->resume_stmach_program2[13] = 0x00;
-	acc->resume_stmach_program2[14] = 0x00;
-	acc->resume_stmach_program2[15] = 0x00;
 }
 
 static void lis3dsh_acc_set_init_statepr1_param(struct lis3dsh_acc_data *acc)
@@ -395,44 +410,19 @@ static void lis3dsh_acc_set_init_statepr1_param(struct lis3dsh_acc_data *acc)
 	acc->resume_state[LIS3DSH_RES_TIM3_1] = 0x00;
 	acc->resume_state[LIS3DSH_RES_TIM2_1_L] = 0x00;
 	acc->resume_state[LIS3DSH_RES_TIM2_1_H] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM1_1_L] = 0x00;
+	acc->resume_state[LIS3DSH_RES_TIM1_1_L] = 0x1E;
 	acc->resume_state[LIS3DSH_RES_TIM1_1_H] = 0x00;
-	acc->resume_state[LIS3DSH_RES_THRS2_1] = 0xD0;
-	acc->resume_state[LIS3DSH_RES_THRS1_1] = 0x30;
-	/* DES1 not available*/
-	acc->resume_state[LIS3DSH_RES_SA_1] = 0x08;
-	acc->resume_state[LIS3DSH_RES_MA_1] = 0x08;
-	acc->resume_state[LIS3DSH_RES_SETT_1] = 0x23;
-#else
-	acc->resume_state[LIS3DSH_RES_TIM4_1] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM3_1] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM2_1_L] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM2_1_H] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM1_1_L] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM1_1_H] = 0x00;
-	acc->resume_state[LIS3DSH_RES_THRS2_1] = 0x00;
-	acc->resume_state[LIS3DSH_RES_THRS1_1] = 0x00;
+	acc->resume_state[LIS3DSH_RES_THRS2_1] = 0x0;
+	acc->resume_state[LIS3DSH_RES_THRS1_1] = 0x20;
 	/* DES1 not available*/
 	acc->resume_state[LIS3DSH_RES_SA_1] = 0x00;
-	acc->resume_state[LIS3DSH_RES_MA_1] = 0x00;
-	acc->resume_state[LIS3DSH_RES_SETT_1] = 0x00;
+	acc->resume_state[LIS3DSH_RES_MA_1] = 0x80;
+	acc->resume_state[LIS3DSH_RES_SETT_1] = 0x20;
 #endif
 }
 
 static void lis3dsh_acc_set_init_statepr2_param(struct lis3dsh_acc_data *acc)
 {
-	acc->resume_state[LIS3DSH_RES_TIM4_2] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM3_2] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM2_2_L] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM2_2_H] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM1_2_L] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM1_2_H] = 0x00;
-	acc->resume_state[LIS3DSH_RES_THRS2_2] = 0x00;
-	acc->resume_state[LIS3DSH_RES_THRS1_2] = 0x00;
-	acc->resume_state[LIS3DSH_RES_DES_2] = 0x00;
-	acc->resume_state[LIS3DSH_RES_SA_2] = 0x00;
-	acc->resume_state[LIS3DSH_RES_MA_2] = 0x00;
-	acc->resume_state[LIS3DSH_RES_SETT_2] = 0x00;
 }
 
 static int lis3dsh_acc_i2c_read(struct lis3dsh_acc_data *acc,
@@ -513,13 +503,12 @@ static int lis3dsh_acc_i2c_update(struct lis3dsh_acc_data *acc,
 	u8 init_val;
 	u8 updated_val;
 	err = lis3dsh_acc_i2c_read(acc, rdbuf, 1);
-	if (!(err < 0)) {
-		init_val = rdbuf[0];
-		updated_val = ((mask & new_bit_values) | ((~mask) & init_val));
-		wrbuf[1] = updated_val;
-		err = lis3dsh_acc_i2c_write(acc, wrbuf, 1);
-	}
-	return err;
+	if (err < 0)
+		return err;
+	init_val = rdbuf[0];
+	updated_val = ((mask & new_bit_values) | ((~mask) & init_val));
+	wrbuf[1] = updated_val;
+	return lis3dsh_acc_i2c_write(acc, wrbuf, 1);
 }
 
 static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
@@ -533,20 +522,24 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 	buf[0] = LIS3DSH_WHO_AM_I;
 	err = lis3dsh_acc_i2c_read(acc, buf, 1);
 	if (err < 0) {
-		dev_warn(&acc->client->dev, "Error reading WHO_AM_I: is device
-					 available/working?\n");
+		dev_warn(&acc->client->dev, "Error reading WHO_AM_I: is device available/working?\n");
 		goto err_firstread;
 	} else
 		acc->hw_working = 1;
 
 	if (buf[0] != WHOAMI_LIS3DSH_ACC) {
-		dev_err(&acc->client->dev, "device unknown. Expected: 0x%x,
-					 Replies: 0x%x\n", WHOAMI_LIS3DSH_ACC, buf[0]);
-		err = -1; /* choose the right coded error */
+		dev_err(&acc->client->dev, "device unknown. Expected: 0x%x, Replies: 0x%x\n",
+			WHOAMI_LIS3DSH_ACC, buf[0]);
+		err = -ENODEV; /* choose the right coded error */
 		goto err_unknown_device;
 	}
 
-
+	/**
+	 * LC (16h - 17h)
+	 * 16-bit long-counter register for interrupt state machine programs timing.
+	 * 01h=counting stopped, 00h=counter full:interrupt available and counter is set to default.
+	 * Values higher than 00h:counting
+	 */
 	buf[0] = (I2C_AUTO_INCREMENT | LIS3DSH_LC_L);
 	buf[1] = acc->resume_state[LIS3DSH_RES_LC_L];
 	buf[2] = acc->resume_state[LIS3DSH_RES_LC_H];
@@ -554,6 +547,20 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 	if (err < 0)
 		goto err_resume_state;
 
+	/**
+	 * TIM4_1 (50h)
+	 * 8-bit general timer (unsigned value) for SM1 operation timing.
+	 * TIM3_1 (51h)
+	 * 8-bit general timer (unsigned value) for SM1 operation timing.
+	 * TIM2_1 (52h - 53h)
+	 * 16-bit general timer (unsigned value) for SM1 operation timing.
+	 * TIM1_1 (54h - 55h)
+	 * 16-bit general timer (unsigned value) for SM1 operation timing.
+	 * THRS2_1 (56h)
+	 * Threshold value for SM1 operation.
+	 * THRS1_1 (57h)
+	 * Threshold value for SM1 operation.
+	 */
 	buf[0] = (I2C_AUTO_INCREMENT | LIS3DSH_TIM4_1);
 	buf[1] = acc->resume_state[LIS3DSH_RES_TIM4_1];
 	buf[2] = acc->resume_state[LIS3DSH_RES_TIM3_1];
@@ -567,6 +574,14 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 	if (err < 0)
 		goto err_resume_state;
 
+	/**
+	 * MASK1_B (59h)
+	 * Axis and sign mask (swap) for SM1 motion detection operation.
+	 * MASK1_A (5Ah)
+	 * Axis and sign mask (default) for SM1 motion detection operation.
+	 * SETT1 (5Bh)
+	 * Setting of threshold, peak detection and flags for SM1 motion detection operation.
+	 */
 	buf[0] = (I2C_AUTO_INCREMENT | LIS3DSH_SA_1);
 	buf[1] = acc->resume_state[LIS3DSH_RES_SA_1];
 	buf[2] = acc->resume_state[LIS3DSH_RES_MA_1];
@@ -575,6 +590,21 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 	if (err < 0)
 		goto err_resume_state;
 
+	/**
+	 * TIM4_2 (70h)
+	 * 8-bit general timer (unsigned value) for SM2 operation timing.
+	 * TIM3_2 (71h)
+	 * 8-bit general timer (unsigned value) for SM2 operation timing.
+	 * TIM2_2 (72h - 73h)
+	 * 16-bit general timer (unsigned value) for SM2 operation timing
+	 * TIM1_2 (74h - 75h)
+	 * 16-bit general timer (unsigned value) for SM2 operation timing.
+	 * THRS2_2 (76h) Threshold signed value for SM2 operation.
+	 * THRS1_2 (77h) Threshold signed value for SM2 operation.
+	 * MASK2_B (79h) Axis and sign mask (swap) for SM2 motion detection operation.
+	 * MASK2_A (7Ah) Axis and sign mask (default) for SM2 motion detection operation.
+	 * SETT2 (7Bh) Setting of threshold, peak detection and flags for SM2 motion detection operation.
+	 */
 	buf[0] = (I2C_AUTO_INCREMENT | LIS3DSH_TIM4_2);
 	buf[1] = acc->resume_state[LIS3DSH_RES_TIM4_2];
 	buf[2] = acc->resume_state[LIS3DSH_RES_TIM3_2];
@@ -593,6 +623,12 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 		goto err_resume_state;
 
 	/*	state program 1 */
+	/**
+	 * STx_1 (40h-4Fh)
+	 * State machine 1 code register STx_1 (x = 1-16).
+	 * State machine 1 system register is made up of 16, 8- bit registers
+	 * to implement 16-step opcode.
+	 */
 	buf[0] = (I2C_AUTO_INCREMENT | LIS3DSH_STATEPR1);
 	for (i = 1; i <= LIS3DSH_STATE_PR_SIZE; i++) {
 		buf[i] = acc->resume_stmach_program1[i-1];
@@ -605,6 +641,12 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 		goto err_resume_state;
 
 	/*	state program 2 */
+	/**
+	 * STx_1 (60h-6Fh)
+	 * State Machine 2 code register STx_1 (x = 1-16).
+	 * State machine 2 system register is made up of 16 8-bit registers,
+	 * to implement 16-step opcode.
+	 */
 	buf[0] = (I2C_AUTO_INCREMENT | LIS3DSH_STATEPR2);
 	for (i = 1; i <= LIS3DSH_STATE_PR_SIZE; i++) {
 		buf[i] = acc->resume_stmach_program2[i-1];
@@ -616,6 +658,10 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 	if (err < 0)
 		goto err_resume_state;
 
+	/**
+	 * CTRL_REG2 (22h) State program 2 interrupt MNG - SM2 control register.
+	 * CTRL_REG3 (23h) Control register 3.
+	 */
 	buf[0] = (I2C_AUTO_INCREMENT | LIS3DSH_CTRL_REG3);
 	buf[1] = acc->resume_state[LIS3DSH_RES_CTRL_REG3];
 	buf[2] = acc->resume_state[LIS3DSH_RES_CTRL_REG4];
@@ -623,6 +669,10 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 	if (err < 0)
 		goto err_resume_state;
 
+	/**
+	 * CTRL_REG4 (20h) ODR3 ODR2 ODR1 ODR0 BDU ZEN YEN XEN
+	 * CTRL_REG1 (21h) HYST2_1 HYST1_1 HYST0_1 - SM1_PIN - - SM1_EN
+	 */
 	buf[0] = (I2C_AUTO_INCREMENT | LIS3DSH_CTRL_REG1);
 	buf[1] = acc->resume_state[LIS3DSH_RES_CTRL_REG1];
 	buf[2] = acc->resume_state[LIS3DSH_RES_CTRL_REG2];
@@ -639,8 +689,8 @@ err_firstread:
 err_unknown_device:
 err_resume_state:
 	acc->hw_initialized = 0;
-	dev_err(&acc->client->dev, "hw init error 0x%x,0x%x: %d\n", buf[0],
-			buf[1], err);
+	dev_err(&acc->client->dev, "hw init error 0x%x,0x%x: %d\n",
+			buf[0], buf[1], err);
 	return err;
 }
 
@@ -654,17 +704,17 @@ static void lis3dsh_acc_device_power_off(struct lis3dsh_acc_data *acc)
 		dev_err(&acc->client->dev, "soft power off failed: %d\n", err);
 
 	if (acc->pdata->power_off) {
-		if (acc->pdata->gpio_int1)
+		if (acc->pdata->gpio_int1 > 0)
 			disable_irq_nosync(acc->irq1);
-		if (acc->pdata->gpio_int2)
+		if (acc->pdata->gpio_int2 > 0)
 			disable_irq_nosync(acc->irq2);
 		acc->pdata->power_off();
 		acc->hw_initialized = 0;
 	}
 	if (acc->hw_initialized) {
-		if (acc->pdata->gpio_int1 >= 0)
+		if (acc->pdata->gpio_int1 > 0)
 			disable_irq_nosync(acc->irq1);
-		if (acc->pdata->gpio_int2 >= 0)
+		if (acc->pdata->gpio_int2 > 0)
 			disable_irq_nosync(acc->irq2);
 		acc->hw_initialized = 0;
 	}
@@ -681,9 +731,9 @@ static int lis3dsh_acc_device_power_on(struct lis3dsh_acc_data *acc)
 					"power_on failed: %d\n", err);
 			return err;
 		}
-		if (acc->pdata->gpio_int1 >= 0)
+		if (acc->pdata->gpio_int1 > 0)
 			enable_irq(acc->irq1);
-		if (acc->pdata->gpio_int2 >= 0)
+		if (acc->pdata->gpio_int2 > 0)
 			enable_irq(acc->irq2);
 	}
 
@@ -696,63 +746,48 @@ static int lis3dsh_acc_device_power_on(struct lis3dsh_acc_data *acc)
 	}
 
 	if (acc->hw_initialized) {
-		if (acc->pdata->gpio_int1 >= 0)
+		if (acc->pdata->gpio_int1 > 0)
 			enable_irq(acc->irq1);
-		if (acc->pdata->gpio_int2 >= 0)
+		if (acc->pdata->gpio_int2 > 0)
 			enable_irq(acc->irq2);
 	}
 	return 0;
 }
 
-static irqreturn_t lis3dsh_acc_isr1(int irq, void *dev)
+static irqreturn_t lis3dsh_acc_isr_threaded(int irq, void *dev)
 {
-	struct lis3dsh_acc_data *acc = dev;
+	struct i2c_client *client = container_of(dev, struct i2c_client, dev);
+	struct lis3dsh_acc_data *acc = i2c_get_clientdata(client);
+	int err = 0;
+	u8 val = 0;
+	mutex_lock(&acc->lock);
 
-	disable_irq_nosync(irq);
-	queue_work(acc->irq1_work_queue, &acc->irq1_work);
-	pr_info("%s: isr1 queued\n", LIS3DSH_ACC_DEV_NAME);
+	val = 0x50;
+	err = lis3dsh_acc_i2c_read(acc, &val, 1);
+	if (err < 0) {
+		dev_err((struct device *)dev, "lis3dsh_acc_i2c_read failed\n");
+		goto exit;
+	}
+	dev_err((struct device *)dev, "lis3dsh_acc_isr_threaded: val=%d\n", val);
+	if (val & 0x02) { /* watch is pointing eyes? */
+		report_motion(acc);
+	}
 
-	return IRQ_HANDLED;
-}
+	/* reading OUTSx register resets SMx interrupt (IRQx) */
+	if (irq == acc->irq1)
+		val = LIS3DSH_OUTS_1;
+	else
+		val = LIS3DSH_OUTS_2;
 
-static irqreturn_t lis3dsh_acc_isr2(int irq, void *dev)
-{
-	struct lis3dsh_acc_data *acc = dev;
-
-	disable_irq_nosync(irq);
-	queue_work(acc->irq2_work_queue, &acc->irq2_work);
-	pr_info("%s: isr2 queued\n", LIS3DSH_ACC_DEV_NAME);
-
-	return IRQ_HANDLED;
-}
-
-static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
-{
-
-	struct lis3dsh_acc_data *acc;
-	acc = container_of(work, struct lis3dsh_acc_data, irq1_work);
-	/* TODO  add interrupt service procedure.
-		 ie:lis3dsh_acc_get_int1_source(acc); */
-	;
-	/*  */
-	pr_info("%s: IRQ1 triggered\n", LIS3DSH_ACC_DEV_NAME);
+	err = lis3dsh_acc_i2c_read(acc, &val, 1);
+	if (err < 0) {
+		dev_err((struct device *)dev,
+			"unrecoverable error, shutting down lis3dsh driver.\n");
+		lis3dsh_acc_disable(acc);
+	}
 exit:
-	enable_irq(acc->irq1);
-}
-
-static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
-{
-
-	struct lis3dsh_acc_data *acc;
-	acc = container_of(work, struct lis3dsh_acc_data, irq2_work);
-	/* TODO  add interrupt service procedure.
-		 ie:lis3dsh_acc_get_tap_source(acc); */
-	;
-	/*  */
-
-	pr_info("%s: IRQ2 triggered\n", LIS3DSH_ACC_DEV_NAME);
-exit:
-	enable_irq(acc->irq2);
+	mutex_unlock(&acc->lock);
+	return IRQ_HANDLED;
 }
 
 static int lis3dsh_acc_register_masked_update(struct lis3dsh_acc_data *acc,
@@ -827,11 +862,9 @@ static int lis3dsh_acc_update_fs_range(struct lis3dsh_acc_data *acc,
 	}
 
 	if (err < 0)
-		dev_err(&acc->client->dev, "update g range not executed
-						 because the device is off\n");
+		dev_err(&acc->client->dev, "update g range not executed because the device is off\n");
 	return err;
 }
-
 
 static int lis3dsh_acc_update_odr(struct lis3dsh_acc_data *acc,
 							int poll_interval_ms)
@@ -939,8 +972,8 @@ static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc,
 		   : (hw_d[acc->pdata->axis_map_z]));
 
 #ifdef DEBUG
-/*	pr_info("%s read x=%d, y=%d, z=%d\n",
-			LIS3DSH_ACC_DEV_NAME, xyz[0], xyz[1], xyz[2]); */
+	pr_info("%s read x=%d, y=%d, z=%d\n",
+			LIS3DSH_ACC_DEV_NAME, xyz[0], xyz[1], xyz[2]);
 #endif
 	return err;
 }
@@ -948,10 +981,30 @@ static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc,
 static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc,
 					int *xyz)
 {
+	/**
+	 * Grab or reprime a temporary wakelock to keep system awake
+	 * long enough for receiver of tilt event to grab it's own
+	 * wakelock
+	 */
+	wake_lock_timeout(&acc->tilt_wakelock, TILT_WAKELOCK_HOLD_MS);
 	input_report_abs(acc->input_dev, ABS_X, xyz[0]);
 	input_report_abs(acc->input_dev, ABS_Y, xyz[1]);
 	input_report_abs(acc->input_dev, ABS_Z, xyz[2]);
 	input_sync(acc->input_dev);
+}
+
+static void report_motion(struct lis3dsh_acc_data *acc)
+{
+	int xyz[3] = {0, 0, 0};
+
+	xyz[0] = get_random_int();
+#ifdef DEBUG
+		dev_info(&acc->client->dev, "lis3dsh_acc_report_values:\n");
+		dev_info(&acc->client->dev, "x=%6d\n", xyz[0]);
+		dev_info(&acc->client->dev, "y=%6d\n", xyz[1]);
+		dev_info(&acc->client->dev, "z=%6d\n", xyz[2]);
+#endif
+	lis3dsh_acc_report_values(acc, xyz);
 }
 
 static int lis3dsh_acc_enable(struct lis3dsh_acc_data *acc)
@@ -964,8 +1017,6 @@ static int lis3dsh_acc_enable(struct lis3dsh_acc_data *acc)
 			atomic_set(&acc->enabled, 0);
 			return err;
 		}
-		schedule_delayed_work(&acc->input_work,
-			msecs_to_jiffies(acc->pdata->poll_interval));
 	}
 
 	return 0;
@@ -973,10 +1024,8 @@ static int lis3dsh_acc_enable(struct lis3dsh_acc_data *acc)
 
 static int lis3dsh_acc_disable(struct lis3dsh_acc_data *acc)
 {
-	if (atomic_cmpxchg(&acc->enabled, 1, 0)) {
-		cancel_delayed_work_sync(&acc->input_work);
+	if (atomic_cmpxchg(&acc->enabled, 1, 0))
 		lis3dsh_acc_device_power_off(acc);
-	}
 
 	return 0;
 }
@@ -1110,6 +1159,10 @@ static ssize_t attr_set_enable(struct device *dev,
 }
 
 
+/**
+ * CTRL_REG3 (23h) DR_EN IEA IEL INT2_EN INT1_EN VFILT - STRT
+ * CTRL_REG1 (21h) HYST2_1 HYST1_1 HYST0_1 - SM1_PIN - - SM1_EN
+ */
 static int lis3dsh_acc_interrupt_enable_control(struct lis3dsh_acc_data *acc,
 								u8 settings)
 {
@@ -1175,10 +1228,9 @@ static ssize_t attr_set_interr_enable(struct device *dev,
 	if (kstrtoul(buf, 16, &val))
 		return -EINVAL;
 
-
 	if (val < 0x00 || val > LIS3DSH_INT1_EN_INT2_EN) {
 #ifdef DEBUG
-		pr_err("invalid interrupt setting, val: %d\n", val);
+		pr_err("invalid interrupt setting, val: %ld\n", val);
 #endif
 		return -EINVAL;
 	}
@@ -1254,7 +1306,7 @@ static ssize_t attr_set_enable_state_prog(struct device *dev,
 
 	if (val < 0x00 || val > LIS3DSH_SM1_EN_SM2_EN) {
 #ifdef DEBUG
-		pr_err("invalid state program setting, val: %d\n", val);
+		pr_err("invalid state program setting, val: %ld\n", val);
 #endif
 		return -EINVAL;
 	}
@@ -1372,39 +1424,14 @@ static int remove_sysfs_interfaces(struct device *dev)
 	return 0;
 }
 
-static void lis3dsh_acc_input_work_func(struct work_struct *work)
-{
-	struct lis3dsh_acc_data *acc;
-
-	int xyz[3] = { 0 };
-	int err;
-
-	acc = container_of(work, struct lis3dsh_acc_data, input_work);
-
-	mutex_lock(&acc->lock);
-	err = lis3dsh_acc_get_acceleration_data(acc, xyz);
-	if (err < 0)
-		dev_err(&acc->client->dev, "get_acceleration_data failed\n");
-	else
-		lis3dsh_acc_report_values(acc, xyz);
-
-	schedule_delayed_work(&acc->input_work, msecs_to_jiffies(
-			acc->pdata->poll_interval));
-	mutex_unlock(&acc->lock);
-}
-
 int lis3dsh_acc_input_open(struct input_dev *input)
 {
-	struct lis3dsh_acc_data *acc = input_get_drvdata(input);
-
-	return lis3dsh_acc_enable(acc);
+	return 0;
 }
 
 void lis3dsh_acc_input_close(struct input_dev *dev)
 {
-	struct lis3dsh_acc_data *acc = input_get_drvdata(dev);
-
-	lis3dsh_acc_disable(acc);
+	return;
 }
 
 static int lis3dsh_acc_validate_pdata(struct lis3dsh_acc_data *acc)
@@ -1415,18 +1442,20 @@ static int lis3dsh_acc_validate_pdata(struct lis3dsh_acc_data *acc)
 	if (acc->pdata->axis_map_x > 2 ||
 		acc->pdata->axis_map_y > 2 ||
 		 acc->pdata->axis_map_z > 2) {
-		dev_err(&acc->client->dev, "invalid axis_map value
-			 x:%u y:%u z%u\n", acc->pdata->axis_map_x,
-				acc->pdata->axis_map_y, acc->pdata->axis_map_z);
+		dev_err(&acc->client->dev, "invalid axis_map value x:%u y:%u z%u\n",
+				acc->pdata->axis_map_x,
+				acc->pdata->axis_map_y,
+				acc->pdata->axis_map_z);
 		return -EINVAL;
 	}
 
 	/* Only allow 0 and 1 for negation boolean flag */
 	if (acc->pdata->negate_x > 1 || acc->pdata->negate_y > 1
 			|| acc->pdata->negate_z > 1) {
-		dev_err(&acc->client->dev, "invalid negate value
-			 x:%u y:%u z:%u\n", acc->pdata->negate_x,
-				acc->pdata->negate_y, acc->pdata->negate_z);
+		dev_err(&acc->client->dev, "invalid negate value x:%u y:%u z:%u\n",
+				acc->pdata->negate_x,
+				acc->pdata->negate_y,
+				acc->pdata->negate_z);
 		return -EINVAL;
 	}
 
@@ -1443,7 +1472,6 @@ static int lis3dsh_acc_input_init(struct lis3dsh_acc_data *acc)
 {
 	int err;
 
-	INIT_DELAYED_WORK(&acc->input_work, lis3dsh_acc_input_work_func);
 	acc->input_dev = input_allocate_device();
 	if (!acc->input_dev) {
 		err = -ENOMEM;
@@ -1507,11 +1535,11 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 
 	pr_info("%s: probe start.\n", LIS3DSH_ACC_DEV_NAME);
 
-	/*if (client->dev.platform_data == NULL) {
+	if (client->dev.platform_data == NULL) {
 		dev_err(&client->dev, "platform data is NULL. exiting.\n");
 		err = -ENODEV;
 		goto exit_check_functionality_failed;
-	}*/
+	}
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "client not i2c capable\n");
@@ -1524,8 +1552,8 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	if (acc == NULL) {
 		err = -ENOMEM;
 		dev_err(&client->dev,
-				"failed to allocate memory for module data: "
-					"%d\n", err);
+				"failed to allocate memory for module data: %d\n",
+				err);
 		goto exit_check_functionality_failed;
 	}
 
@@ -1534,6 +1562,7 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 
 	acc->client = client;
 	i2c_set_clientdata(client, acc);
+	wake_lock_init(&acc->tilt_wakelock, WAKE_LOCK_SUSPEND, TILT_LOCK_NAME);
 
 	acc->pdata = kmalloc(sizeof(*acc->pdata), GFP_KERNEL);
 	if (acc->pdata == NULL) {
@@ -1544,14 +1573,8 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 		goto err_mutexunlock;
 	}
 
-	if (client->dev.platform_data == NULL) {
-		pr_info("using default platform_data for accelerometer\n");
-		memcpy(acc->pdata, &default_lis3dsh_acc_pdata,
-							sizeof(*acc->pdata));
-	} else {
-		memcpy(acc->pdata, client->dev.platform_data,
-							sizeof(*acc->pdata));
-	}
+	memcpy(acc->pdata, client->dev.platform_data,
+						sizeof(*acc->pdata));
 
 	err = lis3dsh_acc_validate_pdata(acc);
 	if (err < 0) {
@@ -1568,24 +1591,22 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 		}
 	}
 
-	if (acc->pdata->gpio_int1 >= 0) {
+	if (acc->pdata->gpio_int1 > 0) {
+		gpio_direction_input(acc->pdata->gpio_int1);
 		acc->irq1 = gpio_to_irq(acc->pdata->gpio_int1);
-		pr_info("%s: %s has set irq1 to irq: %d
-							 mapped on gpio:%d\n",
+		pr_info("%s: %s has set irq1 to irq: %d mapped on gpio:%d\n",
 			LIS3DSH_ACC_DEV_NAME, __func__, acc->irq1,
 							acc->pdata->gpio_int1);
 	}
 
-	if (acc->pdata->gpio_int2 >= 0) {
+	if (acc->pdata->gpio_int2 > 0) {
 		acc->irq2 = gpio_to_irq(acc->pdata->gpio_int2);
-		pr_info("%s: %s has set irq2 to irq: %d
-							 mapped on gpio:%d\n",
+		pr_info("%s: %s has set irq2 to irq: %d mapped on gpio:%d\n",
 			LIS3DSH_ACC_DEV_NAME, __func__, acc->irq2,
 							acc->pdata->gpio_int2);
 	}
 
 	/* resume state init config */
-	memset(acc->resume_state, 0, ARRAY_SIZE(acc->resume_state));
 	lis3dsh_acc_set_init_register_values(acc);
 	/* init state program1 and params */
 	lis3dsh_acc_set_init_statepr1_param(acc);
@@ -1640,45 +1661,29 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	/* As default, do not report information */
 	atomic_set(&acc->enabled, 0);
 
-	if (acc->pdata->gpio_int1 >= 0) {
-		INIT_WORK(&acc->irq1_work, lis3dsh_acc_irq1_work_func);
-		acc->irq1_work_queue =
-			create_singlethread_workqueue("lis3dsh_acc_wq1");
-		if (!acc->irq1_work_queue) {
-			err = -ENOMEM;
-			dev_err(&client->dev,
-					"cannot create work queue1: %d\n", err);
-			goto err_remove_sysfs_int;
-		}
-		err = request_irq(acc->irq1, lis3dsh_acc_isr1,
-				IRQF_TRIGGER_RISING, "lis3dsh_acc_irq1", acc);
+	if (acc->pdata->gpio_int1 > 0) {
+		err = request_threaded_irq(acc->irq1, NULL,
+				lis3dsh_acc_isr_threaded,
+				IRQF_ONESHOT | IRQF_TRIGGER_RISING,
+				LIS3DSH_ACC_DEV_NAME, &client->dev);
 		if (err < 0) {
 			dev_err(&client->dev, "request irq1 failed: %d\n", err);
-			goto err_destoyworkqueue1;
+			goto err_remove_sysfs_int;
 		}
 		disable_irq_nosync(acc->irq1);
 	}
 
-	if (acc->pdata->gpio_int2 >= 0) {
-		INIT_WORK(&acc->irq2_work, lis3dsh_acc_irq2_work_func);
-		acc->irq2_work_queue =
-			create_singlethread_workqueue("lis3dsh_acc_wq2");
-		if (!acc->irq2_work_queue) {
-			err = -ENOMEM;
-			dev_err(&client->dev,
-					"cannot create work queue2: %d\n", err);
-			goto err_free_irq1;
-		}
-		err = request_irq(acc->irq2, lis3dsh_acc_isr2,
-				IRQF_TRIGGER_RISING, "lis3dsh_acc_irq2", acc);
+	if (acc->pdata->gpio_int2 > 0) {
+		err = request_threaded_irq(acc->irq2, NULL,
+				lis3dsh_acc_isr_threaded,
+				IRQF_ONESHOT | IRQF_TRIGGER_RISING,
+				LIS3DSH_ACC_DEV_NAME, &client->dev);
 		if (err < 0) {
 			dev_err(&client->dev, "request irq2 failed: %d\n", err);
-			goto err_destoyworkqueue2;
+			goto err_free_irq1;
 		}
 		disable_irq_nosync(acc->irq2);
 	}
-
-
 
 	mutex_unlock(&acc->lock);
 
@@ -1686,14 +1691,8 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 
 	return 0;
 
-err_destoyworkqueue2:
-	if (acc->pdata->gpio_int2 >= 0)
-		destroy_workqueue(acc->irq2_work_queue);
 err_free_irq1:
 	free_irq(acc->irq1, acc);
-err_destoyworkqueue1:
-	if (acc->pdata->gpio_int1 >= 0)
-		destroy_workqueue(acc->irq1_work_queue);
 err_remove_sysfs_int:
 	remove_sysfs_interfaces(&client->dev);
 err_input_cleanup:
@@ -1706,8 +1705,8 @@ err_pdata_init:
 exit_kfree_pdata:
 	kfree(acc->pdata);
 err_mutexunlock:
+	wake_lock_destroy(&acc->tilt_wakelock);
 	mutex_unlock(&acc->lock);
-/*err_freedata:*/
 	kfree(acc);
 exit_check_functionality_failed:
 	pr_err("%s: Driver Init failed\n", LIS3DSH_ACC_DEV_NAME);
@@ -1718,20 +1717,15 @@ static int lis3dsh_acc_remove(struct i2c_client *client)
 {
 	struct lis3dsh_acc_data *acc = i2c_get_clientdata(client);
 
-	if (acc->pdata->gpio_int1 >= 0) {
+	if (acc->pdata->gpio_int1 > 0) {
 		free_irq(acc->irq1, acc);
 		gpio_free(acc->pdata->gpio_int1);
-		destroy_workqueue(acc->irq1_work_queue);
 	}
 
-	if (acc->pdata->gpio_int2 >= 0) {
+	if (acc->pdata->gpio_int2 > 0) {
 		free_irq(acc->irq2, acc);
 		gpio_free(acc->pdata->gpio_int2);
-		destroy_workqueue(acc->irq2_work_queue);
 	}
-
-	if (atomic_cmpxchg(&acc->enabled, 1, 0))
-			cancel_delayed_work_sync(&acc->input_work);
 
 	lis3dsh_acc_device_power_off(acc);
 	lis3dsh_acc_input_cleanup(acc);
@@ -1741,6 +1735,7 @@ static int lis3dsh_acc_remove(struct i2c_client *client)
 		acc->pdata->exit();
 
 	kfree(acc->pdata);
+	wake_lock_destroy(&acc->tilt_wakelock);
 	kfree(acc);
 
 	return 0;
@@ -1751,8 +1746,9 @@ static int lis3dsh_acc_resume(struct i2c_client *client)
 {
 	struct lis3dsh_acc_data *acc = i2c_get_clientdata(client);
 
-	if (acc->on_before_suspend)
-		return lis3dsh_acc_enable(acc);
+	/* lis3dsh should not be disabled in sleep */
+	if (acc->pdata->gpio_int1 > 0)
+		disable_irq_wake(acc->pdata->gpio_int1);
 	return 0;
 }
 
@@ -1760,8 +1756,10 @@ static int lis3dsh_acc_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct lis3dsh_acc_data *acc = i2c_get_clientdata(client);
 
-	acc->on_before_suspend = atomic_read(&acc->enabled);
-	return lis3dsh_acc_disable(acc);
+	/* lis3dsh should not be disabled in sleep */
+	if (acc->pdata->gpio_int1 > 0)
+		enable_irq_wake(acc->pdata->gpio_int1);
+	return 0;
 }
 #else
 #define lis3dsh_acc_suspend	NULL
@@ -1779,7 +1777,7 @@ static struct i2c_driver lis3dsh_acc_driver = {
 			.name = LIS3DSH_ACC_DEV_NAME,
 		  },
 	.probe = lis3dsh_acc_probe,
-	.remove = __devexit_p(lis3dsh_acc_remove),
+	.remove = lis3dsh_acc_remove,
 	.suspend = lis3dsh_acc_suspend,
 	.resume = lis3dsh_acc_resume,
 	.id_table = lis3dsh_acc_id,

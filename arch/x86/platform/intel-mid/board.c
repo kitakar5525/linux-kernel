@@ -93,6 +93,7 @@
 #include "device_libs/platform_pca9574.h"
 #include "device_libs/platform_hx8528_me372cl.h"
 #include "device_libs/platform_drv2605.h"
+#include "device_libs/platform_lis3dsh.h"
 
 /* SW devices */
 #include "device_libs/platform_panel.h"
@@ -243,6 +244,7 @@ struct devs_id __initconst device_ids[] = {
 	{"bq27520", SFI_DEV_TYPE_I2C, 0, &bq27520_platform_data, NULL},
 	{"bq27520f", SFI_DEV_TYPE_I2C, 0, &no_platform_data, NULL},
 #endif
+	{"lis3dsh_acc", SFI_DEV_TYPE_I2C, 0, &lis3dsh_platform_data, NULL},
 
 	/* MSIC subdevices */
 	{"msic_adc", SFI_DEV_TYPE_IPC, 1, &msic_adc_platform_data,

@@ -693,9 +693,11 @@ static int spi_start_queue(struct spi_master *master)
 
 	master->running = true;
 	master->cur_msg = NULL;
-	spin_unlock_irqrestore(&master->queue_lock, flags);
 
-	queue_kthread_work(&master->kworker, &master->pump_messages);
+	if (!list_empty(&master->queue))
+		queue_kthread_work(&master->kworker, &master->pump_messages);
+
+	spin_unlock_irqrestore(&master->queue_lock, flags);
 
 	return 0;
 }

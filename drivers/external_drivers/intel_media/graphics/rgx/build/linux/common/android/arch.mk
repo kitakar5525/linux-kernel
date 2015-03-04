@@ -87,10 +87,6 @@ ifneq ($(filter arm arm64 mips mips64,$(ANDROID_ARCH)),)
 LDM_PLATFORM ?= 1
 endif
 
-ifneq ($(filter x86 x86_64,$(ANDROID_ARCH)),)
-KERNEL_CROSS_COMPILE ?= undef
-endif
-
 ifneq ($(filter arm64 mips64 x86_64,$(ANDROID_ARCH)),)
 ifeq ($(MULTIARCH),)
 $(warning *** 64-bit architecture detected. Enabling MULTIARCH=1.)

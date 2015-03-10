@@ -43,6 +43,7 @@
 #include <linux/lnw_gpio.h>
 #include <linux/delay.h>
 #include <linux/acpi.h>
+#include <linux/reboot.h>
 #include <asm/intel-mid.h>
 #include <asm/platform_sst_audio.h>
 #include <asm/platform_sst.h>
@@ -574,6 +575,11 @@ void sst_recovery_exit(struct intel_sst_drv *sst_drv_ctx)
 
 }
 
+static struct notifier_block sst_reboot_notifier_block = {
+	.notifier_call = sst_reboot_callback,
+	.priority = 0,
+};
+
 /*
 * intel_sst_probe - PCI probe function
 *
@@ -599,6 +605,7 @@ static int intel_sst_probe(struct pci_dev *pci,
 	if (ret)
 		return ret;
 
+	sst_drv_ctx->reboot_notify = 0;
 	sst_drv_ctx->dev = &pci->dev;
 	sst_drv_ctx->pci_id = pci->device;
 	if (!sst_pdata)
@@ -901,6 +908,7 @@ static int intel_sst_probe(struct pci_dev *pci,
 	pm_runtime_put_noidle(sst_drv_ctx->dev);
 	register_sst(sst_drv_ctx->dev);
 	sst_debugfs_init(sst_drv_ctx);
+	register_reboot_notifier(&sst_reboot_notifier_block);
 	sst_drv_ctx->qos = kzalloc(sizeof(struct pm_qos_request),
 				GFP_KERNEL);
 	if (!sst_drv_ctx->qos) {
@@ -979,6 +987,7 @@ static void intel_sst_remove(struct pci_dev *pci)
 	sst_debugfs_exit(sst_drv_ctx);
 	pm_runtime_get_noresume(sst_drv_ctx->dev);
 	pm_runtime_forbid(sst_drv_ctx->dev);
+	unregister_reboot_notifier(&sst_reboot_notifier_block);
 	unregister_sst(sst_drv_ctx->dev);
 	pci_dev_put(sst_drv_ctx->pci);
 	sst_set_fw_state_locked(sst_drv_ctx, SST_SHUTDOWN);

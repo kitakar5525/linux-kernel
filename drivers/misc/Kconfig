@@ -571,6 +571,12 @@ config BRIGHTNESS_ISL97698
 	  This driver allows you to use backlight and brightness adjustment.
 	  Say Y to use it. Say N if unuse.
 
+config UID_CPUTIME
+	tristate "Per-UID cpu time statistics"
+	depends on PROFILING
+	help
+	  Per UID based cpu time statistics exported to /proc/uid_cputime
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

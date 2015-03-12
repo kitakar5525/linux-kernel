@@ -809,6 +809,15 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 
 	devicePresent = true;
 
+	uint8_t verFw[10], verCfg[10];
+	chipGetVersions(verFw, verCfg, true);
+	if ((verFw[5] == 0) && (verFw[6] == 0) && (verFw[7] == 0) && (verFw[8] == 0)) {
+		mdelay(10);
+		dev_err(&client->dev, "touch fw init failed, resetting the fw");
+		chipFirmwareReinitialize(CMD_FIRMWARE_REINIT_C);
+	}
+
+	mdelay(10);
 	i2cWriteNoReadyCheck(BUF_COMMAND, cmdStart, sizeof(cmdStart));
 	mdelay(10);
 	i2cReadNoReadyCheck(BUF_RESPONSE, rsp, sizeof(rsp));

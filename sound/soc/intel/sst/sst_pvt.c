@@ -541,7 +541,7 @@ int sst_wait_timeout(struct intel_sst_drv *sst_drv_ctx, struct sst_block *block)
 {
 	int retval = 0;
 	unsigned int block_timeout;
-	if ((sst_drv_ctx->pci_id == SST_CLV_PCI_ID) || (sst_drv_ctx->pci_id == SST_BYT_PCI_ID))
+	if (sst_drv_ctx->pci_id == SST_CLV_PCI_ID)
 		block_timeout = SST_BLOCK_TIMEOUT_2SEC;
 	else
 		block_timeout = SST_BLOCK_TIMEOUT;

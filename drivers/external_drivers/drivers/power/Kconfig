@@ -28,3 +28,11 @@ config BQ24261_CHARGER
 	  makes use of power supply charging framework. So the driver gives
 	  the charger hardware abstraction only. Charging logic is abstracted
 	  in the charging framework.
+
+config BQ24232_CHARGER
+	tristate "BQ24232 charger driver"
+	select POWER_SUPPLY_CHARGER
+	help
+	  Say Y to include support for BQ24232 Charger driver. This driver
+	  reports device status via power supply class properties. Charging
+	  logic is implemented inside the driver.

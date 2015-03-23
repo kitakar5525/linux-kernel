@@ -826,10 +826,6 @@ static int intel_mrfl_mmc_probe_slot(struct sdhci_pci_slot *slot)
 		slot->host->mmc->caps2 |= MMC_CAP2_POLL_R1B_BUSY |
 					MMC_CAP2_INIT_CARD_SYNC |
 					MMC_CAP2_CACHE_CTRL;
-
-		/* Enable Packed Command */
-		slot->host->mmc->caps2 |= MMC_CAP2_PACKED_CMD;
-
 		if (slot->chip->pdev->revision == 0x1) { /* B0 stepping */
 			slot->host->mmc->caps2 |= MMC_CAP2_HS200_1_8V_SDR;
 			/* WA for async abort silicon issue */

@@ -30,6 +30,10 @@ enum iio_chan_type {
 	IIO_CCT,
 	IIO_PRESSURE,
 	IIO_RESISTANCE,
+	IIO_SIGN_MOTION,
+	IIO_STEP_COUNTER,
+	IIO_TILT,
+	IIO_STEP_DETECTOR,
 };
 
 enum iio_modifier {

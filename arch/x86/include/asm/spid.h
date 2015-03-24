@@ -104,6 +104,7 @@ enum {
 	INTEL_MOFD_TABLET = 0x0009,
 	INTEL_CHT_PHONE   = 0x000A,
 	INTEL_CHT_TABLET  = 0x000B,
+	INTEL_RBY_PHONE   = 0X000C,
 	INTEL_PLATFORM_UNKNOWN = 0xFFFF
 };
 
@@ -217,6 +218,16 @@ enum {
 	INTEL_MOFD_TABLET_UNKNOWN = 0xFFFF
 };
 
+/* Product_Line_ID table for Platform_Family_ID == INTEL_RBY_PHONE */
+enum {
+	INTEL_RBY_PHONE_PROD1_PRO   = 0x0000,
+	INTEL_RBY_PHONE_PROD1_ENG   = 0X8000,
+	INTEL_RBY_PHONE_PROD2_PRO   = 0x0001,
+	INTEL_RBY_PHONE_PROD2_ENG   = 0X8001,
+	INTEL_RBY_PHONE_PROD3_PRO   = 0x0002,
+	INTEL_RBY_PHONE_PROD3_ENG   = 0X8002,
+	INTEL_RBY_PHONE_UNKNOWN = 0xFFFF
+};
 
 /* Hardware_ID table for Product_Line_ID == INTEL_MFLD_PHONE_BB15 */
 enum {
@@ -583,6 +594,26 @@ enum {
 	CHT_TABLET_FRD_PR1, /* Cherry Trail FFRD PR1 */
 	CHT_TABLET_FRD_PR2, /* Cherry Trail FFRD PR2 */
 	CHT_TABLET_UNKNOWN = 0xFFFF
+};
+
+/* Hardware_ID table for Product_Line_ID == INTEL_RBY_PHONE_PROD1 */
+enum {
+	RBY_PHONE_PROD1_1,
+	RBY_PHONE_PROD1_2,
+	RBY_PHONE_PROD1_UNKNOWN = 0xFFFF
+};
+
+/* Hardware_ID table for Product_Line_ID == INTEL_RBY_PHONE_PROD2 */
+enum {
+	RBY_PHONE_PROD2_1,
+	RBY_PHONE_PROD2_2,
+	RBY_PHONE_PROD2_UNKNOWN = 0xFFFF
+};
+
+/* Hardware_ID table for Product_Line_ID == INTEL_RBY_PHONE_PROD3 */
+enum {
+	RBY_PHONE_PROD3_1,
+	RBY_PHONE_PROD3_UNKNOWN = 0xFFFF
 };
 
 /* Macros for SPID based checks */

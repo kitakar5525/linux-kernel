@@ -323,6 +323,7 @@ static int __init mrfl_platform_init(void)
 	table = get_oem0_table();
 
 	if (!(INTEL_MID_BOARD(1, PHONE, MRFL) ||
+		INTEL_MID_BOARD(1, PHONE, RBY) ||
 	      INTEL_MID_BOARD(1, TABLET, MRFL) ||
 		INTEL_MID_BOARD(1, PHONE, MOFD) ||
 		 INTEL_MID_BOARD(1, TABLET, MOFD)))

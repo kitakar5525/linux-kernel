@@ -1137,6 +1137,7 @@ static int sst_soc_probe(struct snd_soc_platform *platform)
 	    INTEL_MID_BOARD(1, TABLET, BYT))
 		return sst_platform_clv_init(platform);
 	if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
+			INTEL_MID_BOARD(1, PHONE, RBY) ||
 			INTEL_MID_BOARD(1, TABLET, MRFL) ||
 			INTEL_MID_BOARD(1, PHONE, MOFD) ||
 			INTEL_MID_BOARD(1, TABLET, MOFD)) {

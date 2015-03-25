@@ -51,6 +51,7 @@ static int hdmi_i2c_workaround(void)
 	}
 	if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
 	    INTEL_MID_BOARD(1, TABLET, MRFL) ||
+		INTEL_MID_BOARD(1, PHONE, RBY) ||
 		INTEL_MID_BOARD(1, PHONE, MOFD) ||
 		INTEL_MID_BOARD(1, TABLET, MOFD)) {
 		/* Pins 17 and 18 are used in Merrifield/MOOR-PRH for HDMI i2c (bus3) */

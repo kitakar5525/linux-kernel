@@ -131,7 +131,8 @@ static struct intel_dwc_otg_pdata *get_otg_platform_data(struct pci_dev *pdev)
 				dwc_otg_pdata.using_vusbphy = 1;
 				dwc_otg_pdata.utmi_fs_det_wa = 1;
 			}
-		} else if (INTEL_MID_BOARD(1, PHONE, MRFL)) {
+		} else if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
+			INTEL_MID_BOARD(1, PHONE, RBY)) {
 			dwc_otg_pdata.pmic_type = BASIN_COVE;
 			dwc_otg_pdata.using_vusbphy = 1;
 			dwc_otg_pdata.charger_detect_enable = 1;

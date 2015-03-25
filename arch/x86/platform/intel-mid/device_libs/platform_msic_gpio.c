@@ -51,6 +51,7 @@ void __init *msic_gpio_platform_data(void *info)
 		msic_gpio_pdata.gpio0_hv_ctlo = 0x6D;
 		msic_gpio_pdata.gpio0_hv_ctli = 0x75;
 	} else if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
+		INTEL_MID_BOARD(1, PHONE, RBY) ||
 		INTEL_MID_BOARD(1, PHONE, MOFD) ||
 		INTEL_MID_BOARD(1, TABLET, MOFD)) {
 		/* Basincove PMIC GPIO has total 8 GPIO pins,

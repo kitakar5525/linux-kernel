@@ -129,6 +129,8 @@ struct IT7260_ts_data {
 	struct input_dev *input_dev;
 	struct delayed_work palmdown_work;
 	struct delayed_work palmup_work;
+	struct workqueue_struct *IT7260_init_wq;
+	struct work_struct init_work;
 };
 
 struct ite7260_perfile_data {
@@ -146,8 +148,6 @@ static bool chipAwake = true;
 static bool hadFingerDown;
 static bool isDeviceSleeping;
 static bool isDeviceSuspend;
-static int ite7260_major;
-static int ite7260_minor;
 static struct input_dev *input_dev;
 static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
@@ -726,14 +726,14 @@ static bool chipIdentifyIT7260(void)
 	static const uint8_t expectedID[] = {0x0A, 'I', 'T', 'E', '7', '2', '6', '0'};
 	uint8_t chipID[10] = {0,};
 
-	waitDeviceReady(true, false);
+	waitDeviceReady(false, false);
 
 	if (!i2cWriteNoReadyCheck(BUF_COMMAND, cmdIdent, sizeof(cmdIdent))) {
 		LOGE("i2cWrite() failed\n");
 		return false;
 	}
 
-	waitDeviceReady(true, false);
+	waitDeviceReady(false, false);
 
 	if (!i2cReadNoReadyCheck(BUF_RESPONSE, chipID, sizeof(chipID))) {
 		LOGE("i2cRead() failed\n");
@@ -757,10 +757,57 @@ static bool chipIdentifyIT7260(void)
 	return true;
 }
 
-static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static void IT7260_init_work(struct work_struct *w)
 {
 	static const uint8_t cmdStart[] = {CMD_UNKNOWN_7};
+	uint8_t verFw[10], verCfg[10];
+	uint32_t ver;
 	uint8_t rsp[2];
+	static struct IT7260_ts_data *ts;
+	struct i2c_client *client;
+	int tries = 1;
+
+	ts = container_of(w, struct IT7260_ts_data, init_work);
+	client = ts->client;
+
+	do {
+		if (!chipIdentifyIT7260()) {
+			LOGI("chipIdentifyIT7260 FAIL");
+			return;
+		}
+
+		/* Touch sometimes boot in debug mode because of an issue in our firmware.
+		 * When that happens, version is reported as 0.0.0.0 and we have to reset the
+		 * touchscreen in order to get it booted to "normal mode" */
+		chipGetVersions(verFw, verCfg, true);
+		ver = verFw[5] + (verFw[6] << 8) + (verFw[7] << 16) + (verFw[8] << 24);
+		if (tries && !ver) {
+			mdelay(10);
+			dev_err(&client->dev, "touch fw init failed, resetting the fw");
+			chipFirmwareReinitialize(CMD_FIRMWARE_REINIT_C);
+		}
+	} while (tries-- && !ver);
+
+	/* Unable to reset touch to "normal mode" */
+	if (!ver)
+		return;
+
+	mdelay(10);
+	i2cWriteNoReadyCheck(BUF_COMMAND, cmdStart, sizeof(cmdStart));
+	mdelay(10);
+	i2cReadNoReadyCheck(BUF_RESPONSE, rsp, sizeof(rsp));
+	mdelay(10);
+
+	if (rsp[0] || rsp[1])
+		return;
+
+	/* Finally, we can re-enable the irq and set the device to present */
+	enable_irq(client->irq);
+	devicePresent = true;
+}
+
+static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
+{
 	int ret = -1;
 	struct it7260_platform_data *pdata = client->dev.platform_data;
 
@@ -794,11 +841,6 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_sysfs_grp_create_1;
 	}
 
-	if (!chipIdentifyIT7260()) {
-		LOGI("chipIdentifyIT7260 FAIL");
-		goto err_ident_fail_or_input_alloc;
-	}
-
 	input_dev = input_allocate_device();
 	if (!input_dev) {
 		LOGE("failed to allocate input device\n");
@@ -825,17 +867,26 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 
 	IT7260_wq = create_workqueue("IT7260_wq");
 	if (!IT7260_wq)
-		goto err_check_functionality_failed;
+		goto err_input_register;
+
+	gl_ts->IT7260_init_wq = create_singlethread_workqueue("IT7260_init_wq");
+	if (!gl_ts->IT7260_init_wq)
+		goto err_wq_creat_fail;
 
 	if (input_register_device(input_dev)) {
 		LOGE("failed to register input device\n");
-		goto err_input_register;
+		goto err_input_dev_register;
 	}
+
+	INIT_WORK(&gl_ts->init_work, IT7260_init_work);
 
 	if (request_threaded_irq(client->irq, NULL, IT7260_ts_threaded_handler, pdata->irq_type, client->name, gl_ts)) {
 		dev_err(&client->dev, "request_irq failed\n");
 		goto err_irq_reg;
 	}
+
+	/* let the irq disabled as long as we don't have configured the touch properly */
+	disable_irq_nosync(client->irq);
 
 	if (sysfs_create_group(&(client->dev.kobj), &it7260_attr_group)) {
 		dev_err(&client->dev, "failed to register sysfs #2\n");
@@ -843,21 +894,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	}
 	wake_lock_init(&touch_lock, WAKE_LOCK_SUSPEND, "touch-lock");
 
-	devicePresent = true;
-
-	uint8_t verFw[10], verCfg[10];
-	chipGetVersions(verFw, verCfg, true);
-	if ((verFw[5] == 0) && (verFw[6] == 0) && (verFw[7] == 0) && (verFw[8] == 0)) {
-		mdelay(10);
-		dev_err(&client->dev, "touch fw init failed, resetting the fw");
-		chipFirmwareReinitialize(CMD_FIRMWARE_REINIT_C);
-	}
-
-	mdelay(10);
-	i2cWriteNoReadyCheck(BUF_COMMAND, cmdStart, sizeof(cmdStart));
-	mdelay(10);
-	i2cReadNoReadyCheck(BUF_RESPONSE, rsp, sizeof(rsp));
-	mdelay(10);
+	queue_work(gl_ts->IT7260_init_wq, &gl_ts->init_work);
 
 	return 0;
 
@@ -868,6 +905,14 @@ err_irq_reg:
 	input_unregister_device(input_dev);
 	input_dev = NULL;
 
+err_input_dev_register:
+	if (gl_ts->IT7260_init_wq)
+		destroy_workqueue(gl_ts->IT7260_init_wq);
+
+err_wq_creat_fail:
+	if (IT7260_wq)
+		destroy_workqueue(IT7260_wq);
+
 err_input_register:
 	if (input_dev)
 		input_free_device(input_dev);
@@ -877,10 +922,6 @@ err_ident_fail_or_input_alloc:
 
 err_sysfs_grp_create_1:
 	kfree(gl_ts);
-
-err_check_functionality_failed:
-	if (IT7260_wq)
-		destroy_workqueue(IT7260_wq);
 
 err_out:
 	return ret;
@@ -954,6 +995,8 @@ static int ite7260_open(struct inode *inode, struct file *filp)
 	struct ite7260_perfile_data *dev;
 	int i;
 
+	if (!devicePresent)
+		return -ENODEV;
 
 	dev = kmalloc(sizeof(struct ite7260_perfile_data), GFP_KERNEL);
 	if (!dev)
@@ -1034,8 +1077,12 @@ static void __exit IT7260_ts_exit(void)
 {
 	i2c_del_driver(&IT7260_ts_driver);
 	wake_lock_destroy(&touch_lock);
+	cancel_work_sync(&gl_ts->init_work);
 	if (IT7260_wq)
 		destroy_workqueue(IT7260_wq);
+	if (gl_ts->IT7260_init_wq)
+		destroy_workqueue(gl_ts->IT7260_init_wq);
+	free_irq(gl_ts->client->irq, gl_ts);
 }
 
 module_init(IT7260_ts_init);

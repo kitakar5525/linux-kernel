@@ -13,6 +13,8 @@
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/iio/iio.h>
+#include <linux/gpio.h>
+#include <linux/platform_data/st_lsm6ds3_pdata.h>
 
 #include "st_lsm6ds3.h"
 
@@ -90,6 +92,8 @@ static int st_lsm6ds3_i2c_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, cdata);
 
 	cdata->tf = &st_lsm6ds3_tf_i2c;
+	if (((struct st_lsm6ds3_platform_data *)client->dev.platform_data)->gpio_int1 > 0)
+		client->irq = gpio_to_irq(((struct st_lsm6ds3_platform_data *)client->dev.platform_data)->gpio_int1);
 
 	err = st_lsm6ds3_common_probe(cdata, client->irq);
 	if (err < 0)

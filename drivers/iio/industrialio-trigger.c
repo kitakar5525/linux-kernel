@@ -426,8 +426,10 @@ struct iio_trigger *iio_trigger_alloc(const char *fmt, ...)
 		device_initialize(&trig->dev);
 
 		mutex_init(&trig->pool_lock);
+		/* Workaround: change 0 to 60 for remove irq number conflict
+		 * between iio_trig and hardware interrupt */
 		trig->subirq_base
-			= irq_alloc_descs(-1, 0,
+			= irq_alloc_descs(-1, 60,
 					  CONFIG_IIO_CONSUMERS_PER_TRIGGER,
 					  0);
 		if (trig->subirq_base < 0) {

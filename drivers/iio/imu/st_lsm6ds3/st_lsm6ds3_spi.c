@@ -13,6 +13,8 @@
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
 #include <linux/iio/iio.h>
+#include <linux/gpio.h>
+#include <linux/platform_data/st_lsm6ds3_pdata.h>
 
 #include "st_lsm6ds3.h"
 
@@ -111,6 +113,9 @@ static int st_lsm6ds3_spi_probe(struct spi_device *spi)
 	spi_set_drvdata(spi, cdata);
 
 	cdata->tf = &st_lsm6ds3_tf_spi;
+
+	if (((struct st_lsm6ds3_platform_data *)spi->dev.platform_data)->gpio_int1 > 0)
+		spi->irq = gpio_to_irq(((struct st_lsm6ds3_platform_data *)spi->dev.platform_data)->gpio_int1);
 
 	err = st_lsm6ds3_common_probe(cdata, spi->irq);
 	if (err < 0)

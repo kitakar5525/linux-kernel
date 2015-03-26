@@ -25,8 +25,8 @@
 #include <linux/iio/buffer.h>
 #include <linux/iio/events.h>
 #include <asm/unaligned.h>
-
 #include <linux/iio/common/st_sensors.h>
+#include <linux/lnw_gpio.h>
 #include "st_lsm6ds3.h"
 
 #define MS_TO_NS(msec)				((msec) * 1000 * 1000)

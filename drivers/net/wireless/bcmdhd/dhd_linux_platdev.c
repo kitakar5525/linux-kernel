@@ -130,6 +130,47 @@ int wifi_platform_get_irq_number(wifi_adapter_info_t *adapter, unsigned long *ir
 	return adapter->irq_num;
 }
 
+#define MAC_ADDRESS_LEN 12
+static int wifi_get_external_mac_addr(unsigned char *buf)
+{
+	int ret = 0;
+	int i;
+	struct file *fp = NULL;
+	unsigned char c_mac[MAC_ADDRESS_LEN];
+	char fname[] = "/config/wifi/mac.txt";
+
+	DHD_TRACE(("%s Enter\n", __func__));
+
+	fp = dhd_os_open_image(fname);
+	if (fp == NULL) {
+		DHD_ERROR(("%s: unable to open %s\n", __func__, fname));
+		return 1;
+	}
+
+	if (dhd_os_get_image_block(c_mac, MAC_ADDRESS_LEN, fp) !=
+							MAC_ADDRESS_LEN) {
+		DHD_ERROR(("%s: Error reading from %s\n", __func__, fname));
+		dhd_os_close_image(fp);
+		return 1;
+	}
+	dhd_os_close_image(fp);
+
+	for (i = 0; i < MAC_ADDRESS_LEN; i += 2) {
+		c_mac[i] = bcm_isdigit(c_mac[i]) ?
+			c_mac[i]-'0' : bcm_toupper(c_mac[i])-'A'+10;
+		c_mac[i+1] = bcm_isdigit(c_mac[i+1]) ?
+			c_mac[i+1]-'0' : bcm_toupper(c_mac[i+1])-'A'+10;
+
+		buf[i/2] = c_mac[i]*16 + c_mac[i+1];
+	}
+
+	DHD_TRACE(("%s: read from file mac address: %x:%x:%x:%x:%x:%x\n",
+		__func__, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]));
+
+	return ret;
+}
+
+
 int wifi_platform_set_power(wifi_adapter_info_t *adapter, bool on, unsigned long msec)
 {
 	int err = 0;
@@ -248,6 +289,7 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 		return -ENODATA;
 	}
 	((struct wifi_platform_data *)(adapter->wifi_plat_data))->set_power = bcmsdh_sdmmc_set_power;
+	((struct wifi_platform_data *)(adapter->wifi_plat_data))->get_mac_addr = wifi_get_external_mac_addr;
 
 	resource = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (resource == NULL) {

@@ -435,6 +435,14 @@ static void init_callbacks(struct max17042_platform_data *pdata)
 		pdata->reset_chip = true;
 		pdata->battery_pack_temp = ctp_get_battery_temp;
 		pdata->is_volt_shutdown_enabled = ctp_is_volt_shutdown_enabled;
+	} else if  (INTEL_MID_BOARD(2, PHONE, MRFL, RBY, PRO) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, RBY, ENG) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, MVN, PRO) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, MVN, ENG) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, GLC, PRO) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, GLC, ENG)) {
+		pdata->get_vmin_threshold = mrfl_get_vsys_min;
+		pdata->get_vmax_threshold = mrfl_get_volt_max;
 	} else if (INTEL_MID_BOARD(1, PHONE, MRFL)
 			|| INTEL_MID_BOARD(1, TABLET, MRFL)
 			|| INTEL_MID_BOARD(1, PHONE, MOFD)
@@ -524,6 +532,17 @@ static void init_platform_params(struct max17042_platform_data *pdata)
 			pdata->soc_intr_mode_enabled = true;
 			pdata->valid_battery = true;
 		}
+	} else if (INTEL_MID_BOARD(2, PHONE, MRFL, RBY, PRO) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, RBY, ENG) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, MVN, PRO) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, MVN, ENG) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, GLC, PRO) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, GLC, ENG)) {
+		pdata->enable_current_sense = true;
+		pdata->technology = POWER_SUPPLY_TECHNOLOGY_LION;
+		pdata->file_sys_storage_enabled = 1;
+		pdata->soc_intr_mode_enabled = true;
+		pdata->valid_battery = true;
 	} else if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
 				INTEL_MID_BOARD(1, TABLET, MRFL) ||
 				INTEL_MID_BOARD(1, PHONE, MOFD) ||
@@ -574,6 +593,16 @@ static void init_platform_thresholds(struct max17042_platform_data *pdata)
 		pdata->volt_max_lim = 4300;
 	} else if (INTEL_MID_BOARD(2, TABLET, MFLD, SLP, ENG) ||
 		INTEL_MID_BOARD(2, TABLET, MFLD, SLP, PRO)) {
+		pdata->temp_min_lim = 0;
+		pdata->temp_max_lim = 45;
+		pdata->volt_min_lim = 3200;
+		pdata->volt_max_lim = 4350;
+	} else if (INTEL_MID_BOARD(2, PHONE, MRFL, RBY, PRO) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, RBY, ENG) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, MVN, PRO) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, MVN, ENG) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, GLC, PRO) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, GLC, ENG)) {
 		pdata->temp_min_lim = 0;
 		pdata->temp_max_lim = 45;
 		pdata->volt_min_lim = 3200;

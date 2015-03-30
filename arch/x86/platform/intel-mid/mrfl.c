@@ -328,6 +328,14 @@ static int __init mrfl_platform_init(void)
 		 INTEL_MID_BOARD(1, TABLET, MOFD)))
 		return 0;
 
+	if (INTEL_MID_BOARD(2, PHONE, MRFL, RBY, PRO) ||
+		INTEL_MID_BOARD(2, PHONE, MRFL, RBY, ENG) ||
+		INTEL_MID_BOARD(2, PHONE, MRFL, MVN, PRO) ||
+		INTEL_MID_BOARD(2, PHONE, MRFL, MVN, ENG) ||
+		INTEL_MID_BOARD(2, PHONE, MRFL, GLC, PRO) ||
+		INTEL_MID_BOARD(2, PHONE, MRFL, GLC, ENG))
+		return 0;
+
 	if (!table) {
 		if ((INTEL_MID_BOARD(1, PHONE, MOFD) ||
 			INTEL_MID_BOARD(1, TABLET, MOFD)))

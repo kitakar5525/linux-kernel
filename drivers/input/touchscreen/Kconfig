@@ -892,4 +892,6 @@ config TOUCHSCREEN_HIMAX_HX8528_ME372CL
 	bool "Himax HX8528 touchscreen"
 	depends on I2C && PF450CL
 
+source "drivers/input/touchscreen/synaptics_dsx/Kconfig"
+
 endif

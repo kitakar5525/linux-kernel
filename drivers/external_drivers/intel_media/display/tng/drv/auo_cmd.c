@@ -285,7 +285,7 @@ int auo_cmd_drv_ic_init(struct mdfld_dsi_config *dsi_config)
 	}
 
 	err = mdfld_dsi_send_mcs_short_hs(sender,
-			0x35, 0x01, 1,
+			0x35, 0x00, 1,
 			MDFLD_DSI_SEND_PACKAGE);
 	if (err) {
 		DRM_ERROR("%s: %d: 0x35 cmd\n",

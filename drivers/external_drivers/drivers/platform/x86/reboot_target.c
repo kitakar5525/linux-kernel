@@ -42,6 +42,7 @@ static const struct name2id NAME2ID[] = {
 	{ "dnx",        0x14 },
 	{ "ramconsole", 0x16 },
 	{ "factory2",   0x18 },
+	{ "bootoneshot", 0x1A },
 };
 
 #define ALLOW_FACTORY_PARAM_NAME "allow_factory="

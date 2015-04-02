@@ -99,6 +99,7 @@
 #include "device_libs/platform_lis3dsh.h"
 #include "device_libs/platform_lsm6ds3.h"
 #include "device_libs/platform_tsl258x.h"
+#include "device_libs/platform_isl97698.h"
 
 /* SW devices */
 #include "device_libs/platform_panel.h"
@@ -253,6 +254,7 @@ struct devs_id __initconst device_ids[] = {
 	{"lis3dsh_acc", SFI_DEV_TYPE_I2C, 0, &lis3dsh_platform_data, NULL},
 	{"lsm6ds3", SFI_DEV_TYPE_I2C, 0, &lsm6ds3_platform_data, NULL},
 	{"tsl2584", SFI_DEV_TYPE_I2C, 0, &tsl258x_als_platform_data, NULL},
+	{"isl97698", SFI_DEV_TYPE_I2C, 0, &isl97698_brightness_platform_data, NULL},
 
 	/* MSIC subdevices */
 	{"msic_adc", SFI_DEV_TYPE_IPC, 1, &msic_adc_platform_data,

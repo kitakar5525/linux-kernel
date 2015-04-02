@@ -77,6 +77,7 @@ obj-$(subst m,y,$(CONFIG_INPUT_DRV2605_VIBRA)) += platform_drv2605.o
 obj-$(subst m,y,$(CONFIG_ST_LIS3DSH)) += platform_lis3dsh.o
 obj-$(subst m,y,$(CONFIG_ST_LSM6DS3_IIO)) += platform_lsm6ds3.o
 obj-$(subst m,y,$(CONFIG_INPUT_TSL2584)) += platform_tsl258x.o
+obj-$(subst m,y,$(CONFIG_BRIGHTNESS_ISL97698)) += platform_isl97698.o
 
 # SPI Devices
 obj-$(subst m,y,$(CONFIG_SERIAL_MRST_MAX3110)) += platform_max3111.o

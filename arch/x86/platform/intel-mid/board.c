@@ -67,6 +67,7 @@
 #include "device_libs/platform_mrfl_thermal.h"
 #include "device_libs/platform_moor_thermal.h"
 #include "device_libs/platform_scu_log.h"
+#include "device_libs/platform_bq24232.h"
 
 /*
  * I2C devices
@@ -424,6 +425,7 @@ struct devs_id __initconst device_ids[] = {
 						&soc_thrm_device_handler},
 	{"sst_ics43432", SFI_DEV_TYPE_IPC, 1, &merfld_sst_audio_platform_data,
 						&ipc_device_handler},
+	{"bq24232_charger", SFI_DEV_TYPE_IPC, 1, &bq24232_charger_platform_data, NULL},
 	{"wm8958", SFI_DEV_TYPE_I2C, 0, &wm8994_platform_data, NULL},
 	{"wm5102", SFI_DEV_TYPE_I2C, 0, &wm5102_platform_data, NULL},
 	{"lm49453_codec", SFI_DEV_TYPE_I2C, 1, &no_platform_data, NULL},

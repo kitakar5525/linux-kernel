@@ -29,6 +29,15 @@ config BQ24261_CHARGER
 	  the charger hardware abstraction only. Charging logic is abstracted
 	  in the charging framework.
 
+config BQ51003_POWER
+	tristate "BQ51003 wireless power driver"
+	select POWER_SUPPLY_CHARGER
+	help
+	  Say Y to include support for BQ51003 wireless power driver. This driver
+	  makes use of power supply charging framework. This driver identify wireless
+	  as power source and permits to enable/disable it. No charging logic is
+	  insured by this driver. A charger is still necessary.
+
 config BQ24232_CHARGER
 	tristate "BQ24232 charger driver"
 	select POWER_SUPPLY_CHARGER

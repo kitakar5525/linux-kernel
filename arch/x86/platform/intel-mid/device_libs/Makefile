@@ -42,6 +42,7 @@ endif
 obj-$(subst m,y,$(CONFIG_SENSORS_THERMAL_MRFLD)) += platform_mrfl_thermal.o
 obj-$(subst m,y,$(CONFIG_INTEL_MOOR_THERMAL)) += platform_moor_thermal.o
 obj-$(subst m,y,$(CONFIG_INTEL_SCU_FLIS)) += platform_scu_flis.o
+obj-$(subst m,y,$(CONFIG_BQ51003_POWER)) += platform_bq51003.o
 obj-$(subst m,y,$(CONFIG_BQ24232_CHARGER)) += platform_bq24232.o
 
 # I2C Devices

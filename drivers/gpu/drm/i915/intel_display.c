@@ -9517,8 +9517,8 @@ static int intel_crtc_flip_prepare(struct drm_crtc *crtc,
 
 				tmp_ret = drm_mode_setplane(dev, plane, file_priv);
 				if (tmp_ret) {
-					DRM_ERROR("drm_mode_setplane failed\n");
-					DRM_ERROR("::plane_id %u crtc_id %u fb %u flags 0x%x {%d,%d,%ux%u %d,%d,%ux%u} ud %llu ret %d\n",
+					DRM_ERROR_RATELIMITED("drm_mode_setplane failed\n");
+					DRM_ERROR_RATELIMITED("::plane_id %u crtc_id %u fb %u flags 0x%x {%d,%d,%ux%u %d,%d,%ux%u} ud %llu ret %d\n",
 							plane->plane_id, plane->crtc_id,
 							plane->fb_id, plane->flags,
 							plane->crtc_x, plane->crtc_y,
@@ -9607,7 +9607,7 @@ static int intel_crtc_set_display(struct drm_crtc *crtc,
 	/* Prepare or calculate plane properties for flip */
 	ret = intel_crtc_flip_prepare(crtc, disp, file_priv);
 	if (ret) {
-		DRM_ERROR("failed to validate or calculate plane data\n");
+		DRM_ERROR_RATELIMITED("failed to validate or calculate plane data\n");
 		return ret;
 	}
 

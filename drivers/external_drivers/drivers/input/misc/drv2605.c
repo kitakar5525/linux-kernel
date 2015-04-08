@@ -47,7 +47,6 @@
 #include <linux/sched.h>
 
 #include <linux/drv2605_vibra.h>
-#include "drv2605.h"
 
 #include <linux/spinlock_types.h>
 #include <linux/spinlock.h>
@@ -67,79 +66,8 @@
 MODULE_AUTHOR("Immersion Corp.");
 MODULE_DESCRIPTION("Driver for "DEVICE_NAME);
 
-/*
-	DRV2605 built-in effect bank/library
- */
-#define EFFECT_LIBRARY LIBRARY_F
-
-/*
-	Rated Voltage:
-	Calculated using the formula r = v * 255 / 5.6
-	where r is what will be written to the register
-	and v is the rated voltage of the actuator
-
-	Overdrive Clamp Voltage:
-	Calculated using the formula o = oc * 255 / 5.6
-	where o is what will be written to the register
-	and oc is the overdrive clamp voltage of the actuator
- */
-#if (EFFECT_LIBRARY == LIBRARY_A)
-#define ERM_RATED_VOLTAGE                       0x3E
-#define ERM_OVERDRIVE_CLAMP_VOLTAGE             0x90
-
-#elif (EFFECT_LIBRARY == LIBRARY_B)
-#define ERM_RATED_VOLTAGE                       0x90
-#define ERM_OVERDRIVE_CLAMP_VOLTAGE             0x90
-
-#elif (EFFECT_LIBRARY == LIBRARY_C)
-#define ERM_RATED_VOLTAGE                       0x90
-#define ERM_OVERDRIVE_CLAMP_VOLTAGE             0x90
-
-#elif (EFFECT_LIBRARY == LIBRARY_D)
-#define ERM_RATED_VOLTAGE                       0x90
-#define ERM_OVERDRIVE_CLAMP_VOLTAGE             0x90
-
-#elif (EFFECT_LIBRARY == LIBRARY_E)
-#define ERM_RATED_VOLTAGE                       0x90
-#define ERM_OVERDRIVE_CLAMP_VOLTAGE             0x90
-
-#else
-#define ERM_RATED_VOLTAGE                       0x90
-#define ERM_OVERDRIVE_CLAMP_VOLTAGE             0x90
-#endif
-
-#define LRA_SEMCO1036                           0
-#define LRA_SEMCO0934                           1
-#define LRA_ROBBY                               2
-#define LRA_SELECTION                           LRA_ROBBY
-
-#if (LRA_SELECTION == LRA_SEMCO1036)
-#define LRA_RATED_VOLTAGE                       0x56
-#define LRA_OVERDRIVE_CLAMP_VOLTAGE             0x90
-#define LRA_RTP_STRENGTH                        0x7F /* 100% of rated voltage (closed loop)*/
-
-#elif (LRA_SELECTION == LRA_SEMCO0934)
-#define LRA_RATED_VOLTAGE                       0x51
-#define LRA_OVERDRIVE_CLAMP_VOLTAGE             0x72
-#define LRA_RTP_STRENGTH                        0x7F /* 100% of rated voltage (closed loop)*/
-
-#elif (LRA_SELECTION == LRA_ROBBY)
-#define LRA_RATED_VOLTAGE                       0x5D
-#define LRA_OVERDRIVE_CLAMP_VOLTAGE             0x92
-#define LRA_RTP_STRENGTH                        0x7F /* 100% of rated voltage (closed loop)*/
-#endif
-
-#define SKIP_LRA_AUTOCAL        1
 #define GO_BIT_POLL_INTERVAL    15
 #define STANDBY_WAKE_DELAY      1
-
-#if EFFECT_LIBRARY == LIBRARY_A
-#define REAL_TIME_PLAYBACK_STRENGTH 0x38 /* ~44% of overdrive voltage (open loop)*/
-#elif EFFECT_LIBRARY == LIBRARY_F
-#define REAL_TIME_PLAYBACK_STRENGTH LRA_RTP_STRENGTH
-#else
-#define REAL_TIME_PLAYBACK_STRENGTH 0x7F /* 100% of overdrive voltage (open loop)*/
-#endif
 
 #define MAX_TIMEOUT 10000 /* 10s */
 
@@ -168,85 +96,9 @@ static struct vibrator {
 	unsigned gpio_en;
 } vibdata;
 
-static char g_effect_bank = EFFECT_LIBRARY;
+static char g_effect_bank;
+static char real_time_playback_strength;
 static int device_id = -1;
-
-static const unsigned char ERM_autocal_sequence[] = {
-	MODE_REG,		       AUTO_CALIBRATION,
-	REAL_TIME_PLAYBACK_REG,	       REAL_TIME_PLAYBACK_STRENGTH,
-	LIBRARY_SELECTION_REG,	       EFFECT_LIBRARY,
-	WAVEFORM_SEQUENCER_REG,	       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG2,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG3,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG4,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG5,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG6,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG7,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG8,       WAVEFORM_SEQUENCER_DEFAULT,
-	OVERDRIVE_TIME_OFFSET_REG,     0x00,
-	SUSTAIN_TIME_OFFSET_POS_REG,   0x00,
-	SUSTAIN_TIME_OFFSET_NEG_REG,   0x00,
-	BRAKE_TIME_OFFSET_REG,	       0x00,
-	AUDIO_HAPTICS_CONTROL_REG,     AUDIO_HAPTICS_RECT_20MS | AUDIO_HAPTICS_FILTER_125HZ,
-	AUDIO_HAPTICS_MIN_INPUT_REG,   AUDIO_HAPTICS_MIN_INPUT_VOLTAGE,
-	AUDIO_HAPTICS_MAX_INPUT_REG,   AUDIO_HAPTICS_MAX_INPUT_VOLTAGE,
-	AUDIO_HAPTICS_MIN_OUTPUT_REG,  AUDIO_HAPTICS_MIN_OUTPUT_VOLTAGE,
-	AUDIO_HAPTICS_MAX_OUTPUT_REG,  AUDIO_HAPTICS_MAX_OUTPUT_VOLTAGE,
-	RATED_VOLTAGE_REG,	       ERM_RATED_VOLTAGE,
-	OVERDRIVE_CLAMP_VOLTAGE_REG,   ERM_OVERDRIVE_CLAMP_VOLTAGE,
-	AUTO_CALI_RESULT_REG,	       DEFAULT_ERM_AUTOCAL_COMPENSATION,
-	AUTO_CALI_BACK_EMF_RESULT_REG, DEFAULT_ERM_AUTOCAL_BACKEMF,
-	FEEDBACK_CONTROL_REG,	       FB_BRAKE_FACTOR_3X | LOOP_RESPONSE_MEDIUM | FEEDBACK_CONTROL_BEMF_ERM_GAIN2,
-	Control1_REG,		       STARTUP_BOOST_ENABLED | DEFAULT_DRIVE_TIME,
-	Control2_REG,		       BIDIRECT_INPUT | AUTO_RES_GAIN_MEDIUM | BLANKING_TIME_SHORT | IDISS_TIME_SHORT,
-	Control3_REG,		       ERM_OpenLoop_Enabled | NG_Thresh_2,
-	AUTOCAL_MEM_INTERFACE_REG,     AUTOCAL_TIME_500MS,
-	GO_REG,			       GO,
-};
-
-static const unsigned char LRA_autocal_sequence[] = {
-	MODE_REG,		     AUTO_CALIBRATION,
-	RATED_VOLTAGE_REG,	     LRA_RATED_VOLTAGE,
-	OVERDRIVE_CLAMP_VOLTAGE_REG, LRA_OVERDRIVE_CLAMP_VOLTAGE,
-	FEEDBACK_CONTROL_REG,	     FEEDBACK_CONTROL_MODE_LRA | FB_BRAKE_FACTOR_4X | LOOP_RESPONSE_FAST,
-	Control3_REG,		     NG_Thresh_2,
-	GO_REG,			     GO,
-};
-
-#if SKIP_LRA_AUTOCAL == 1
-static const unsigned char LRA_init_sequence[] = {
-	MODE_REG,		       MODE_INTERNAL_TRIGGER,
-	REAL_TIME_PLAYBACK_REG,	       REAL_TIME_PLAYBACK_STRENGTH,
-	LIBRARY_SELECTION_REG,	       LIBRARY_F,
-	WAVEFORM_SEQUENCER_REG,	       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG2,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG3,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG4,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG5,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG6,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG7,       WAVEFORM_SEQUENCER_DEFAULT,
-	WAVEFORM_SEQUENCER_REG8,       WAVEFORM_SEQUENCER_DEFAULT,
-	GO_REG,			       STOP,
-	OVERDRIVE_TIME_OFFSET_REG,     0x00,
-	SUSTAIN_TIME_OFFSET_POS_REG,   0x00,
-	SUSTAIN_TIME_OFFSET_NEG_REG,   0x00,
-	BRAKE_TIME_OFFSET_REG,	       0x00,
-	AUDIO_HAPTICS_CONTROL_REG,     AUDIO_HAPTICS_RECT_20MS | AUDIO_HAPTICS_FILTER_125HZ,
-	AUDIO_HAPTICS_MIN_INPUT_REG,   AUDIO_HAPTICS_MIN_INPUT_VOLTAGE,
-	AUDIO_HAPTICS_MAX_INPUT_REG,   AUDIO_HAPTICS_MAX_INPUT_VOLTAGE,
-	AUDIO_HAPTICS_MIN_OUTPUT_REG,  AUDIO_HAPTICS_MIN_OUTPUT_VOLTAGE,
-	AUDIO_HAPTICS_MAX_OUTPUT_REG,  AUDIO_HAPTICS_MAX_OUTPUT_VOLTAGE,
-	RATED_VOLTAGE_REG,	       LRA_RATED_VOLTAGE,
-	OVERDRIVE_CLAMP_VOLTAGE_REG,   LRA_OVERDRIVE_CLAMP_VOLTAGE,
-	AUTO_CALI_RESULT_REG,	       DEFAULT_LRA_AUTOCAL_COMPENSATION,
-	AUTO_CALI_BACK_EMF_RESULT_REG, DEFAULT_LRA_AUTOCAL_BACKEMF,
-	FEEDBACK_CONTROL_REG,	       FEEDBACK_CONTROL_MODE_LRA | FB_BRAKE_FACTOR_2X | LOOP_RESPONSE_MEDIUM | FEEDBACK_CONTROL_BEMF_LRA_GAIN3,
-	Control1_REG,		       STARTUP_BOOST_ENABLED | AC_COUPLE_ENABLED | AUDIOHAPTIC_DRIVE_TIME,
-	Control2_REG,		       BIDIRECT_INPUT | AUTO_RES_GAIN_MEDIUM | BLANKING_TIME_MEDIUM | IDISS_TIME_MEDIUM,
-	Control3_REG,		       NG_Thresh_2 | INPUT_ANALOG,
-	AUTOCAL_MEM_INTERFACE_REG,     AUTOCAL_TIME_500MS,
-};
-#endif
 
 static int drv260x_setup(void);
 
@@ -372,7 +224,7 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 		if (mode != MODE_REAL_TIME_PLAYBACK) {
 			if (audio_haptics_enabled && mode == MODE_AUDIOHAPTIC)
 				setAudioHapticsEnabled(NO);
-			drv260x_set_rtp_val(REAL_TIME_PLAYBACK_STRENGTH);
+			drv260x_set_rtp_val(real_time_playback_strength);
 			drv260x_change_mode(MODE_REAL_TIME_PLAYBACK);
 			vibrator_is_playing = YES;
 		}
@@ -487,41 +339,25 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 	/* Wait 30 us */
 	udelay(30);
 
-#if SKIP_LRA_AUTOCAL == 1
-	/* Run auto-calibration */
-	if (g_effect_bank != LIBRARY_F)
-		drv260x_write_reg_val(ERM_autocal_sequence, sizeof(ERM_autocal_sequence));
-	else
-		drv260x_write_reg_val(LRA_init_sequence, sizeof(LRA_init_sequence));
-#else
-	/* Run auto-calibration */
-	if (g_effect_bank == LIBRARY_F)
-		drv260x_write_reg_val(LRA_autocal_sequence, sizeof(LRA_autocal_sequence));
-	else
-		drv260x_write_reg_val(ERM_autocal_sequence, sizeof(ERM_autocal_sequence));
-#endif
-
+	g_effect_bank = pdata->effect_library;
+	real_time_playback_strength = pdata->real_time_playback;
+	drv260x_write_reg_val(pdata->parameter_sequence, pdata->size_sequence);
 	/* Wait until the procedure is done */
 	drv2605_poll_go_bit();
 
 	/* Read status */
 	status = drv260x_read_reg(STATUS_REG);
 
-#if SKIP_LRA_AUTOCAL == 0
 	/* Check result */
-	if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED) {
+	if ((pdata->repeat_sequence == true) && ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED)) {
 		printk(KERN_ALERT "drv260x auto-cal failed.\n");
-		if (g_effect_bank == LIBRARY_F)
-			drv260x_write_reg_val(LRA_autocal_sequence, sizeof(LRA_autocal_sequence));
-		else
-			drv260x_write_reg_val(ERM_autocal_sequence, sizeof(ERM_autocal_sequence));
+		drv260x_write_reg_val(pdata->parameter_sequence, pdata->size_sequence);
 		drv2605_poll_go_bit();
 		status = drv260x_read_reg(STATUS_REG);
 		if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED)
 			printk(KERN_ALERT "drv260x auto-cal retry failed.\n");
 			/* return -ENODEV;*/
 	}
-#endif
 
 	/* Read calibration results */
 	drv260x_read_reg(AUTO_CALI_RESULT_REG);
@@ -630,7 +466,7 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len, lo
 			if (mode != MODE_REAL_TIME_PLAYBACK) {
 				if (audio_haptics_enabled && mode == MODE_AUDIOHAPTIC)
 					setAudioHapticsEnabled(NO);
-				drv260x_set_rtp_val(REAL_TIME_PLAYBACK_STRENGTH);
+				drv260x_set_rtp_val(real_time_playback_strength);
 				drv260x_change_mode(MODE_REAL_TIME_PLAYBACK);
 				vibrator_is_playing = YES;
 			}

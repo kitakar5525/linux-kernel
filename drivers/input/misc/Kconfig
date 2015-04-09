@@ -661,4 +661,12 @@ config ST_LIS3DSH
 	  If you say yes here get support for STMicroeletronics
 	  tilt sensors LIS3DSH.
 
+config TSL2583
+	tristate "TAOS TSL2580, TSL2581, TSL2583 and TSL2584TSV light-to-digital converters"
+	depends on I2C
+	help
+	  Provides support for the TAOS tsl2580, tsl2581, tsl2583
+	  and tsl2584tsv devices.
+	  Access ALS data via iio, sysfs.
+
 endif

@@ -1741,7 +1741,7 @@ static int bq24261_probe(struct i2c_client *client,
 			adapter->name);
 		return -EIO;
 	}
-#if 0
+
 	bq2426x_rev = bq24261_read_reg(client, BQ24261_VENDOR_REV_ADDR);
 	if (bq2426x_rev < 0) {
 		dev_err(&client->dev,
@@ -1749,17 +1749,15 @@ static int bq24261_probe(struct i2c_client *client,
 		return bq2426x_rev;
 	}
 	dev_info(&client->dev, "bq2426x revision: 0x%x found!!\n", bq2426x_rev);
-#endif
 
-	bq24261_rev_index = BQ24261;
-#if 0
+	bq24261_rev_index = bq24261_get_model(bq2426x_rev);
 	if ((bq2426x_rev & BQ24261_VENDOR_MASK) != BQ24261_VENDOR) {
 		dev_err(&client->dev,
 			"Invalid Vendor/Revision number in BQ24261_VENDOR_REV_ADDR: %d",
 			bq2426x_rev);
 		return -ENODEV;
 	}
-#endif
+
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip) {
 		dev_err(&client->dev, "mem alloc failed\n");
@@ -1795,9 +1793,8 @@ static int bq24261_probe(struct i2c_client *client,
 	chip->psy_usb.supported_cables = POWER_SUPPLY_CHARGER_TYPE_USB;
 	chip->max_cc = chip->pdata->max_cc;
 	chip->max_cv = 4350;
-	chip->chrgr_stat = BQ24261_CHRGR_STAT_BAT_FULL;
-	chip->chrgr_health = POWER_SUPPLY_HEALTH_GOOD;
-	chip->bat_health = POWER_SUPPLY_HEALTH_GOOD;
+	chip->chrgr_stat = BQ24261_CHRGR_STAT_UNKNOWN;
+	chip->chrgr_health = POWER_SUPPLY_HEALTH_UNKNOWN;
 	chip->revision = bq2426x_rev;
 
 	strncpy(chip->model_name,
@@ -1816,7 +1813,7 @@ static int bq24261_probe(struct i2c_client *client,
 		iounmap(chip->irq_iomap);
 		return ret;
 	}
-#if 0
+
 	INIT_DELAYED_WORK(&chip->sw_term_work, bq24261_sw_charge_term_worker);
 	INIT_DELAYED_WORK(&chip->low_supply_fault_work,
 				bq24261_low_supply_fault_work);
@@ -1851,7 +1848,7 @@ static int bq24261_probe(struct i2c_client *client,
 
 	if (register_otg_notifications(chip))
 		dev_err(&client->dev, "Error in registering OTG notifications. Unable to supply power to Host\n");
-#endif
+
 	bq24261_client = client;
 	power_supply_changed(&chip->psy_usb);
 	bq24261_debugfs_init();

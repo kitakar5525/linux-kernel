@@ -94,10 +94,9 @@ static struct vibrator {
 	unsigned char sequence[8];
 	volatile int should_stop;
 	unsigned gpio_en;
+	struct drv2605_platform_data *pdata;
 } vibdata;
 
-static char g_effect_bank;
-static char real_time_playback_strength;
 static int device_id = -1;
 
 static int drv260x_setup(void);
@@ -224,7 +223,7 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 		if (mode != MODE_REAL_TIME_PLAYBACK) {
 			if (audio_haptics_enabled && mode == MODE_AUDIOHAPTIC)
 				setAudioHapticsEnabled(NO);
-			drv260x_set_rtp_val(real_time_playback_strength);
+			drv260x_set_rtp_val(vibdata.pdata->real_time_playback);
 			drv260x_change_mode(MODE_REAL_TIME_PLAYBACK);
 			vibrator_is_playing = YES;
 		}
@@ -276,7 +275,7 @@ static void play_effect(struct work_struct *work)
 static void setAudioHapticsEnabled(int enable)
 {
 	if (enable) {
-		if (g_effect_bank != LIBRARY_F) {
+		if (vibdata.pdata->effect_library != LIBRARY_F) {
 			char audiohaptic_settings[] = {
 				Control1_REG, STARTUP_BOOST_ENABLED | AC_COUPLE_ENABLED | AUDIOHAPTIC_DRIVE_TIME,
 				Control3_REG, NG_Thresh_2 | INPUT_ANALOG
@@ -292,7 +291,7 @@ static void setAudioHapticsEnabled(int enable)
 		schedule_timeout_interruptible(msecs_to_jiffies(STANDBY_WAKE_DELAY));
 		/* Chip needs to be brought out of standby to change the registers*/
 		drv260x_change_mode(MODE_INTERNAL_TRIGGER);
-		if (g_effect_bank != LIBRARY_F) {
+		if (vibdata.pdata->effect_library != LIBRARY_F) {
 			char default_settings[] = {
 				Control1_REG, STARTUP_BOOST_ENABLED | DEFAULT_DRIVE_TIME,
 				Control3_REG, NG_Thresh_2 | ERM_OpenLoop_Enabled
@@ -339,8 +338,7 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 	/* Wait 30 us */
 	udelay(30);
 
-	g_effect_bank = pdata->effect_library;
-	real_time_playback_strength = pdata->real_time_playback;
+	vibdata.pdata = pdata;
 	drv260x_write_reg_val(pdata->parameter_sequence, pdata->size_sequence);
 	/* Wait until the procedure is done */
 	drv2605_poll_go_bit();
@@ -379,7 +377,7 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 	}
 
 	/* Choose default effect library */
-	drv2605_select_library(g_effect_bank);
+	drv2605_select_library(vibdata.pdata->effect_library);
 
 	/* Put hardware in standby */
 	drv260x_change_mode(MODE_STANDBY);
@@ -466,7 +464,7 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len, lo
 			if (mode != MODE_REAL_TIME_PLAYBACK) {
 				if (audio_haptics_enabled && mode == MODE_AUDIOHAPTIC)
 					setAudioHapticsEnabled(NO);
-				drv260x_set_rtp_val(real_time_playback_strength);
+				drv260x_set_rtp_val(vibdata.pdata->real_time_playback);
 				drv260x_change_mode(MODE_REAL_TIME_PLAYBACK);
 				vibrator_is_playing = YES;
 			}

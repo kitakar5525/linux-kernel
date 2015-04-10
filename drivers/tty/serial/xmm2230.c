@@ -507,9 +507,11 @@ static void ifx_spi_handle_srdy(struct ifx_spi_device *ifx_dev)
 
 	ifx_spi_power_state_set(ifx_dev, IFX_SPI_POWER_SRDY);
 
-	if (!test_bit(IFX_SPI_STATE_IO_IN_PROGRESS, &ifx_dev->flags))
+	if (!test_bit(IFX_SPI_STATE_IO_IN_PROGRESS, &ifx_dev->flags)) {
 		tasklet_schedule(&ifx_dev->io_work_tasklet);
-	else
+		if (!wake_lock_active(&ifx_dev->wake_lock))
+			wake_lock(&ifx_dev->wake_lock);
+	} else
 		set_bit(IFX_SPI_STATE_IO_READY, &ifx_dev->flags);
 }
 
@@ -835,6 +837,9 @@ complete_exit:
 			ifx_spi_power_state_clear(ifx_dev,
 						  IFX_SPI_POWER_DATA_PENDING);
 			tty_port_tty_wakeup(&ifx_dev->tty_port);
+
+			if (wake_lock_active(&ifx_dev->wake_lock))
+				wake_unlock(&ifx_dev->wake_lock);
 		}
 	}
 }
@@ -1120,6 +1125,8 @@ static int ifx_spi_spi_probe(struct spi_device *spi)
 	/* initialize waitq for modem reset */
 	init_waitqueue_head(&ifx_dev->mdm_reset_wait);
 
+	wake_lock_init(&ifx_dev->wake_lock, WAKE_LOCK_SUSPEND, "spi_wakelock");
+
 	spi_set_drvdata(spi, ifx_dev);
 	tasklet_init(&ifx_dev->io_work_tasklet, ifx_spi_io,
 						(unsigned long)ifx_dev);
@@ -1209,6 +1216,7 @@ error_ret2:
 			IFX_SPI_TRANSFER_SIZE,
 			ifx_dev->rx_buffer,
 			ifx_dev->rx_bus);
+	wake_lock_destroy(&ifx_dev->wake_lock);
 error_ret1:
 	dma_free_coherent(&ifx_dev->spi_dev->dev,
 			IFX_SPI_TRANSFER_SIZE,
@@ -1235,6 +1243,8 @@ static int ifx_spi_spi_remove(struct spi_device *spi)
 	tasklet_kill(&ifx_dev->io_work_tasklet);
 	/* free irq */
 	free_irq(gpio_to_irq(ifx_dev->gpio.srdy), (void *)ifx_dev);
+
+	wake_lock_destroy(&ifx_dev->wake_lock);
 
 	gpio_free(ifx_dev->gpio.srdy);
 	gpio_free(ifx_dev->gpio.mrdy);

@@ -26,6 +26,8 @@
 #ifndef _XMM2230_H
 #define _XMM2230_H
 
+#include<linux/wakelock.h>
+
 #define DRVNAME				"xmm2230"
 #define TTYNAME				"ttyXMM"
 
@@ -108,6 +110,7 @@ struct ifx_spi_device {
 	unsigned char spi_slave_cts;
 
 	struct timer_list spi_timer;
+	struct wake_lock wake_lock;
 
 	struct spi_message spi_msg;
 	struct spi_transfer spi_xfer;

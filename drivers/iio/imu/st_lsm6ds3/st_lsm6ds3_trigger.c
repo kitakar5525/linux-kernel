@@ -60,7 +60,9 @@ static void st_lsm6ds3_irq_management(struct work_struct *data_work)
 	cdata->tf->read(cdata, ST_LSM6DS3_FIFO_DATA_AVL_ADDR, 1,
 							&src_fifo, true);
 
+	dev_dbg(cdata->dev, "st_lsm6ds3_irq_management src_value=%x, src_fifo=%x\n", src_value, src_fifo);
 	if (src_fifo & ST_LSM6DS3_FIFO_DATA_AVL) {
+		dev_dbg(cdata->dev, "ST_LSM6DS3_FIFO_DATA_AVL\n");
 		if (src_fifo & ST_LSM6DS3_FIFO_DATA_OVR) {
 			st_lsm6ds3_set_fifo_mode(cdata, BYPASS);
 			st_lsm6ds3_set_fifo_mode(cdata, CONTINUOS);
@@ -71,12 +73,14 @@ static void st_lsm6ds3_irq_management(struct work_struct *data_work)
 	}
 
 	if (src_value & ST_LSM6DS3_SRC_STEP_DETECTOR_DATA_AVL) {
+		dev_dbg(cdata->dev, "ST_LSM6DS3_SRC_STEP_DETECTOR_DATA_AVL\n");
 		iio_push_event(cdata->indio_dev[ST_INDIO_DEV_STEP_DETECTOR],
 				IIO_UNMOD_EVENT_CODE(IIO_STEP_DETECTOR,
 				0, IIO_EV_TYPE_THRESH, IIO_EV_DIR_EITHER),
 				cdata->timestamp);
 
 		if (cdata->sign_motion_event_ready) {
+			dev_dbg(cdata->dev, "sign_motion_event_ready\n");
 			iio_push_event(cdata->indio_dev[
 				ST_INDIO_DEV_SIGN_MOTION],
 				IIO_UNMOD_EVENT_CODE(IIO_SIGN_MOTION,
@@ -88,11 +92,13 @@ static void st_lsm6ds3_irq_management(struct work_struct *data_work)
 	}
 
 	if (src_value & ST_LSM6DS3_SRC_STEP_COUNTER_DATA_AVL) {
+		dev_dbg(cdata->dev, "ST_LSM6DS3_SRC_STEP_COUNTER_DATA_AVL\n");
 		iio_trigger_poll_chained(
 				cdata->trig[ST_INDIO_DEV_STEP_COUNTER], 0);
 	}
 
 	if (src_value & ST_LSM6DS3_SRC_TILT_DATA_AVL) {
+		dev_dbg(cdata->dev, "ST_LSM6DS3_SRC_TILT_DATA_AVL\n");
 		iio_push_event(cdata->indio_dev[ST_INDIO_DEV_TILT],
 				IIO_UNMOD_EVENT_CODE(IIO_TILT,
 				0, IIO_EV_TYPE_THRESH, IIO_EV_DIR_EITHER),

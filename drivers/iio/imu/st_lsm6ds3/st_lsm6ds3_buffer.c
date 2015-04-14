@@ -149,6 +149,7 @@ void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, bool check_fifo_len)
 {
 	int err;
 	u16 read_len = cdata->fifo_threshold, byte_in_pattern;
+	dev_dbg(cdata->dev, "st_lsm6ds3_read_fifo\n");
 
 	if (!cdata->fifo_data)
 		return;
@@ -206,6 +207,7 @@ static irqreturn_t st_lsm6ds3_step_counter_trigger_handler(int irq, void *p)
 	struct iio_dev *indio_dev = pf->indio_dev;
 	struct lsm6ds3_sensor_data *sdata = iio_priv(indio_dev);
 
+	dev_dbg(sdata->cdata->dev, "st_lsm6ds3_step_counter_trigger_handler\n");
 	if (!sdata->cdata->reset_steps) {
 		err = sdata->cdata->tf->read(sdata->cdata,
 					(u8)indio_dev->channels[0].address,
@@ -222,6 +224,7 @@ static irqreturn_t st_lsm6ds3_step_counter_trigger_handler(int irq, void *p)
 		sdata->cdata->reset_steps = false;
 	}
 
+	dev_dbg(sdata->cdata->dev, "step_counter=%d, tm=%ld\n", *(u16 *)sdata->buffer_data, timestamp);
 	if (indio_dev->scan_timestamp)
 		*(s64 *)((u8 *)sdata->buffer_data +
 				ALIGN(ST_LSM6DS3_BYTE_FOR_CHANNEL,

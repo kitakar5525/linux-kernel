@@ -73,15 +73,15 @@ static const unsigned char LRA_autocal_sequence_prod1[] = {
 
 static void setup_parameter_sequence(struct drv2605_platform_data *pdata)
 {
-if (INTEL_MID_BOARD(2, PHONE, RBY, PROD1, PRO) ||
-	INTEL_MID_BOARD(2, PHONE, RBY, PROD1, ENG)) {
+if (INTEL_MID_BOARD(2, PHONE, MRFL, RBY, PRO) ||
+	INTEL_MID_BOARD(2, PHONE, MRFL, RBY, ENG)) {
 	pdata->effect_library = LIBRARY_F; /* >> LRA close loop */
 	pdata->real_time_playback = 0x7F;/* 100% of rated voltage (closed loop)*/
 	pdata->repeat_sequence = true;
 	pdata->size_sequence = ARRAY_SIZE(LRA_autocal_sequence_prod1);
 	pdata->parameter_sequence = LRA_autocal_sequence_prod1;
-} else if (INTEL_MID_BOARD(2, PHONE, RBY, PROD2, PRO) ||
-	INTEL_MID_BOARD(2, PHONE, RBY, PROD2, ENG)) {
+} else if (INTEL_MID_BOARD(2, PHONE, MRFL, MVN, PRO) ||
+	INTEL_MID_BOARD(2, PHONE, MRFL, MVN, ENG)) {
 	pdata->effect_library = LIBRARY_A; /* ERM open loop */
 	pdata->real_time_playback = 0x38; /* ~44% of overdrive voltage (open loop)*/
 	pdata->repeat_sequence = true;

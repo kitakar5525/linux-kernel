@@ -74,6 +74,7 @@ struct max17042_config_data {
 	u16	vempty;
 
 	u16	cell_char_tbl[CELL_CHAR_TBL_SAMPLES];
+	u16	lavg_empty;
 } __packed;
 
 struct max17042_platform_data {

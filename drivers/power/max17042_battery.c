@@ -1323,6 +1323,8 @@ static void write_custom_regs(struct max17042_chip *chip)
 						fg_conf_data->rcomp0);
 	max17042_write_verify_reg(chip->client, MAX17042_TempCo,
 						fg_conf_data->tempCo);
+	max17042_write_verify_reg(chip->client, MAX17042_LAvg_empty,
+						fg_conf_data->lavg_empty);
 	max17042_write_verify_reg(chip->client, MAX17042_ICHGTerm,
 						fg_conf_data->ichgt_term);
 	/* adjust Temperature gain and offset */

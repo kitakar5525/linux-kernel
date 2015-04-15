@@ -40,8 +40,10 @@ struct bq24232_charger {
 	struct device *dev;
 
 	struct power_supply pow_sply;
+	struct power_supply *bat_psy;
 
 	struct work_struct otg_evt_work;
+	struct delayed_work bat_temp_mon_work;
 	struct notifier_block otg_nb;
 	struct list_head otg_queue;
 	spinlock_t otg_queue_lock;
@@ -80,7 +82,8 @@ struct bq24232_charger {
 	bool is_charging_enabled;
 
 	/*
-	 * @boost_mode: 0
+	 * @boost_mode: is set to 1 only when battery temperature allows to enable
+	 *		the fast charge rate
 	 */
 	bool boost_mode;
 };
@@ -94,6 +97,10 @@ static enum power_supply_property bq24232_charger_properties[] = {
 	POWER_SUPPLY_PROP_ENABLE_CHARGER
 };
 
+enum bq24232_chrgrate_type {
+	BQ24232_NORM_CHARGE,
+	BQ24232_BOOST_CHARGE,
+};
 
 struct bq24232_otg_event {
 	struct list_head node;
@@ -144,6 +151,72 @@ static enum power_supply_charger_cable_type get_cable_type(
 	}
 }
 
+static struct power_supply *get_psy_by_type(enum power_supply_type psy_type)
+{
+	struct class_dev_iter iter;
+	struct device *dev;
+	struct power_supply *psy;
+
+	class_dev_iter_init(&iter, power_supply_class, NULL, NULL);
+	while ((dev = class_dev_iter_next(&iter))) {
+		psy = (struct power_supply *)dev_get_drvdata(dev);
+		if (psy->type == psy_type) {
+			class_dev_iter_exit(&iter);
+			return psy;
+		}
+	}
+	class_dev_iter_exit(&iter);
+
+	return NULL;
+}
+
+static int get_psy_property_val(struct power_supply *psy,
+		enum power_supply_type type, enum power_supply_property prop, int *val)
+{
+	union power_supply_propval propval;
+	int ret;
+
+	if (!psy)
+		psy = get_psy_by_type(type);
+
+	if (psy == NULL)
+		return -ENODEV;
+
+	ret = psy->get_property(psy, prop, &propval);
+	if (!ret)
+		*val = (propval.intval);
+
+	return ret;
+}
+
+static bool is_bat_temp_allowed(struct bq24232_charger *chip,
+		enum bq24232_chrgrate_type chgrt)
+{
+	int *bat_profile, ret, bat_temp = 0;
+
+	ret = get_psy_property_val(chip->bat_psy, POWER_SUPPLY_TYPE_BATTERY,
+			POWER_SUPPLY_PROP_TEMP, &bat_temp);
+	if (ret) {
+		dev_warn(chip->dev, "cannot retrieve battery temperature\n");
+		goto bat_temp_err;
+	}
+	if (!chip->pdata->bat_temp_profile) {
+		dev_warn(chip->dev, "no battery temperature profile found\n");
+		goto bat_temp_err;
+	}
+	bat_profile = chip->pdata->bat_temp_profile;
+	switch (chgrt) {
+	case (BQ24232_NORM_CHARGE):
+		return (bat_temp >= bat_profile[BQ24232_NORM_CHARGE_TEMP_LOW] &&
+				bat_temp <= bat_profile[BQ24232_NORM_CHARGE_TEMP_HIGH]);
+	case (BQ24232_BOOST_CHARGE):
+		return (bat_temp >= bat_profile[BQ24232_BOOST_CHARGE_TEMP_LOW] &&
+				bat_temp <= bat_profile[BQ24232_BOOST_CHARGE_TEMP_HIGH]);
+	}
+bat_temp_err:
+	return false;
+}
+
 static void bq24232_update_online_status(struct bq24232_charger *chip)
 {
 	if (chip->is_charger_enabled &&
@@ -165,16 +238,20 @@ static void bq24232_update_pgood_status(struct bq24232_charger *chip)
 
 static inline bool bq24232_can_enable_charging(struct bq24232_charger *chip)
 {
-	int ret = false;
+	bool bat_temp_ok;
 	bq24232_update_pgood_status(chip);
-	if (chip->pgood_valid && chip->is_charger_enabled)
-		ret = true;
-	else
-		dev_warn(chip->dev, "%s: cannot enable charging, pgood_valid = %d is_charger_enabled = %d",
+	bat_temp_ok = is_bat_temp_allowed(chip, BQ24232_NORM_CHARGE);
+
+	if (!chip->pgood_valid || !chip->is_charger_enabled || !bat_temp_ok) {
+		dev_warn(chip->dev,
+				"%s: cannot enable charging, pgood_valid = %d is_charger_enabled = %d, bat_temp_ok = %d\n",
 				__func__,
 				chip->pgood_valid,
-				chip->is_charger_enabled);
-	return ret;
+				chip->is_charger_enabled,
+				bat_temp_ok);
+		return false;
+	}
+	return true;
 }
 
 static int bq24232_enable_charging(
@@ -182,13 +259,11 @@ static int bq24232_enable_charging(
 {
 	int ret = -ENODATA;
 	if (chip->pdata->enable_charging) {
-		/*
-		 * Each time the charger is enabled/disabled slow charge current is selected by default
-		 */
-		gpio_set_value(chip->pdata->chg_rate_temp_gpio, 0);
 		ret = chip->pdata->enable_charging(val);
 		if (ret)
-			dev_err(chip->dev, "%s: error(%d) in master enable-charging\n", __func__, ret);
+			dev_err(chip->dev, "%s: error(%d) in master enable-charging\n",
+					__func__,
+					ret);
 		else
 			dev_info(chip->dev, "%s = %d complete\n", __func__, val);
 	} else
@@ -196,11 +271,80 @@ static int bq24232_enable_charging(
 	return ret;
 }
 
-static void bq24232_update_charger_status(struct bq24232_charger *chip,
-		enum power_supply_charger_event evt, enum power_supply_charger_cable_type cable_type)
+static void bq24232_update_chrg_current_status(struct bq24232_charger *chip)
+{
+	mutex_lock(&chip->stat_lock);
+	if (chip->is_charging_enabled) {
+		if (chip->boost_mode)
+			chip->cc = BQ24232_CHARGE_CURRENT_HIGH;
+		else
+			chip->cc = BQ24232_CHARGE_CURRENT_LOW;
+	} else {
+		chip->cc = 0;
+	}
+	mutex_unlock(&chip->stat_lock);
+}
+
+static bool bq24232_charger_can_enable_boost(struct bq24232_charger *chip)
+{
+	return is_bat_temp_allowed(chip, BQ24232_BOOST_CHARGE);
+}
+
+static int bq24232_enable_boost(
+	struct bq24232_charger *chip, bool val)
+{
+	int ret = 0;
+	gpio_set_value(chip->pdata->chg_rate_temp_gpio, val);
+	dev_info(chip->dev, "%s = %d complete\n", __func__, val);
+	return ret;
+}
+
+static void bq24232_update_boost_status(struct bq24232_charger *chip)
+{
+	int ret;
+	bool chgr_can_boost = bq24232_charger_can_enable_boost(chip);
+
+	ret = bq24232_enable_boost(chip, chgr_can_boost);
+	mutex_lock(&chip->stat_lock);
+	chip->boost_mode = ret ? 0 : chgr_can_boost;
+	mutex_unlock(&chip->stat_lock);
+}
+
+static void bq24232_update_charging_status(struct bq24232_charger *chip)
+{
+	int ret;
+	mutex_lock(&chip->stat_lock);
+	if (bq24232_can_enable_charging(chip)) {
+		if (chip->is_charging_enabled) {
+			mutex_unlock(&chip->stat_lock);
+			return;
+		}
+		/*
+		 * Each time the charger is enabled/disabled
+		 * slow charge current is selected by default
+		 */
+		ret = bq24232_enable_boost(chip, false);
+		if (!ret)
+			chip->boost_mode = false;
+
+		ret = bq24232_enable_charging(chip, true);
+		if (!ret) {
+			chip->is_charging_enabled = true;
+			mutex_unlock(&chip->stat_lock);
+			return;
+		}
+	}
+	ret = bq24232_enable_charging(chip, false);
+	if (!ret)
+		chip->is_charging_enabled = false;
+	mutex_unlock(&chip->stat_lock);
+}
+
+static void bq24232_update_charger_enabled(struct bq24232_charger *chip,
+		enum power_supply_charger_event evt,
+		enum power_supply_charger_cable_type cable_type)
 {
 	unsigned long flags;
-	int ret;
 	mutex_lock(&chip->stat_lock);
 
 	spin_lock_irqsave(&chip->pow_sply.changed_lock, flags);
@@ -212,23 +356,19 @@ static void bq24232_update_charger_status(struct bq24232_charger *chip,
 			evt == POWER_SUPPLY_CHARGER_EVENT_UPDATE ||
 			evt == POWER_SUPPLY_CHARGER_EVENT_RESUME) {
 		chip->is_charger_enabled = true;
-	} else
-		chip->is_charger_enabled = false;
+		schedule_delayed_work(&chip->bat_temp_mon_work, 0);
 
-	if (bq24232_can_enable_charging(chip)) {
-		ret = bq24232_enable_charging(chip, true);
-		if (!ret) {
-			chip->is_charging_enabled = true;
-			chip->cc = BQ24232_CHARGE_CURRENT_LOW;
-		}
 	} else {
-		bq24232_enable_charging(chip, false);
-		chip->is_charging_enabled = false;
-		chip->cc = 0;
+		/* POWER_SUPPLY_CHARGER_EVENT_SUSPEND POWER_SUPPLY_CHARGER_EVENT_DISCONNECT */
+		chip->is_charger_enabled = false;
+		cancel_delayed_work_sync(&chip->bat_temp_mon_work);
 	}
-	mutex_unlock(&chip->stat_lock);
 
-	bq24232_update_online_status(chip);
+	dev_info(chip->dev, "%s: is_charger_enabled %d",
+			__func__,
+			chip->is_charger_enabled);
+
+	mutex_unlock(&chip->stat_lock);
 }
 
 static int bq24232_charger_get_property(struct power_supply *psy,
@@ -321,6 +461,27 @@ static int bq24232_charger_set_property(struct power_supply *psy,
 #endif
 }
 
+static void bq24232_exception_mon_wrk(struct work_struct *work)
+{
+	struct bq24232_charger *chip = container_of(work,
+			struct bq24232_charger,
+			bat_temp_mon_work.work);
+	schedule_delayed_work(&chip->bat_temp_mon_work,
+			BAT_TEMP_MONITOR_DELAY);
+
+	bq24232_update_charging_status(chip);
+	bq24232_update_boost_status(chip);
+	bq24232_update_chrg_current_status(chip);
+
+	dev_info(chip->dev, "%s: cc = %d, boost_mode = %d, is_charging_enabled = %d\n",
+					__func__,
+					chip->cc,
+					chip->boost_mode,
+					chip->is_charging_enabled);
+
+	power_supply_changed(&chip->pow_sply);
+}
+
 static int otg_handle_notification(struct notifier_block *nb,
 		unsigned long event, void *param) {
 	struct bq24232_charger *chip = container_of(nb, struct bq24232_charger, otg_nb);
@@ -390,9 +551,13 @@ static void bq24232_otg_evt_worker(struct work_struct *work)
 		list_del(&evt->node);
 		spin_unlock_irqrestore(&chip->otg_queue_lock, flags);
 
-		bq24232_update_charger_status(chip, evt->cap.chrg_evt, evt->cap.chrg_type);
+		bq24232_update_charger_enabled(chip, evt->cap.chrg_evt, evt->cap.chrg_type);
+		bq24232_update_online_status(chip);
+		bq24232_update_charging_status(chip);
+		bq24232_update_chrg_current_status(chip);
 
-		dev_info(chip->dev, "%s: online = %d, pgood = %d, is_charging_enabled = %d\n", __func__,
+		dev_info(chip->dev, "%s: online = %d, pgood = %d, is_charging_enabled = %d\n",
+				__func__,
 				chip->online,
 				chip->pgood_valid,
 				chip->is_charging_enabled);
@@ -408,7 +573,6 @@ static void bq24232_otg_evt_worker(struct work_struct *work)
 
 static inline int register_otg_notification(struct bq24232_charger *chip)
 {
-
 	int retval;
 	INIT_LIST_HEAD(&chip->otg_queue);
 	INIT_WORK(&chip->otg_evt_work, bq24232_otg_evt_worker);
@@ -433,7 +597,6 @@ static inline int register_otg_notification(struct bq24232_charger *chip)
 
 	return 0;
 }
-
 
 static int bq24232_charger_probe(struct platform_device *pdev)
 {
@@ -490,6 +653,9 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	bq24232_charger->cc = 0;
 	bq24232_charger->boost_mode = 0;
 
+	INIT_DELAYED_WORK(&bq24232_charger->bat_temp_mon_work,
+				bq24232_exception_mon_wrk);
+
 	/*
 	 * Register to get USB transceiver events
 	 */
@@ -508,14 +674,14 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 
 	power_supply_query_charger_caps(&chgr_cap);
 	cable_type = get_cable_type(chgr_cap.chrg_type);
-	bq24232_update_charger_status(bq24232_charger, chgr_cap.chrg_evt, cable_type);
+	bq24232_update_charger_enabled(bq24232_charger, chgr_cap.chrg_evt, cable_type);
 
 	dev_dbg(bq24232_charger->dev, "charger enabled: %d, charging enabled: %d, pgood_valid: %d, boost mode: %d charger type: %d\n",
-				bq24232_charger->is_charger_enabled,
-				bq24232_charger->is_charging_enabled,
-				bq24232_charger->pgood_valid,
-				bq24232_charger->boost_mode,
-				bq24232_charger->pow_sply.type);
+			bq24232_charger->is_charger_enabled,
+			bq24232_charger->is_charging_enabled,
+			bq24232_charger->pgood_valid,
+			bq24232_charger->boost_mode,
+			bq24232_charger->pow_sply.type);
 
 	dev_info(bq24232_charger->dev, "device successfully initialized");
 
@@ -539,6 +705,8 @@ io_error1:
 static int bq24232_charger_remove(struct platform_device *pdev)
 {
 	struct bq24232_charger *bq24232_charger = platform_get_drvdata(pdev);
+
+	cancel_delayed_work_sync(&bq24232_charger->bat_temp_mon_work);
 
 	power_supply_unregister(&bq24232_charger->pow_sply);
 

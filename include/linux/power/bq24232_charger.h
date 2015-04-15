@@ -27,10 +27,21 @@
 #define BQ24232_CHARGE_CURRENT_LOW	100
 #define BQ24232_CHARGE_CURRENT_HIGH	400
 
+#define BAT_TEMP_MONITOR_DELAY	(60 * HZ)
+
+enum bq24232_chrgrate_temp_limit {
+	BQ24232_NORM_CHARGE_TEMP_LOW,
+	BQ24232_BOOST_CHARGE_TEMP_LOW,
+	BQ24232_BOOST_CHARGE_TEMP_HIGH,
+	BQ24232_NORM_CHARGE_TEMP_HIGH
+};
+
 /**
  * struct gpio_charger_platform_data - platform_data for gpio_charger devices
  * @name:		Name for the chargers power_supply device
- * @type:		Type of the charger
+ * @supplied_to:	Devices supplied by this charger
+ * @num_supplicants:	Number of devices supplied by this charger
+ * @bat_temp_profile:	Temperature ranges in wich normal/boost charge is allowed
  * @pgood_gpio:	GPIO which is used to indicate the chargers status
  * @chg_rate_temp_gpio:	GPIO which is used to select the charge rate
  * @enable_charging:	Function callback to activate the CE_N signal on the charger
@@ -40,7 +51,7 @@ struct bq24232_plat_data {
 
 	char **supplied_to;
 	size_t num_supplicants;
-
+	int *bat_temp_profile;
 	int pgood_gpio;
 	int chg_rate_temp_gpio;
 

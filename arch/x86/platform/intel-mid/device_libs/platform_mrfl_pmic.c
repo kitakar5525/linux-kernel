@@ -92,7 +92,6 @@ void __init *mrfl_pmic_ccsm_platform_data(void *info)
 	install_irq_resource(pdev, entry->irq);
 
 	if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
-			INTEL_MID_BOARD(1, PHONE, RBY) ||
 			INTEL_MID_BOARD(1, TABLET, MRFL)) {
 		pmic_pdata.max_tbl_row_cnt = ARRAY_SIZE(basincove_adc_tbl);
 		pmic_pdata.adc_tbl = basincove_adc_tbl;

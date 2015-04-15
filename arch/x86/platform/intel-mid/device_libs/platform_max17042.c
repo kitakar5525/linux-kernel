@@ -104,7 +104,6 @@ static bool msic_battery_check(struct max17042_platform_data *pdata)
 		if (sb->pentry && sb->header.len >= BATTID_LEN) {
 			if (!((INTEL_MID_BOARD(1, TABLET, MRFL)) ||
 				(INTEL_MID_BOARD(1, PHONE, MRFL)) ||
-				(INTEL_MID_BOARD(1, PHONE, RBY)) ||
 				(INTEL_MID_BOARD(1, PHONE, MOFD)) ||
 				(INTEL_MID_BOARD(1, TABLET, MOFD)))) {
 				snprintf(pdata->battid, BATTID_LEN + 1, "%s",
@@ -350,7 +349,6 @@ int get_smip_plat_config(int offset)
 	unsigned long sram_addr;
 
 	if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
-		INTEL_MID_BOARD(1, PHONE, RBY) ||
 		INTEL_MID_BOARD(1, TABLET, MRFL)) {
 		sram_addr = MRFL_SMIP_SRAM_ADDR;
 	} else if (INTEL_MID_BOARD(1, PHONE, MOFD) ||
@@ -376,7 +374,6 @@ static void init_tgain_toff(struct max17042_platform_data *pdata)
 		pdata->toff = NTC_10K_B3435K_TDK_TOFF;
 	} else if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
 		INTEL_MID_BOARD(1, TABLET, MRFL) ||
-		INTEL_MID_BOARD(1, PHONE, RBY) ||
 		INTEL_MID_BOARD(1, PHONE, MOFD) ||
 		INTEL_MID_BOARD(1, TABLET, MOFD)) {
 		pdata->tgain = NTC_10K_MURATA_TGAIN;
@@ -440,7 +437,6 @@ static void init_callbacks(struct max17042_platform_data *pdata)
 		pdata->is_volt_shutdown_enabled = ctp_is_volt_shutdown_enabled;
 	} else if (INTEL_MID_BOARD(1, PHONE, MRFL)
 			|| INTEL_MID_BOARD(1, TABLET, MRFL)
-			|| INTEL_MID_BOARD(1, PHONE, RBY)
 			|| INTEL_MID_BOARD(1, PHONE, MOFD)
 			|| INTEL_MID_BOARD(1, TABLET, MOFD)) {
 		/* MRFL Phones and tablets*/
@@ -530,7 +526,6 @@ static void init_platform_params(struct max17042_platform_data *pdata)
 		}
 	} else if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
 				INTEL_MID_BOARD(1, TABLET, MRFL) ||
-				INTEL_MID_BOARD(1, PHONE, RBY) ||
 				INTEL_MID_BOARD(1, PHONE, MOFD) ||
 				INTEL_MID_BOARD(1, TABLET, MOFD)) {
 		if (msic_battery_check(pdata)) {
@@ -585,7 +580,6 @@ static void init_platform_thresholds(struct max17042_platform_data *pdata)
 		pdata->volt_max_lim = 4350;
 	} else if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
 			INTEL_MID_BOARD(1, TABLET, MRFL) ||
-			INTEL_MID_BOARD(1, PHONE, RBY) ||
 			INTEL_MID_BOARD(1, PHONE, MOFD) ||
 			INTEL_MID_BOARD(1, TABLET, MOFD)) {
 		/* Bit 1 of shutdown method determines if voltage based

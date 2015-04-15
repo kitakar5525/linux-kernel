@@ -183,7 +183,6 @@ void __init *bcove_adc_platform_data(void *info)
 	}
 
 	if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
-		INTEL_MID_BOARD(1, PHONE, RBY) ||
 		INTEL_MID_BOARD(1, TABLET, MRFL)) {
 		bcove_adc_pdata.channel_num = BCOVE_GPADC_CH_NUM;
 		bcove_adc_pdata.intr = GPADC_SRAM_INTR_ADDR;

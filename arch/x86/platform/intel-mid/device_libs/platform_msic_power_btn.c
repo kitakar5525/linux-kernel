@@ -53,7 +53,6 @@ void __init *msic_power_btn_platform_data(void *info)
 	}
 
 	if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
-		INTEL_MID_BOARD(1, PHONE, RBY) ||
 		INTEL_MID_BOARD(1, PHONE, MOFD) ||
 		INTEL_MID_BOARD(1, TABLET, MOFD)) {
 		msic_power_btn_pdata.pbstat = 0xfffff61a;

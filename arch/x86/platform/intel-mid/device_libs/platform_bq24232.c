@@ -17,11 +17,21 @@
 #include <asm/pmic_pdata.h>
 #include "platform_bq24232.h"
 
-char *bq24232_supplied_to[] = {
+static char *bq24232_supplied_to[] = {
 				"max17047_battery",
 };
 
 static struct bq24232_plat_data bq24232_pdata;
+
+/*
+ * Battery temperature limits in 0.1 °C
+ */
+static int bq24232_bat_temp_profile[] = {
+		0,	/* BQ24232_NORM_CHARGE_TEMP_LOW */
+		100,	/* BQ24232_BOOST_CHARGE_TEMP_LOW */
+		450,	/* BQ24232_BOOST_CHARGE_TEMP_HIHG */
+		450	/* BQ24232_NORM_CHARGE_TEMP_HIGH */
+};
 
 void *bq24232_charger_platform_data(void *info)
 {
@@ -32,7 +42,7 @@ void *bq24232_charger_platform_data(void *info)
 #if CONFIG_PMIC_CCSM
 	bq24232_pdata.enable_charging = pmic_enable_charging;
 #endif
-
+	bq24232_pdata.bat_temp_profile = bq24232_bat_temp_profile;
 	bq24232_pdata.supplied_to = bq24232_supplied_to;
 	bq24232_pdata.num_supplicants = ARRAY_SIZE(bq24232_supplied_to);
 

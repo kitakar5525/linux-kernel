@@ -32,6 +32,19 @@
 #include <linux/lnw_gpio.h>
 
 #include "displays/tianma_cmd.h"
+#include "tianma_init.h"
+
+static int select_init_code;
+
+static int __init parse_panel_init_code(char *arg)
+{
+	sscanf(arg, "%d", &select_init_code);
+
+	return 1;
+}
+early_param("panel_init_code", parse_panel_init_code);
+
+static int readback_initcode(struct mdfld_dsi_config *);
 
 static int mipi_reset_gpio;
 static int bias_en_gpio;
@@ -112,10 +125,57 @@ int tianma_cmd_drv_ic_init(struct mdfld_dsi_config *dsi_config)
 		goto ic_init_err;
 	}
 
+	readback_initcode(dsi_config);
+
 	return 0;
 
 ic_init_err:
 	err = -EIO;
+	return err;
+}
+
+static
+int tianma_cmd_drv_ic_fullinit(struct mdfld_dsi_config *dsi_config)
+{
+	struct mdfld_dsi_pkg_sender *sender
+		= mdfld_dsi_get_pkg_sender(dsi_config);
+	int err = 0;
+	int i;
+	u8 *cmd, *arg;
+
+	PSB_DEBUG_ENTRY("\n");
+
+	if (!sender) {
+		DRM_ERROR("Cannot get sender\n");
+		return -EINVAL;
+	}
+
+	msleep(120);
+
+	cmd = (u8 *)tianma_init_code;
+	arg = cmd + 1;
+
+	for (i = 0; i < ARRAY_SIZE(tianma_init_code); i++) {
+		err = mdfld_dsi_send_mcs_short_lp(sender,
+				*cmd, *arg, 1,
+				MDFLD_DSI_SEND_PACKAGE);
+		cmd += 2;
+		arg += 2;
+		if (err) {
+			DRM_ERROR("%s: %d: 0xff cmd\n",
+			__func__, __LINE__);
+			goto ic_init_err2;
+		}
+
+#ifdef TIANMA_DEBUG
+		DRM_INFO("panel init: %x=%x\n", *cmd, *arg);
+#endif
+	}
+
+ic_init_err2:
+	if (err)
+		err = -EIO;
+	readback_initcode(dsi_config);
 	return err;
 }
 
@@ -413,11 +473,59 @@ void tianma_cmd_init(struct drm_device *dev,
 	p_funcs->reset = tianma_cmd_panel_reset;
 	p_funcs->power_on = tianma_cmd_power_on;
 	p_funcs->power_off = tianma_cmd_power_off;
-	p_funcs->drv_ic_init = tianma_cmd_drv_ic_init;
+	p_funcs->drv_ic_init = (select_init_code) ? tianma_cmd_drv_ic_fullinit : tianma_cmd_drv_ic_init;
 	p_funcs->get_config_mode = tianma_cmd_get_config_mode;
 	p_funcs->get_panel_info = tianma_cmd_get_panel_info;
 	p_funcs->dsi_controller_init = tianma_cmd_controller_init;
 	p_funcs->detect = tianma_cmd_panel_connection_detect;
 	p_funcs->set_brightness = tianma_cmd_set_brightness;
 	p_funcs->exit_deep_standby = tianma_cmd_exit_deep_standby;
+}
+static
+int readback_initcode(struct mdfld_dsi_config *dsi_config)
+{
+	struct mdfld_dsi_pkg_sender *sender
+		= mdfld_dsi_get_pkg_sender(dsi_config);
+	int err = 0;
+	int i;
+	u8 *cmd, *arg;
+	u8 data;
+/* By default, this function returns immediately */
+#ifndef TIANMA_DEBUG
+	return 0;
+#endif
+
+	DRM_INFO("%s\n", __func__);
+
+	if (!sender) {
+		DRM_ERROR("Cannot get sender\n");
+		return -EINVAL;
+	}
+
+	msleep(120);
+
+	cmd = (u8 *)tianma_init_code;
+	arg = cmd + 1;
+
+	for (i = 0; i < ARRAY_SIZE(tianma_init_code); i++) {
+		switch (*cmd) {
+		case 0xFF:
+			err = mdfld_dsi_send_mcs_short_lp(sender,
+					*cmd, *arg, 1,
+					MDFLD_DSI_SEND_PACKAGE);
+			break;
+		default:
+			err = mdfld_dsi_read_mcs_lp(sender, *cmd, &data, 1);
+				DRM_ERROR("%01X %01X\n", *cmd, data);
+			break;
+		}
+		cmd += 2;
+		arg += 2;
+	}
+readback_err:
+	if (err) {
+		err = -EIO;
+		DRM_ERROR("TIANMA: error in readback loop\n");
+	}
+	return err;
 }

@@ -111,6 +111,7 @@ $(DRIVER_NAME)-objs += \
 	$(DISPLAYDIR)/jdi_vid.o \
 	$(DISPLAYDIR)/jdi_cmd.o \
 	$(DISPLAYDIR)/auo_cmd.o \
+	$(DISPLAYDIR)/tianma_cmd.o \
 	$(DISPLAYDIR)/cmi_vid.o \
 	$(DISPLAYDIR)/cmi_cmd.o \
 	$(DISPLAYDIR)/sharp10x19_vid.o \

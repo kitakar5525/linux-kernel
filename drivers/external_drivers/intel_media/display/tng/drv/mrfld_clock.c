@@ -372,6 +372,11 @@ void mrfld_setup_pll(struct drm_device *dev, int pipe, int clk)
 				clk_n = 1;
 				clock.m = 120;
 				break;
+		case TIANMA_CMD:
+				clock.p1 = 9;
+				clk_n = 1;
+				clock.m = 131;
+				break;
 		default:
 			/* for JDI_7x12_CMD */
 				clock.p1 = 4;

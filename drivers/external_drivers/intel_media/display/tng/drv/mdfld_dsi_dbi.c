@@ -1429,13 +1429,14 @@ void mdfld_reset_panel_handler_work(struct work_struct *work)
 		if (__dbi_panel_power_off(dsi_config, p_funcs))
 			DRM_INFO("failed to power off dbi panel\n");
 
-		if (get_panel_type(dev, 0) == AUO_CMD)
+		switch (get_panel_type(dev, 0)) {
+		case AUO_CMD:
+		case TIANMA_CMD:
+		case JDI_7x12_CMD:
 			if (p_funcs && p_funcs->reset)
 				p_funcs->reset(dsi_config);
-
-		if (get_panel_type(dev, 0) == JDI_7x12_CMD)
-			if (p_funcs && p_funcs->reset)
-				p_funcs->reset(dsi_config);
+			break;
+		}
 
 		if (__dbi_panel_power_on(dsi_config, p_funcs)) {
 			DRM_ERROR("failed to power on dbi panel\n");

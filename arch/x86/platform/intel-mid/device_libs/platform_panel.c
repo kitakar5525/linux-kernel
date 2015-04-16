@@ -38,7 +38,8 @@ static struct support_panel_list_t
 		{JDI_25x16_CMD, "PNC_JDI_25x16"},
 		{SDC_16x25_CMD, "PNC_SDC_16x25"},
 		{SDC_25x16_CMD, "PNC_SDC_25x16"},
-		{AUO_CMD, "AUO_CMD"}
+		{AUO_CMD, "AUO_CMD"},
+		{TIANMA_CMD, "TIANMA_CMD"}
 	};
 
 #define NUM_SUPPORT_PANELS (sizeof( \

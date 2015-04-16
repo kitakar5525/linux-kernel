@@ -450,6 +450,7 @@ static int synaptics_rmi4_i2c_remove(struct i2c_client *client)
 
 static const struct i2c_device_id synaptics_rmi4_id_table[] = {
 	{I2C_DRIVER_NAME, 0},
+	{"synaptics_1222", 0},
 	{},
 };
 MODULE_DEVICE_TABLE(i2c, synaptics_rmi4_id_table);
@@ -473,7 +474,11 @@ static struct i2c_driver synaptics_rmi4_i2c_driver = {
 		.of_match_table = synaptics_rmi4_of_match_table,
 	},
 	.probe = synaptics_rmi4_i2c_probe,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
 	.remove = __devexit_p(synaptics_rmi4_i2c_remove),
+#else
+	.remove = synaptics_rmi4_i2c_remove,
+#endif
 	.id_table = synaptics_rmi4_id_table,
 };
 

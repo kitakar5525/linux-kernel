@@ -2540,8 +2540,13 @@ static void synaptics_rmi4_set_params(struct synaptics_rmi4_data *rmi4_data)
 #endif
 
 #ifdef TYPE_B_PROTOCOL
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
 	input_mt_init_slots(rmi4_data->input_dev,
 			rmi4_data->num_of_fingers);
+#else
+	input_mt_init_slots(rmi4_data->input_dev,
+			rmi4_data->num_of_fingers, 0);
+#endif
 #endif
 
 	f1a = NULL;
@@ -3008,7 +3013,11 @@ exit:
 }
 EXPORT_SYMBOL(synaptics_rmi4_new_function);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
 static int __devinit synaptics_rmi4_probe(struct platform_device *pdev)
+#else
+static int synaptics_rmi4_probe(struct platform_device *pdev)
+#endif
 {
 	int retval;
 	unsigned char attr_count;
@@ -3210,7 +3219,11 @@ err_get_reg:
 	return retval;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
 static int __devexit synaptics_rmi4_remove(struct platform_device *pdev)
+#else
+static int synaptics_rmi4_remove(struct platform_device *pdev)
+#endif
 {
 	unsigned char attr_count;
 	struct synaptics_rmi4_data *rmi4_data = platform_get_drvdata(pdev);
@@ -3588,7 +3601,11 @@ static struct platform_driver synaptics_rmi4_driver = {
 #endif
 	},
 	.probe = synaptics_rmi4_probe,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
 	.remove = __devexit_p(synaptics_rmi4_remove),
+#else
+	.remove = synaptics_rmi4_remove,
+#endif
 };
 
 static int __init synaptics_rmi4_init(void)

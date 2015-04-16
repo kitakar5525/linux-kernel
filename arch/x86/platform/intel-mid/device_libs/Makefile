@@ -60,6 +60,7 @@ obj-$(subst m,y,$(CONFIG_INTEL_CRYSTALCOVE_PAGE0)) += platform_crystalcove_page0
 obj-$(subst m,y,$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4_FORK)) += platform_rmi4.o
 obj-$(subst m,y,$(CONFIG_TOUCHSCREEN_R69001_I2C)) += platform_r69001.o
 obj-$(subst m,y,$(CONFIG_TOUCHSCREEN_IT7260)) += platform_it7260.o
+obj-$(subst m,y,$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX)) += platform_s1222.o
 obj-$(subst m,y,$(CONFIG_NFC_PN544_PLATFORM_DATA)) += platform_pn544.o
 obj-$(subst m,y,$(CONFIG_NFC_FDP_PLATFORM_DATA)) += platform_fdp.o
 obj-$(subst m,y,$(CONFIG_SENSORS_L3G4200D_POLL)) += platform_l3g4200d.o

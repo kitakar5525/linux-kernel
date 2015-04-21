@@ -21,6 +21,7 @@
 #include <linux/power/smb347-charger.h>
 #include <linux/power/bq24192_charger.h>
 #include <linux/power/bq24261_charger.h>
+#include <linux/power/bq24232_charger.h>
 #include <linux/power/battery_id.h>
 #include <asm/pmic_pdata.h>
 #include <asm/intel-mid.h>
@@ -503,6 +504,7 @@ static void init_callbacks(struct max17042_platform_data *pdata)
 		pdata->get_vmax_threshold = mrfl_get_volt_max;
 		pdata->restore_config_data = rby_fg_restore_config_data;
 		pdata->save_config_data = rby_fg_save_config_data;
+		pdata->battery_status = bq24232_get_charger_status;
 	} else if (INTEL_MID_BOARD(1, PHONE, MRFL)
 			|| INTEL_MID_BOARD(1, TABLET, MRFL)
 			|| INTEL_MID_BOARD(1, PHONE, MOFD)

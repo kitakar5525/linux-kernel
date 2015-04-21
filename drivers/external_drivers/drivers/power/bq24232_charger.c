@@ -42,6 +42,8 @@ struct bq24232_charger {
 	struct power_supply pow_sply;
 	struct power_supply *bat_psy;
 
+	struct power_supply *wirless_psy;
+
 	struct work_struct otg_evt_work;
 	struct delayed_work bat_temp_mon_work;
 	struct notifier_block otg_nb;
@@ -182,6 +184,10 @@ static int get_psy_property_val(struct power_supply *psy,
 	if (psy == NULL)
 		return -ENODEV;
 
+	/*
+	 * get_psy_property_val() may be called in a irq context
+	 * make sure get_property() does not contains locks
+	 */
 	ret = psy->get_property(psy, prop, &propval);
 	if (!ret)
 		*val = (propval.intval);
@@ -486,7 +492,7 @@ static int otg_handle_notification(struct notifier_block *nb,
 		unsigned long event, void *param) {
 	struct bq24232_charger *chip = container_of(nb, struct bq24232_charger, otg_nb);
 	struct bq24232_otg_event *evt;
-	int vbus_detected;
+	int vbus_detected, w_online = 0, ret;
 	unsigned long flags;
 
 	dev_dbg(chip->dev, "OTG notification: event %lu\n", event);
@@ -500,6 +506,7 @@ static int otg_handle_notification(struct notifier_block *nb,
 		if (!evt)
 			goto evt_err;
 		memcpy(&evt->cap, (struct power_supply_cable_props *)param, sizeof(evt->cap));
+		ret = NOTIFY_OK;
 		break;
 	case USB_EVENT_VBUS:
 		evt = kzalloc(sizeof(*evt), GFP_ATOMIC);
@@ -512,6 +519,19 @@ static int otg_handle_notification(struct notifier_block *nb,
 		else
 			evt->cap.chrg_evt = POWER_SUPPLY_CHARGER_EVENT_DISCONNECT;
 		evt->cap.ma = BQ24232_CHARGE_CURRENT_LOW;
+
+		ret = get_psy_property_val(chip->wirless_psy, POWER_SUPPLY_TYPE_WIRELESS,
+						POWER_SUPPLY_PROP_ONLINE, &w_online);
+		if (ret < 0) {
+			dev_dbg(chip->dev, "OTG notification: cannot get power_supply property, error(%d)\n",
+					ret);
+			ret = NOTIFY_OK;
+		} else {
+			dev_dbg(chip->dev, "OTG notification: Wireless charger ONLINE = %d\n",
+					w_online);
+			if (w_online)
+				ret = NOTIFY_STOP;
+		}
 		break;
 	default:
 		return NOTIFY_DONE;
@@ -530,7 +550,7 @@ static int otg_handle_notification(struct notifier_block *nb,
 
 	queue_work(system_nrt_wq, &chip->otg_evt_work);
 
-	return NOTIFY_OK;
+	return ret;
 
 evt_err:
 	dev_err(chip->dev,
@@ -579,6 +599,7 @@ static inline int register_otg_notification(struct bq24232_charger *chip)
 	spin_lock_init(&chip->otg_queue_lock);
 
 	chip->otg_nb.notifier_call = otg_handle_notification;
+	chip->otg_nb.priority = 1;
 
 	/*
 	 * Get the USB transceiver instance

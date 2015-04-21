@@ -78,6 +78,10 @@ static irqreturn_t bq51003_power_irq(int irq, void *devid)
 	return IRQ_HANDLED;
 }
 
+/*
+ * bq51003_get_property() may be called in atomic
+ * context, make sure you do not use locks
+ */
 static int bq51003_get_property(struct power_supply *psy,
 					enum power_supply_property psp,
 					union power_supply_propval *val)

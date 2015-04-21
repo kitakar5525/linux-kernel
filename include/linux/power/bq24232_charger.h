@@ -29,6 +29,15 @@
 
 #define BAT_TEMP_MONITOR_DELAY	(60 * HZ)
 
+#ifdef CONFIG_BQ24232_CHARGER
+extern int bq24232_get_charger_status(void);
+#else
+int bq24232_get_charger_status(void)
+{
+	return 0;
+}
+#endif
+
 enum bq24232_chrgrate_temp_limit {
 	BQ24232_NORM_CHARGE_TEMP_LOW,
 	BQ24232_BOOST_CHARGE_TEMP_LOW,
@@ -56,6 +65,7 @@ struct bq24232_plat_data {
 	int chg_rate_temp_gpio;
 
 	int (*enable_charging) (bool val);
+	int (*get_charging_status) (bool *charging_status);
 };
 
 #endif

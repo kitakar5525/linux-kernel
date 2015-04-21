@@ -41,6 +41,7 @@ void *bq24232_charger_platform_data(void *info)
 	bq24232_pdata.pgood_gpio = get_gpio_by_name("chg_pgood");
 #if CONFIG_PMIC_CCSM
 	bq24232_pdata.enable_charging = pmic_enable_charging;
+	bq24232_pdata.get_charging_status = pmic_get_ext_charging_status;
 #endif
 	bq24232_pdata.bat_temp_profile = bq24232_bat_temp_profile;
 	bq24232_pdata.supplied_to = bq24232_supplied_to;

@@ -56,6 +56,13 @@ struct bq24232_charger {
 
 	int cc;
 	enum power_supply_type cable_type;
+	int status;
+
+	/*
+	 * @charging_status_n:	it must reflects the CE_N signal on BQ24232 to
+	 *						report the charging status and end of charge
+	 */
+	bool charging_status_n;
 
 	/*
 	 * @pgood_valid:	set to 1 only if the bq24232 input voltage is good,
@@ -108,6 +115,8 @@ struct bq24232_otg_event {
 	struct list_head node;
 	struct power_supply_cable_props cap;
 };
+
+static struct bq24232_charger *bq24232_charger;
 
 static inline int bq24232_enable_charging(struct bq24232_charger *chip, bool val);
 
@@ -320,7 +329,18 @@ static void bq24232_update_charging_status(struct bq24232_charger *chip)
 {
 	int ret;
 	mutex_lock(&chip->stat_lock);
+
+	if (chip->pdata->get_charging_status)
+		chip->pdata->get_charging_status(&chip->charging_status_n);
+	else
+		dev_warn(chip->dev, "%s: hw charging status unavailable\n", __func__);
+
 	if (bq24232_can_enable_charging(chip)) {
+		if (chip->charging_status_n)
+			chip->status = POWER_SUPPLY_STATUS_FULL;
+		else
+			chip->status = POWER_SUPPLY_STATUS_CHARGING;
+
 		if (chip->is_charging_enabled) {
 			mutex_unlock(&chip->stat_lock);
 			return;
@@ -340,9 +360,17 @@ static void bq24232_update_charging_status(struct bq24232_charger *chip)
 			return;
 		}
 	}
+
 	ret = bq24232_enable_charging(chip, false);
 	if (!ret)
 		chip->is_charging_enabled = false;
+
+	bq24232_enable_charging(chip, false);
+	chip->is_charging_enabled = false;
+	if (!chip->pgood_valid)
+		chip->status = POWER_SUPPLY_STATUS_DISCHARGING;
+	else
+		chip->status = POWER_SUPPLY_STATUS_NOT_CHARGING;
 	mutex_unlock(&chip->stat_lock);
 }
 
@@ -465,6 +493,22 @@ static int bq24232_charger_set_property(struct power_supply *psy,
 #else
 	return -EPERM;
 #endif
+}
+
+int bq24232_get_charger_status(void)
+{
+	unsigned long flags;
+	int status;
+	if (!bq24232_charger)
+		return -ENODEV;
+
+	mutex_lock(&bq24232_charger->stat_lock);
+	status = bq24232_charger->status;
+	mutex_unlock(&bq24232_charger->stat_lock);
+	dev_info(bq24232_charger->dev, "%s: status %d\n",
+			__func__,
+			status);
+	return status;
 }
 
 static void bq24232_exception_mon_wrk(struct work_struct *work)
@@ -622,7 +666,6 @@ static inline int register_otg_notification(struct bq24232_charger *chip)
 static int bq24232_charger_probe(struct platform_device *pdev)
 {
 	const struct bq24232_plat_data *pdata = pdev->dev.platform_data;
-	struct bq24232_charger *bq24232_charger;
 	struct power_supply *pow_sply;
 	struct power_supply_charger_cap chgr_cap;
 	enum power_supply_charger_cable_type cable_type;
@@ -673,6 +716,8 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	bq24232_charger->pgood_valid = false;
 	bq24232_charger->cc = 0;
 	bq24232_charger->boost_mode = 0;
+	bq24232_charger->status = POWER_SUPPLY_STATUS_UNKNOWN;
+	bq24232_charger->charging_status_n = 0;
 
 	INIT_DELAYED_WORK(&bq24232_charger->bat_temp_mon_work,
 				bq24232_exception_mon_wrk);

@@ -20,6 +20,7 @@ struct pmic_platform_data {
 
 extern int pmic_get_status(void);
 extern int pmic_enable_charging(bool);
+extern int pmic_get_ext_charging_status(bool *is_charging);
 extern int pmic_set_cc(int);
 extern int pmic_set_cv(int);
 extern int pmic_set_ilimma(int);

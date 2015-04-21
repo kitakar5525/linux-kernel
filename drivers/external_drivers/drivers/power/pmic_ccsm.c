@@ -809,6 +809,24 @@ int pmic_handle_otgmode(bool enable)
 	return ret;
 }
 
+int pmic_get_ext_charging_status(bool *charging_status)
+{
+	int ret;
+	u8 chgrirq0_stat = 0;
+	ret = intel_scu_ipc_ioread8(SCHGRIRQ0_ADDR,
+			&chgrirq0_stat);
+	if (ret) {
+		dev_err(chc.dev,
+			"%s: Error(%d) in intel_scu_ipc_ioread8. Fail to read SCHGRIRQ0_ADDR\n",
+				__func__, ret);
+
+	} else {
+		dev_info(chc.dev, "%s: SCHGINTB = %d\n", __func__, chgrirq0_stat);
+		*charging_status = chgrirq0_stat & SCHGIRQ0_SCHGINTB_ALRT_MASK;
+	}
+	return ret;
+}
+
 int pmic_enable_charging(bool enable)
 {
 	int ret;
@@ -1641,26 +1659,16 @@ static irqreturn_t pmic_thread_handler(int id, void *data)
 
 	/*
 	In case this is an external charger interrupt, we are
-	clearing the level 1 irq register and let external charger
-	driver handle the interrupt.
+	clearing the level 1 irq register
 	 */
 
 	if (!(evt->chgrirq1_int) &&
 		!(evt->chgrirq0_int & PMIC_CHRGR_CCSM_INT0_MASK)) {
 		intel_scu_ipc_update_register(IRQLVL1_MASK_ADDR, 0x00,
 				IRQLVL1_CHRGR_MASK);
-		if ((chc.invalid_batt) &&
-			(evt->chgrirq0_int & PMIC_CHRGR_EXT_CHRGR_INT_MASK)) {
-			dev_dbg(chc.dev, "Handling external charger interrupt!!\n");
-			kfree(evt);
-			return IRQ_HANDLED;
-		}
-		kfree(evt);
-		dev_dbg(chc.dev, "Unhandled interrupt!!\n");
-		return IRQ_NONE;
 	}
 
-	if (evt->chgrirq0_int & PMIC_CHRGR_CCSM_INT0_MASK) {
+	if (evt->chgrirq0_int & (PMIC_CHRGR_CCSM_INT0_MASK | PMIC_CHRGR_EXT_CHRGR_INT_MASK)) {
 		ret = intel_scu_ipc_ioread8(SCHGRIRQ0_ADDR,
 				&evt->chgrirq0_stat);
 		if (ret) {

@@ -133,6 +133,7 @@ struct synaptics_rmi4_fn_full_addr {
  * @data38_offset: offset to F11_2D_DATA38 register
  */
 struct synaptics_rmi4_f11_extra_data {
+	unsigned char data28_offset;
 	unsigned char data38_offset;
 };
 
@@ -241,6 +242,7 @@ struct synaptics_rmi4_device_info {
  * @sensor_sleep: flag to indicate sleep state of sensor
  * @stay_awake: flag to indicate whether to stay awake during suspend
  * @f11_wakeup_gesture: flag to indicate support for wakeup gestures in F$11
+ * @f11_large_object: flag to indicate support for large object in F$11
  * @f12_wakeup_gesture: flag to indicate support for wakeup gestures in F$12
  * @enable_wakeup_gesture: flag to indicate usage of wakeup gestures
  * @wedge_sensor: flag to indicate use of wedge sensor
@@ -287,6 +289,7 @@ struct synaptics_rmi4_data {
 	bool sensor_sleep;
 	bool stay_awake;
 	bool f11_wakeup_gesture;
+	bool f11_large_object;
 	bool f12_wakeup_gesture;
 	bool enable_wakeup_gesture;
 	bool wedge_sensor;

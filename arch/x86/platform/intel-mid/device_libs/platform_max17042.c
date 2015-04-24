@@ -257,64 +257,6 @@ static int ctp_fg_save_config_data(const char *name, void *data, int len)
 }
 EXPORT_SYMBOL(ctp_fg_save_config_data);
 
-static uint16_t rby_cell_char_tbl[] = {
-	/* Data to be written from 0x80h */
-	0x7d00, 0xb6e0, 0xb7a0, 0xb910, 0xbbf0, 0xbce0, 0xbec0, 0xbf80,
-	0xc2e0, 0xc5e0, 0xc880, 0xcb00, 0xce30, 0xd220, 0xd620, 0xdd30,
-	/* Data to be written from 0x90h */
-	0x0030, 0x4130, 0x12f0, 0x0a20, 0x2540, 0x0c20, 0x24f0, 0x09f0,
-	0x08b0, 0x09f0, 0x02f0, 0x08d0, 0x06f0, 0x06e0, 0x02f0, 0x02f0,
-	/* Data to be written from 0xA0h */
-	0x0200, 0x0200, 0x0200, 0x0200, 0x0200, 0x0200, 0x0200, 0x0200,
-	0x0200, 0x0200, 0x0200, 0x0200, 0x0200, 0x0200, 0x0200, 0x0200,
-};
-
-static void rby_fg_restore_config_data(const char *name, void *data, int len)
-{
-	struct max17042_config_data *fg_cfg_data =
-				(struct max17042_config_data *)data;
-	int ret = 0;
-	ret = memcpy_safe(&fg_cfg_data->cell_char_tbl,
-			sizeof(fg_cfg_data->cell_char_tbl),
-			rby_cell_char_tbl,
-			sizeof(rby_cell_char_tbl));
-	if (ret) {
-		pr_err("%s, err:%d in copying cell char tbl\n",
-			__func__, ret);
-		return ret;
-	}
-	fg_cfg_data->rcomp0 = 0x001f;
-	fg_cfg_data->tempCo = 0x2b36;
-	fg_cfg_data->full_cap = 435;
-	fg_cfg_data->cycles = 0x0060;
-	fg_cfg_data->full_capnom = 435;
-	fg_cfg_data->ichgt_term = 0x0080;
-	fg_cfg_data->design_cap = 435;
-	fg_cfg_data->rsense = 1;
-	fg_cfg_data->cfg = 0x2210;
-	fg_cfg_data->learn_cfg = 0x2603;
-	fg_cfg_data->filter_cfg = 0x87A4;
-	fg_cfg_data->relax_cfg = 0x286A;
-
-
-	fg_cfg_data->qrtbl00 = 0x4a88;
-	fg_cfg_data->qrtbl10 = 0x2210;
-	fg_cfg_data->qrtbl20 = 0x0d99;
-	fg_cfg_data->qrtbl30 = 0x0912;
-	fg_cfg_data->full_soc_thr = 0x5f00;
-	fg_cfg_data->vempty = 0xa05f;
-	fg_cfg_data->lavg_empty = 0x02b8;
-}
-
-EXPORT_SYMBOL(rby_fg_restore_config_data);
-
-static int rby_fg_save_config_data(const char *name, void *data, int len)
-{
-	/* TODO: implement the save function here */
-	return 0;
-}
-EXPORT_SYMBOL(rby_fg_save_config_data);
-
 static bool ctp_is_volt_shutdown_enabled(void)
 {
 	 /* FPO1 is reserved in case of CTP so we are returning true */
@@ -502,8 +444,6 @@ static void init_callbacks(struct max17042_platform_data *pdata)
 				INTEL_MID_BOARD(2, PHONE, MRFL, GLC, ENG)) {
 		pdata->get_vmin_threshold = mrfl_get_vsys_min;
 		pdata->get_vmax_threshold = mrfl_get_volt_max;
-		pdata->restore_config_data = rby_fg_restore_config_data;
-		pdata->save_config_data = rby_fg_save_config_data;
 		pdata->battery_status = bq24232_get_charger_status;
 	} else if (INTEL_MID_BOARD(1, PHONE, MRFL)
 			|| INTEL_MID_BOARD(1, TABLET, MRFL)

@@ -34,10 +34,16 @@
 #define DSX_MAX_Y_FOR_2D -1 /* set to -1 if no virtual buttons */
 static unsigned char bus_reg_name[] = "";
 static unsigned int cap_button_codes[] = {};
+static unsigned int vir_button_codes[] = {};
 
 static struct synaptics_dsx_button_map cap_button_map = {
 	.nbuttons = ARRAY_SIZE(cap_button_codes),
 	.map = cap_button_codes,
+};
+
+static struct synaptics_dsx_button_map vir_button_map = {
+	.nbuttons = ARRAY_SIZE(vir_button_codes),
+	.map = vir_button_codes,
 };
 
 static struct synaptics_dsx_board_data dsx_board_data = {
@@ -56,6 +62,7 @@ static struct synaptics_dsx_board_data dsx_board_data = {
 	.max_y_for_2d = DSX_MAX_Y_FOR_2D,
 	.bus_reg_name = bus_reg_name,
 	.cap_button_map = &cap_button_map,
+	.vir_button_map = &vir_button_map,
 };
 
 void *s1222_platform_data(void *info)

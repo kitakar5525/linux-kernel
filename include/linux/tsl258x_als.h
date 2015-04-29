@@ -24,12 +24,14 @@ enum tsl2584_gain_idex {
 	TSL2584_ALS_GAIN_NUM,
 };
 
+#define TSL258X_ALS_DEF_ODR		1000
 #define TSL258X_ALS_DEF_TIME		650
 #define TSL258X_ALS_DEF_GAIN		1
 #define TSL258X_ALS_DEF_GAIN_TRIM	1000
 #define TSL258X_ALS_DEF_CAL_TARGET	130
 
 struct tsl258x_platform_data {
+	int als_def_odr;
 	int als_def_als_time;
 	int als_def_gain;
 	int als_def_gain_trim;

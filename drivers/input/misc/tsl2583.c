@@ -230,7 +230,7 @@ static char *tsl2583x_get_name(struct tsl258x_chip *chip);
  */
 static void taos_defaults(struct tsl258x_chip *chip)
 {
-	chip->taos_settings.als_odr = 0;
+	chip->taos_settings.als_odr = chip->pdata->als_def_odr;
 	/* assume clear glass as default */
 	chip->taos_settings.als_gain_trim = chip->pdata->als_def_gain_trim;
 	/* default gain trim to account for aperture effects */
@@ -319,7 +319,7 @@ static int taos_set_als_time(struct tsl258x_chip *chip, int ms)
 	int als_time = ms;
 
 	if (chip->taos_settings.als_time == ms)
-		return -EINVAL;
+		return 0;
 
 	if (als_time > ALS_TIME_MAX)
 		als_time = ALS_TIME_MAX;
@@ -414,8 +414,8 @@ static int taos_set_als_odr(struct tsl258x_chip *chip, int ms)
 	int ret = 0;
 	int als_time = ms;
 
-	if (chip->taos_settings.als_time == ms)
-		return -EINVAL;
+	if (chip->taos_settings.als_odr == ms)
+		return 0;
 
 	if (als_time <= ALS_TIME_MAX * 2) {
 		als_time = (als_time / 50) * 50;
@@ -473,7 +473,6 @@ static int taos_get_lux(struct tsl258x_chip *chip)
 	u32 ch1lux = 0;
 	u32 gain;
 
-	dev_err(&chip->client->dev, "\n");
 	if (chip->als_status != TSL258X_CHIP_WORKING) {
 		/* device is not enabled */
 		dev_err(&chip->client->dev, "taos_get_lux device is not enabled\n");
@@ -518,7 +517,10 @@ static int taos_get_lux(struct tsl258x_chip *chip)
 
 	if (chip->id == ID_TSL2584TSV) {
 		gain = (u32)(gainadj[chip->taos_settings.als_gain_idex].ch0 * chip->taos_settings.als_time);
-		lux = ((taos_device_lux[0].ch0 * ch0) - (taos_device_lux[0].ch1 * ch1)) / (gain << MPOW);
+		/* Should be convert to 64 bits to calculate, else maybe overflow */
+		lux = ((((uint64_t)taos_device_lux[0].ch0) * ((uint64_t)ch0)) -
+						(((uint64_t)taos_device_lux[0].ch1) * ((uint64_t)ch1))) /
+						(gain << MPOW);
 	} else {
 		/* calculate ratio */
 		ratio = (ch1 << 15) / ch0;
@@ -700,6 +702,9 @@ static ssize_t taos_power_state_store(struct device *dev,
 				dev_err(&client->dev, "taos_set_enable true failed\n");
 				len = err;
 				goto enable_als_err;
+			} else {
+				mod_timer(&chip->timer,
+					jiffies + msecs_to_jiffies(chip->taos_settings.als_odr));
 			}
 		}
 	} else {
@@ -740,10 +745,7 @@ static ssize_t taos_als_delay_store(struct device *dev,
 
 	mutex_lock(&chip->als_mutex);
 	err = taos_set_als_odr(chip, value);
-	if (!err) {
-		mod_timer(&chip->timer,
-			jiffies + msecs_to_jiffies(chip->taos_settings.als_odr));
-	} else
+	if (err < 0)
 		len = err;
 	mutex_unlock(&chip->als_mutex);
 

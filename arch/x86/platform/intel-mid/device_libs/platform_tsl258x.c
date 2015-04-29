@@ -25,6 +25,7 @@ void *tsl258x_als_platform_data(void *info)
 {
 	static struct tsl258x_platform_data tsl258x_platform_data;
 
+	tsl258x_platform_data.als_def_odr = TSL258X_ALS_DEF_ODR;
 	tsl258x_platform_data.als_def_als_time = TSL258X_ALS_DEF_TIME;
 	tsl258x_platform_data.als_def_gain = TSL258X_ALS_DEF_GAIN;
 	tsl258x_platform_data.als_def_gain_trim = TSL258X_ALS_DEF_GAIN_TRIM;

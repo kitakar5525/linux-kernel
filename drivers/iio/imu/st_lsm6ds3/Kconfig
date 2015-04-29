@@ -13,6 +13,13 @@ config ST_LSM6DS3_IIO
 	  This driver can be built as a module. The module will be called
 	  st-lsm6ds3.
 
+config ST_LSM6DS3_SELFTEST
+	bool "ST LSM6DS3 self-test support"
+	depends on ST_LSM6DS3_IIO
+	default n
+	help
+	  If you say yes here to enable LSM6DS3 self-test interface.
+
 config ST_LSM6DS3_IIO_SENSORS_WAKEUP
 	bool "All sensors can wake-up system during suspend"
 	depends on ST_LSM6DS3_IIO

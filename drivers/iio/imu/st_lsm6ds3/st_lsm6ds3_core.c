@@ -189,6 +189,18 @@
 #define ST_LSM6DS3_XLDA_MASK			0x01
 #define ST_LSM6DS3_GDA_MASK				0x02
 
+#ifdef CONFIG_ST_LSM6DS3_SELFTEST
+/* Macro for manufacturing test  */
+#define SAMPLE_NUM	5
+#define DELAY_FOR_OUT_STABLE	200	/* 200ms */
+#define MAX_WHILE_COUNTER	20
+#define ACCEL_MIN_DIFF	90000		/* ug */
+#define ACCEL_MAX_DIFF	1700000		/* ug */
+#define GYRO_MIN_DIFF	250000000	/* udps @2000dps */
+#define GYRO_MAX_DIFF	700000000	/* udps @2000dps */
+#define ABS(n)			(((n) > 0) ? (n) : (0 - (n)))
+#endif
+
 #define ST_LSM6DS3_ACCEL_SUFFIX_NAME		"accel"
 #define ST_LSM6DS3_GYRO_SUFFIX_NAME		"gyro"
 #define ST_LSM6DS3_STEP_COUNTER_SUFFIX_NAME	"step_c"
@@ -1871,6 +1883,171 @@ static ssize_t st_lsm6ds3_sysfs_set_selftest_status(struct device *dev,
 	return size;
 }
 
+#ifdef CONFIG_ST_LSM6DS3_SELFTEST
+u32 st_lsm6ds3_get_sensitivity(struct lsm6ds3_sensor_data *sdata)
+{
+	u32 sensitivity = 0;
+	switch (sdata->sindex) {
+	case ST_INDIO_DEV_ACCEL:
+		switch (sdata->c_gain[0]) {
+		case ST_LSM6DS3_ACCEL_FS_2G_GAIN:
+			sensitivity = ST_LSM6DS3_ACCEL_FS_2G_SENSITIVITY;
+			break;
+		case ST_LSM6DS3_ACCEL_FS_4G_GAIN:
+			sensitivity = ST_LSM6DS3_ACCEL_FS_4G_SENSITIVITY;
+			break;
+		case ST_LSM6DS3_ACCEL_FS_8G_GAIN:
+			sensitivity = ST_LSM6DS3_ACCEL_FS_8G_SENSITIVITY;
+			break;
+		case ST_LSM6DS3_ACCEL_FS_16G_GAIN:
+			sensitivity = ST_LSM6DS3_ACCEL_FS_16G_SENSITIVITY;
+			break;
+		}
+		break;
+	case ST_INDIO_DEV_GYRO:
+		switch (sdata->c_gain[0]) {
+		case ST_LSM6DS3_GYRO_FS_245_GAIN:
+			sensitivity = ST_LSM6DS3_GYRO_FS_245_SENSITIVITY;
+			break;
+		case ST_LSM6DS3_GYRO_FS_500_GAIN:
+			sensitivity = ST_LSM6DS3_GYRO_FS_500_SENSITIVITY;
+			break;
+		case ST_LSM6DS3_GYRO_FS_1000_GAIN:
+			sensitivity = ST_LSM6DS3_GYRO_FS_1000_SENSITIVITY;
+			break;
+		case ST_LSM6DS3_GYRO_FS_2000_GAIN:
+			sensitivity = ST_LSM6DS3_GYRO_FS_2000_SENSITIVITY;
+			break;
+		}
+		break;
+	}
+
+	return sensitivity;
+}
+
+int st_lsm6ds3_average_sample(struct lsm6ds3_sensor_data *sdata,
+				s32 *out_data)
+{
+	int i, err, counter = 0;
+	u8 hw_data[ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE];
+	u8 stat_reg;
+	struct lsm6ds3_data *cdata = sdata->cdata;
+	bool data_avl = false;
+
+	msleep(DELAY_FOR_OUT_STABLE);
+	/* first sample will be discarded */
+	for (i = 0; i < (SAMPLE_NUM + 1); i++) {
+		while (!data_avl) {
+			dev_dbg(cdata->dev, "counter=%d\n", counter);
+			if (++counter > MAX_WHILE_COUNTER)
+				return -EAGAIN;
+
+			if (sdata->c_odr)
+				msleep((unsigned long)((1000 / sdata->c_odr) + 1));
+			err = cdata->tf->read(cdata, ST_LSM6DS3_STAT_REG_ADDR, 1, &stat_reg, true);
+			if (err < 0) {
+				dev_err(cdata->dev, "failed to read STATUS_REG.\n");
+				return err;
+			}
+			switch (sdata->sindex) {
+			case ST_INDIO_DEV_ACCEL:
+				if (stat_reg & ST_LSM6DS3_XLDA_MASK)
+					data_avl = true;
+				break;
+			case ST_INDIO_DEV_GYRO:
+				if (stat_reg & ST_LSM6DS3_GDA_MASK)
+					data_avl = true;
+				break;
+			}
+		}
+		/* Now data is ready */
+		err = cdata->tf->read(cdata, cdata->indio_dev[sdata->sindex]->channels->address,
+									ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE, hw_data, true);
+		if (err < 0) {
+			dev_err(cdata->dev, "failed to read out data.\n");
+			return err;
+		}
+		dev_dbg(cdata->dev, "x=%x, y=%x, z=%x\n",
+			(s16)((hw_data[1] << 8 | hw_data[0])),
+			(s16)((hw_data[3] << 8 | hw_data[2])),
+			(s16)((hw_data[5] << 8 | hw_data[4])));
+		if (i != 0) {
+			out_data[0] += (s16)((hw_data[1] << 8 | hw_data[0]));
+			out_data[1] += (s16)((hw_data[3] << 8 | hw_data[2]));
+			out_data[2] += (s16)((hw_data[5] << 8 | hw_data[4]));
+		}
+		data_avl = false;
+	}
+
+	out_data[0] /= SAMPLE_NUM;
+	out_data[1] /= SAMPLE_NUM;
+	out_data[2] /= SAMPLE_NUM;
+	dev_dbg(cdata->dev, "x=%d, y=%d, z=%d\n", out_data[0], out_data[1], out_data[2]);
+
+	return 0;
+}
+
+ssize_t st_lsm6ds3_sysfs_get_fact_selftest_rlt(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	int err;
+	s32 out_nost[3] = {0, 0, 0};
+	s32 out_st[3] = {0, 0, 0};
+	u32 outx_diff, outy_diff, outz_diff;
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct lsm6ds3_sensor_data *sdata = iio_priv(indio_dev);
+	u32 sensitivity;
+
+	err = st_lsm6ds3_average_sample(sdata, out_nost);
+	if (err < 0)
+		return err;
+
+	/* set self test mode to positive-sign */
+	err = st_lsm6ds3_set_selftest(sdata, 1);
+	if (err < 0) {
+		dev_err(dev, "set self test mode to p-s failed.\n");
+		return err;
+	}
+	err = st_lsm6ds3_average_sample(sdata, out_st);
+	if (err < 0)
+		return err;
+
+	/* disable self test function */
+	err = st_lsm6ds3_set_selftest(sdata, 0);
+	if (err < 0) {
+		dev_err(dev, "disable self test failed.\n");
+		return err;
+	}
+
+	sensitivity = st_lsm6ds3_get_sensitivity(sdata);
+	outx_diff = ABS((out_st[0] - out_nost[0])) * sensitivity;
+	outy_diff = ABS((out_st[1] - out_nost[1])) * sensitivity;
+	outz_diff = ABS((out_st[2] - out_nost[2])) * sensitivity;
+	dev_dbg(dev, "sensitivity=%d, diff x=%d, y=%d, z=%d\n",
+		sensitivity, outx_diff, outy_diff, outz_diff);
+	switch (sdata->sindex) {
+	case ST_INDIO_DEV_ACCEL:
+		if (outx_diff > ACCEL_MIN_DIFF &&
+				outx_diff < ACCEL_MAX_DIFF &&
+				outy_diff > ACCEL_MIN_DIFF &&
+				outy_diff < ACCEL_MAX_DIFF &&
+				outz_diff > ACCEL_MIN_DIFF &&
+				outz_diff < ACCEL_MAX_DIFF)
+			return sprintf(buf, "%s\n", "PASSED");
+	case ST_INDIO_DEV_GYRO:
+		if (outx_diff > GYRO_MIN_DIFF &&
+				outx_diff < GYRO_MAX_DIFF &&
+				outy_diff > GYRO_MIN_DIFF &&
+				outy_diff < GYRO_MAX_DIFF &&
+				outz_diff > GYRO_MIN_DIFF &&
+				outz_diff < GYRO_MAX_DIFF)
+			return sprintf(buf, "%s\n", "PASSED");
+	}
+
+	return sprintf(buf, "%s\n", "FAILED");
+}
+#endif
+
 ssize_t st_lsm6ds3_sysfs_get_hw_fifo_lenght(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -1919,12 +2096,21 @@ static IIO_DEVICE_ATTR(self_test, S_IWUSR | S_IRUGO,
 				st_lsm6ds3_sysfs_get_selftest_status,
 				st_lsm6ds3_sysfs_set_selftest_status, 0);
 
+#ifdef CONFIG_ST_LSM6DS3_SELFTEST
+static IIO_DEVICE_ATTR(fact_selftest, S_IRUGO,
+				st_lsm6ds3_sysfs_get_fact_selftest_rlt,
+				NULL, 0);
+#endif
+
 static struct attribute *st_lsm6ds3_accel_attributes[] = {
 	&iio_dev_attr_sampling_frequency_available.dev_attr.attr,
 	&iio_dev_attr_in_accel_scale_available.dev_attr.attr,
 	&iio_dev_attr_sampling_frequency.dev_attr.attr,
 	&iio_dev_attr_self_test_available.dev_attr.attr,
 	&iio_dev_attr_self_test.dev_attr.attr,
+#ifdef CONFIG_ST_LSM6DS3_SELFTEST
+	&iio_dev_attr_fact_selftest.dev_attr.attr,
+#endif
 	&iio_dev_attr_hw_fifo_lenght.dev_attr.attr,
 	&iio_dev_attr_flush.dev_attr.attr,
 	NULL,
@@ -1947,6 +2133,9 @@ static struct attribute *st_lsm6ds3_gyro_attributes[] = {
 	&iio_dev_attr_sampling_frequency.dev_attr.attr,
 	&iio_dev_attr_self_test_available.dev_attr.attr,
 	&iio_dev_attr_self_test.dev_attr.attr,
+#ifdef CONFIG_ST_LSM6DS3_SELFTEST
+	&iio_dev_attr_fact_selftest.dev_attr.attr,
+#endif
 	&iio_dev_attr_hw_fifo_lenght.dev_attr.attr,
 	&iio_dev_attr_flush.dev_attr.attr,
 	NULL,

@@ -379,6 +379,8 @@ static
 int tianma_cmd_panel_reset(
 		struct mdfld_dsi_config *dsi_config)
 {
+	u8 value;
+
 	PSB_DEBUG_ENTRY("\n");
 
 	gpio_direction_output(bias_en_gpio, 1);
@@ -386,6 +388,10 @@ int tianma_cmd_panel_reset(
 
 	gpio_set_value(bias_en_gpio, 1);
 	gpio_set_value(mipi_reset_gpio, 0);
+
+	/* turn on VSWITCH */
+	intel_scu_ipc_ioread8(0xAF, &value);
+	intel_scu_ipc_iowrite8(0xAF, value | 0x2);
 
 	usleep_range(10000, 12000);
 

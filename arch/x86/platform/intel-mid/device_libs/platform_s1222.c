@@ -47,7 +47,6 @@ static struct synaptics_dsx_button_map vir_button_map = {
 };
 
 static struct synaptics_dsx_board_data dsx_board_data = {
-	.x_flip = 1,
 	.swap_axes = 1,
 	.irq_gpio = DSX_ATTN_GPIO,
 	.irq_on_state = DSX_IRQ_ON_STATE,

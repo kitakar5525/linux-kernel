@@ -133,7 +133,21 @@
 #define LIS3DSH_INT1_EN_MASK		(0x01 << 3)
 #define LIS3DSH_INT1_EN_ON		(0x01 << 3)
 #define LIS3DSH_INT1_EN_OFF		0x00
-/* */
+
+#ifdef CONFIG_ST_LIS3DSH_SELFTEST
+/* Macro for manufacturing test */
+#define LIS3DSH_ST_MASK			0x06
+#define LIS3DSH_ST_PS			(0x01 << 1)
+#define LIS3DSH_ST_NS			(0x01 << 2)
+#define LIS3DSH_ST_OFF			0x00
+
+#define LIS3DSH_DIFF_MIN		70000	/* ug */
+#define LIS3DSH_DIFF_MAX		1400000	/* ug */
+#define ABS(x)					(((x) >= 0) ? (x) : (0 - (x)))
+#define MAX_READ_COUNTER		50
+#define LIS3DSH_SAMPLE_NUM		5
+#define DELAY_DOR_SAMPLE		200
+#endif
 
 #define	OUT_AXISDATA_REG		LIS3DSH_OUTX_L
 #define WHOAMI_LIS3DSH_ACC		0x3F	/* Expected content for WAI */
@@ -1338,8 +1352,104 @@ static ssize_t attr_get_enable_state_prog(struct device *dev,
 	return sprintf(buf, "0x%02x\n", val);
 }
 
+#ifdef CONFIG_ST_LIS3DSH_SELFTEST
+int lis3dsh_average_sample(struct lis3dsh_acc_data *acc, int *out_data)
+{
+	int i, err, counter = 0;
+	int hw_data[3] = {0, 0, 0};
+	u8 stat_reg;
+	bool data_rdy = false;
 
+	msleep(DELAY_DOR_SAMPLE);
+	for (i = 0; i < LIS3DSH_SAMPLE_NUM + 1; i++) {
+		while (!data_rdy) {
+			dev_dbg(&acc->client->dev, "counter=%d\n", counter);
+			if (++counter > MAX_READ_COUNTER) {
+				dev_err(&acc->client->dev, "Exceeding the max read counter\n");
+				return -EAGAIN;
+			}
 
+			msleep(acc->pdata->poll_interval);
+			stat_reg = LIS3DSH_STATUS_REG;
+			err = lis3dsh_acc_i2c_read(acc, &stat_reg, 1);
+			if (err < 0) {
+				dev_err(&acc->client->dev, "failed to read Status register.\n");
+				return err;
+			}
+			if (stat_reg & ZYXDA_RDY_MASK)
+				data_rdy = true;
+		}
+
+		err = lis3dsh_acc_get_acceleration_data(acc, hw_data);
+		if (err < 0) {
+			dev_err(&acc->client->dev, "failed to get accel data.\n");
+			return err;
+		}
+		/* Skip the first sample data */
+		if (i != 0) {
+			out_data[0] += hw_data[0];
+			out_data[1] += hw_data[1];
+			out_data[2] += hw_data[2];
+		}
+		data_rdy = false;
+	}
+	out_data[0] /= LIS3DSH_SAMPLE_NUM;
+	out_data[1] /= LIS3DSH_SAMPLE_NUM;
+	out_data[2] /= LIS3DSH_SAMPLE_NUM;
+	dev_dbg(&acc->client->dev, "x=%d, y=%d, z=%d\n",
+				out_data[0], out_data[1], out_data[2]);
+
+	return 0;
+}
+
+static ssize_t attr_selftest(struct device *dev,
+		struct device_attribute *attr,	char *buf)
+{
+	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
+	int ret;
+	int nost[3] = {0, 0, 0};
+	int st[3] = {0, 0, 0};
+	int out_diff[3] = {0, 0, 0};
+
+	ret = lis3dsh_average_sample(acc, nost);
+	if (ret < 0)
+		return ret;
+
+	/* Positive sign self-test */
+	ret = lis3dsh_acc_register_masked_update(acc, LIS3DSH_CTRL_REG5,
+			LIS3DSH_ST_MASK, LIS3DSH_ST_PS, LIS3DSH_RES_CTRL_REG5);
+	if (ret < 0) {
+		dev_err(dev, "Positive sign self-test failed.\n");
+		return ret;
+	}
+
+	ret = lis3dsh_average_sample(acc, st);
+	if (ret < 0)
+		return ret;
+
+	/* Disable self-test function */
+	ret = lis3dsh_acc_register_masked_update(acc, LIS3DSH_CTRL_REG5,
+			LIS3DSH_ST_MASK, LIS3DSH_ST_OFF, LIS3DSH_RES_CTRL_REG5);
+	if (ret < 0) {
+		dev_err(dev, "Disable self-test failed.\n");
+		return ret;
+	}
+
+	out_diff[0] = ABS((nost[0] - st[0]));
+	out_diff[1] = ABS((nost[1] - st[1]));
+	out_diff[2] = ABS((nost[2] - st[2]));
+	dev_dbg(dev, "diff x=%d, y=%d, z=%d\n", out_diff[0], out_diff[1], out_diff[2]);
+	if (out_diff[0] > LIS3DSH_DIFF_MIN &&
+			out_diff[0] < LIS3DSH_DIFF_MAX &&
+			out_diff[1] > LIS3DSH_DIFF_MIN &&
+			out_diff[1] < LIS3DSH_DIFF_MAX &&
+			out_diff[2] > LIS3DSH_DIFF_MIN &&
+			out_diff[2] < LIS3DSH_DIFF_MAX)
+		return sprintf(buf, "%s\n", "PASSED");
+	else
+		return sprintf(buf, "%s\n", "FAILED");
+}
+#endif
 
 #ifdef DEBUG
 /* PAY ATTENTION: These DEBUG funtions don't manage resume_state */
@@ -1403,6 +1513,10 @@ static struct device_attribute attributes[] = {
 							attr_set_interr_enable),
 	__ATTR(enable_state_prog, 0664, attr_get_enable_state_prog,
 						attr_set_enable_state_prog),
+#ifdef CONFIG_ST_LIS3DSH_SELFTEST
+	__ATTR(selftest, 0664, attr_selftest, NULL),
+#endif
+
 #ifdef DEBUG
 	__ATTR(reg_value, 0600, attr_reg_get, attr_reg_set),
 	__ATTR(reg_addr, 0200, NULL, attr_addr_set),

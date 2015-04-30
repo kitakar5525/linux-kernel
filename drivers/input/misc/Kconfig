@@ -661,6 +661,13 @@ config ST_LIS3DSH
 	  If you say yes here get support for STMicroeletronics
 	  tilt sensors LIS3DSH.
 
+config ST_LIS3DSH_SELFTEST
+	bool "ST LIS3DSH self-test support"
+	depends on ST_LIS3DSH
+	default n
+	help
+	  If you say yes here to enable LIS3DSH self-test interface.
+
 config INPUT_TSL2584
 	tristate "TAOS TSL2580, TSL2581, TSL2583 and TSL2584TSV ALS support"
 	depends on I2C

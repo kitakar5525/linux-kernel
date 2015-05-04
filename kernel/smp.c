@@ -111,7 +111,8 @@ static void csd_lock_wait(struct call_single_data *csd)
 		/* Dump useful info in case of deadlock */
 		if (time_after(jiffies, timeout)) {
 			timeout = jiffies + 5 * HZ;
-			pr_emerg("BUG: CPU %d waiting for CSD lock held by CPU %d\n", get_cpu(), csd->cpu);
+			pr_emerg("BUG: CPU %d waiting for CSD lock held by CPU %d\n",
+				smp_processor_id(), csd->cpu);
 			dump_stack();
 			trigger_all_cpu_backtrace();
 		}
@@ -136,13 +137,13 @@ static void csd_unlock(struct call_single_data *csd)
 {
 	WARN_ON(!(csd->flags & CSD_FLAG_LOCK));
 
+	csd->cpu = -1;
 	/*
 	 * ensure we're all done before releasing data:
 	 */
 	smp_mb();
 
 	csd->flags &= ~CSD_FLAG_LOCK;
-	csd->cpu = -1;
 }
 
 /*

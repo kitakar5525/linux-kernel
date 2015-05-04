@@ -3964,7 +3964,8 @@ dhd_stop(struct net_device *net)
 #endif /* CONFIG_IPV6 */
 				dhd_net_if_unlock_local(dhd);
 			}
-			cancel_work_sync(dhd->dhd_deferred_wq);
+			if (!dhd->pub.hang_was_sent)
+				cancel_work_sync(dhd->dhd_deferred_wq);
 		}
 	}
 #endif /* WL_CFG80211 */

@@ -297,11 +297,17 @@ static const struct iio_chan_spec st_lsm6ds3_gyro_ch[] = {
 	IIO_CHAN_SOFT_TIMESTAMP(3)
 };
 
+struct iio_event_spec st_lsm6ds3_event_spec[] = {
+	{}
+};
+
 static const struct iio_chan_spec st_lsm6ds3_sign_motion_ch[] = {
 	{
 		.type = IIO_SIGN_MOTION,
 		.channel = 0,
 		.modified = 0,
+		.event_spec = st_lsm6ds3_event_spec,
+		.num_event_specs = 1,
 		.event_mask = IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING),
 	},
 	IIO_CHAN_SOFT_TIMESTAMP(1)
@@ -328,6 +334,8 @@ static const struct iio_chan_spec st_lsm6ds3_step_d_ch[] = {
 		.type = IIO_STEP_DETECTOR,
 		.channel = 0,
 		.modified = 0,
+		.event_spec = st_lsm6ds3_event_spec,
+		.num_event_specs = 1,
 		.event_mask = IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING),
 	},
 	IIO_CHAN_SOFT_TIMESTAMP(1)
@@ -338,6 +346,8 @@ static const struct iio_chan_spec st_lsm6ds3_tilt_ch[] = {
 		.type = IIO_TILT,
 		.channel = 0,
 		.modified = 0,
+		.event_spec = st_lsm6ds3_event_spec,
+		.num_event_specs = 1,
 		.event_mask = IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING),
 	},
 	IIO_CHAN_SOFT_TIMESTAMP(1)
@@ -1287,6 +1297,107 @@ static int st_lsm6ds3_set_fs(struct lsm6ds3_sensor_data *sdata,
 	return 0;
 }
 
+static int st_lsm6ds3_read_interrupt_config(struct iio_dev *indio_dev,
+				u64 event_code)
+{
+	u8 int_stat, reg_addr, mask;
+	int err;
+	struct lsm6ds3_sensor_data *sdata = iio_priv(indio_dev);
+
+	switch (sdata->sindex) {
+	case ST_INDIO_DEV_SIGN_MOTION:
+	case ST_INDIO_DEV_STEP_DETECTOR:
+		reg_addr = ST_LSM6DS3_INT1_ADDR;
+		mask = ST_LSM6DS3_STEP_DETECTOR_DRDY_IRQ_MASK;
+		break;
+	case ST_INDIO_DEV_TILT:
+		reg_addr = ST_LSM6DS3_MD1_ADDR;
+		mask = ST_LSM6DS3_TILT_DRDY_IRQ_MASK;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	err = sdata->cdata->tf->read(sdata->cdata,
+					reg_addr, 1, &int_stat, true);
+	if (err < 0) {
+		dev_err(sdata->cdata->dev, "failed to read SM_THS register.\n");
+		return err;
+	}
+
+	return (int_stat & mask) ? true : false;
+}
+
+static int st_lsm6ds3_write_interrupt_config(struct iio_dev *indio_dev,
+				u64 event_code,
+				int state)
+{
+	int err;
+	struct lsm6ds3_sensor_data *sdata = iio_priv(indio_dev);
+
+	err = st_lsm6ds3_set_drdy_irq(sdata, state);
+	return err;
+}
+
+static int st_lsm6ds3_read_thresh(struct iio_dev *indio_dev,
+				const struct iio_chan_spec *chan,
+				enum iio_event_type type,
+				enum iio_event_direction dir,
+				enum iio_event_info info, int *val, int *val2)
+{
+	u8 sm_ths;
+	int err;
+	struct lsm6ds3_sensor_data *sdata = iio_priv(indio_dev);
+
+	dev_dbg(sdata->cdata->dev, "st_lsm6ds3_read_thresh: index=%d, type=%d, dir=%d\n",
+				sdata->sindex, type, dir);
+	switch (sdata->sindex) {
+	case ST_INDIO_DEV_SIGN_MOTION:
+		if (type == IIO_EV_TYPE_THRESH) {
+			err = sdata->cdata->tf->read(sdata->cdata,
+					ST_LSM6DS3_INT2_ON_INT1_ADDR, 1, &sm_ths, true);
+			if (err < 0) {
+				dev_err(sdata->cdata->dev, "failed to read SM_THS register.\n");
+				return err;
+			}
+			*val = sm_ths;
+			return IIO_VAL_INT;
+		}
+	}
+	return -EINVAL;
+}
+
+static int st_lsm6ds3_write_thresh(struct iio_dev *indio_dev,
+				const struct iio_chan_spec *chan,
+				enum iio_event_type type,
+				enum iio_event_direction dir,
+				enum iio_event_info info, int val, int val2)
+{
+	u8 sm_ths;
+	int err;
+	struct lsm6ds3_sensor_data *sdata = iio_priv(indio_dev);
+
+	dev_dbg(sdata->cdata->dev, "st_lsm6ds3_write_thresh: index=%d, type=%d, dir=%d, val=%d, val2=%d\n",
+				sdata->sindex, type, dir, val, val2);
+
+	switch (sdata->sindex) {
+	case ST_INDIO_DEV_SIGN_MOTION:
+		if (type == IIO_EV_TYPE_THRESH) {
+			if (val > (1 << 8))
+				return -EINVAL;
+			sm_ths = val;
+			err = sdata->cdata->tf->write(sdata->cdata,
+						ST_LSM6DS3_INT2_ON_INT1_ADDR, 1, &sm_ths, true);
+			if (err < 0) {
+				dev_err(sdata->cdata->dev, "failed to write SM_THS register.\n");
+				return err;
+			}
+			return IIO_VAL_INT;
+		}
+	}
+	return -EINVAL;
+}
+
 static int st_lsm6ds3_read_raw(struct iio_dev *indio_dev,
 			struct iio_chan_spec const *ch, int *val,
 							int *val2, long mask)
@@ -1850,6 +1961,10 @@ static const struct attribute_group st_lsm6ds3_sign_motion_attribute_group = {
 static const struct iio_info st_lsm6ds3_sign_motion_info = {
 	.driver_module = THIS_MODULE,
 	.attrs = &st_lsm6ds3_sign_motion_attribute_group,
+	.read_event_value = &st_lsm6ds3_read_thresh,
+	.write_event_value = &st_lsm6ds3_write_thresh,
+	.read_event_config = &st_lsm6ds3_read_interrupt_config,
+	.write_event_config = &st_lsm6ds3_write_interrupt_config,
 };
 
 static struct attribute *st_lsm6ds3_step_c_attributes[] = {
@@ -1879,6 +1994,10 @@ static const struct attribute_group st_lsm6ds3_step_d_attribute_group = {
 static const struct iio_info st_lsm6ds3_step_d_info = {
 	.driver_module = THIS_MODULE,
 	.attrs = &st_lsm6ds3_step_d_attribute_group,
+	.read_event_value = &st_lsm6ds3_read_thresh,
+	.write_event_value = &st_lsm6ds3_write_thresh,
+	.read_event_config = &st_lsm6ds3_read_interrupt_config,
+	.write_event_config = &st_lsm6ds3_write_interrupt_config,
 };
 
 static struct attribute *st_lsm6ds3_tilt_attributes[] = {
@@ -1892,6 +2011,10 @@ static const struct attribute_group st_lsm6ds3_tilt_attribute_group = {
 static const struct iio_info st_lsm6ds3_tilt_info = {
 	.driver_module = THIS_MODULE,
 	.attrs = &st_lsm6ds3_tilt_attribute_group,
+	.read_event_value = &st_lsm6ds3_read_thresh,
+	.write_event_value = &st_lsm6ds3_write_thresh,
+	.read_event_config = &st_lsm6ds3_read_interrupt_config,
+	.write_event_config = &st_lsm6ds3_write_interrupt_config,
 };
 
 #ifdef CONFIG_IIO_TRIGGER

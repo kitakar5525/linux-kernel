@@ -582,9 +582,8 @@ static ssize_t synaptics_rmi4_f01_productinfo_show(struct device *dev,
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "0x%02x 0x%02x\n",
-			(rmi4_data->rmi4_mod_info.product_info[0]),
-			(rmi4_data->rmi4_mod_info.product_info[1]));
+	return snprintf(buf, PAGE_SIZE, "%s\n",
+			(rmi4_data->rmi4_mod_info.product_id_string));
 }
 
 static ssize_t synaptics_rmi4_f01_buildid_show(struct device *dev,

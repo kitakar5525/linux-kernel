@@ -135,6 +135,9 @@ static ssize_t fwu_sysfs_guest_code_block_count_show(struct device *dev,
 static ssize_t fwu_sysfs_write_guest_code_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
+static ssize_t fwu_sysfs_custom_configuration_id_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
 enum f34_version {
 	F34_V0 = 0,
 	F34_V1,
@@ -535,6 +538,7 @@ struct synaptics_rmi4_fwu_handle {
 	unsigned char intr_mask;
 	unsigned char command;
 	unsigned char bootloader_id[2];
+	unsigned char custom_config_id[4];
 	unsigned char flash_status;
 	unsigned char partitions;
 	unsigned short block_size;
@@ -613,6 +617,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(writeguestcode, S_IWUGO,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_write_guest_code_store),
+	__ATTR(customconfigid, S_IRUGO,
+			fwu_sysfs_custom_configuration_id_show,
+			synaptics_rmi4_store_error),
 };
 
 static struct synaptics_rmi4_fwu_handle *fwu;
@@ -1603,6 +1610,17 @@ static int fwu_read_f34_v5v6_queries(void)
 		fwu->off.gc_block_count = V6_GUEST_CODE_BLOCK_COUNT_OFFSET;
 		fwu->off.block_number = V6_BLOCK_NUMBER_OFFSET;
 		fwu->off.payload = V6_BLOCK_DATA_OFFSET;
+	}
+
+	retval = synaptics_rmi4_reg_read(rmi4_data,
+				fwu->f34_fd.ctrl_base_addr,
+				fwu->custom_config_id,
+				sizeof(fwu->custom_config_id));
+	if (retval < 0) {
+		dev_err(rmi4_data->pdev->dev.parent,
+				"%s: Failed to read config ID\n",
+				__func__);
+		return retval;
 	}
 
 	retval = synaptics_rmi4_reg_read(rmi4_data,
@@ -3520,6 +3538,12 @@ exit:
 	fwu->ext_data_source = NULL;
 	fwu->image = NULL;
 	return retval;
+}
+
+static ssize_t fwu_sysfs_custom_configuration_id_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%s\n", fwu->custom_config_id);
 }
 
 static void synaptics_rmi4_fwu_attn(struct synaptics_rmi4_data *rmi4_data,

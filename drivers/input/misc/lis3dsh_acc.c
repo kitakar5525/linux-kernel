@@ -151,6 +151,14 @@
 #define	LIS3DSH_LC_H			0x17	/* MSByte Long Counter Status */
 
 #define	LIS3DSH_STATUS_REG		0x27	/* Status */
+#define	ZYXOR_MASK				(1 << 7)	/* X, Y, and Z axis data overrun. */
+#define	ZOR_MASK				(1 << 6)	/* Z axis data overrun. */
+#define	YOR_MASK				(1 << 5)	/* Y axis data overrun. */
+#define	XOR_MASK				(1 << 4)	/* X axis data overrun. */
+#define	ZYXDA_RDY_MASK			(1 << 3)	/* X, Y, and Z axis new data available. */
+#define	ZDA_RDY_MASK			(1 << 2)	/* Z axis new data available. */
+#define	YDA_RDY_MASK			(1 << 1)	/* Y axis new data available. */
+#define	XDA_RDY_MASK			(1 << 0)	/* X axis new data available. */
 
 #define	LIS3DSH_CTRL_REG1		0x20	/* control reg 1 */
 #define	LIS3DSH_CTRL_REG2		0x21	/* control reg 2 */

@@ -33,9 +33,11 @@
 struct drv2605_platform_data {
 	int gpio_en;
 	int gpio_pwm;
+	const unsigned char *parameter_autocal_sequence;
+	unsigned int size_autocal_sequence;
+	bool repeat_autocal_sequence;
 	const unsigned char *parameter_sequence;
 	unsigned int size_sequence;
-	bool repeat_sequence;
 	char effect_library;
 	unsigned char real_time_playback;
 };
@@ -326,6 +328,8 @@ struct drv2605_platform_data {
 ** Auto Calibration Memory Interface
 */
 #define AUTOCAL_MEM_INTERFACE_REG	0x1E
+#define OTP_STATUS_MASK				0x04
+#define OTP_PROGRAM				0x01
 
 #define AUTOCAL_TIME_150MS			(0 << 4)
 #define AUTOCAL_TIME_250MS			(1 << 4)

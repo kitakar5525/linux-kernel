@@ -94,6 +94,7 @@ static struct vibrator {
 	unsigned char sequence[8];
 	volatile int should_stop;
 	unsigned gpio_en;
+	bool otp_status;
 	struct drv2605_platform_data *pdata;
 } vibdata;
 
@@ -109,7 +110,9 @@ static void drv260x_write_reg_val(const unsigned char *data, unsigned int size)
 		return;
 
 	while (i < size) {
-		i2c_smbus_write_byte_data(drv260x->client, data[i], data[i + 1]);
+/*Check if OTP memory have already been written once.*/
+		if ((vibdata.otp_status == false) || (data[i] < RATED_VOLTAGE_REG) || (data[i] > FEEDBACK_CONTROL_REG))
+			i2c_smbus_write_byte_data(drv260x->client, data[i], data[i + 1]);
 		i += 2;
 	}
 }
@@ -302,6 +305,47 @@ static void setAudioHapticsEnabled(int enable)
 	}
 }
 
+static int drv260x_calibrate(void)
+{
+	char status;
+
+	drv260x_write_reg_val(vibdata.pdata->parameter_sequence, vibdata.pdata->size_sequence);
+
+	if (vibdata.otp_status == true) {
+		dev_info(drv260x->device, "otp status: memory lock\n");
+		return 0;
+	}
+
+	dev_info(drv260x->device, "otp status: memory unlock\n");
+	drv260x_write_reg_val(vibdata.pdata->parameter_autocal_sequence,
+							vibdata.pdata->size_autocal_sequence);
+	/* Wait until the procedure is done */
+	drv2605_poll_go_bit();
+
+	/* Read status */
+	status = drv260x_read_reg(STATUS_REG);
+
+	/* Check result */
+	if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED) {
+		dev_err(drv260x->device, "auto-cal failed.\n");
+		if (vibdata.pdata->repeat_autocal_sequence == true) {
+			drv260x_write_reg_val(vibdata.pdata->parameter_sequence, vibdata.pdata->size_sequence);
+			drv260x_write_reg_val(vibdata.pdata->parameter_autocal_sequence,
+							vibdata.pdata->size_autocal_sequence);
+			drv2605_poll_go_bit();
+			status = drv260x_read_reg(STATUS_REG);
+			if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED)
+				dev_err(drv260x->device, "auto-cal retry failed.\n");
+		}
+	}
+
+	/* Read calibration results */
+	drv260x_read_reg(AUTO_CALI_RESULT_REG);
+	drv260x_read_reg(AUTO_CALI_BACK_EMF_RESULT_REG);
+	drv260x_read_reg(FEEDBACK_CONTROL_REG);
+	return status;
+}
+
 static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	char status;
@@ -339,30 +383,13 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 	udelay(30);
 
 	vibdata.pdata = pdata;
-	drv260x_write_reg_val(pdata->parameter_sequence, pdata->size_sequence);
-	/* Wait until the procedure is done */
-	drv2605_poll_go_bit();
+	vibdata.otp_status = drv260x_read_reg(AUTOCAL_MEM_INTERFACE_REG) & OTP_STATUS_MASK;
 
-	/* Read status */
-	status = drv260x_read_reg(STATUS_REG);
-
-	/* Check result */
-	if ((pdata->repeat_sequence == true) && ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED)) {
-		dev_err(drv260x->device, "auto-cal failed.\n");
-		drv260x_write_reg_val(pdata->parameter_sequence, pdata->size_sequence);
-		drv2605_poll_go_bit();
-		status = drv260x_read_reg(STATUS_REG);
-		if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED)
-			dev_err(drv260x->device, "auto-cal retry failed.\n");
-			/* return -ENODEV;*/
-	}
-
-	/* Read calibration results */
-	drv260x_read_reg(AUTO_CALI_RESULT_REG);
-	drv260x_read_reg(AUTO_CALI_BACK_EMF_RESULT_REG);
-	drv260x_read_reg(FEEDBACK_CONTROL_REG);
+	/*return value is not checked because we still want to probe if the calibration fails */
+	drv260x_calibrate();
 
 	/* Read device ID */
+	status = drv260x_read_reg(STATUS_REG);
 	device_id = (status & DEV_ID_MASK);
 	switch (device_id) {
 	case DRV2605:

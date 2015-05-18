@@ -48,7 +48,6 @@
 #include	<linux/wakelock.h>
 #include	<linux/input/lis3dsh.h>
 #include	<asm/intel_scu_flis.h>
-#include	<linux/random.h>
 
 /* TILT_WAKELOCK_HOLD_MS defines time to hold wakelock to allow receiver of
  * tilt event to grab their own wakelock
@@ -66,7 +65,6 @@
 #define LOAD_SP2_PARAMETERS
 #endif
 
-#define G_MAX			23920640	/* ug */
 #define	I2C_RETRY_DELAY		5		/* Waiting for signals [ms] */
 #define	I2C_RETRIES		5		/* Number of retries */
 #define	I2C_AUTO_INCREMENT	0x80		/* Autoincrement i2c address */
@@ -1000,8 +998,7 @@ static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc,
 	return err;
 }
 
-static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc,
-					int *xyz)
+static void report_motion(struct lis3dsh_acc_data *acc)
 {
 	/**
 	 * Grab or reprime a temporary wakelock to keep system awake
@@ -1009,24 +1006,9 @@ static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc,
 	 * wakelock
 	 */
 	wake_lock_timeout(&acc->tilt_wakelock, TILT_WAKELOCK_HOLD_MS);
-	input_report_abs(acc->input_dev, ABS_X, xyz[0]);
-	input_report_abs(acc->input_dev, ABS_Y, xyz[1]);
-	input_report_abs(acc->input_dev, ABS_Z, xyz[2]);
+	/* Wrist tilt detected, send tilt event up to the HAL */
+	input_event(acc->input_dev, EV_MSC, MSC_GESTURE, 1);
 	input_sync(acc->input_dev);
-}
-
-static void report_motion(struct lis3dsh_acc_data *acc)
-{
-	int xyz[3] = {0, 0, 0};
-
-	xyz[0] = get_random_int();
-#ifdef DEBUG
-		dev_info(&acc->client->dev, "lis3dsh_acc_report_values:\n");
-		dev_info(&acc->client->dev, "x=%6d\n", xyz[0]);
-		dev_info(&acc->client->dev, "y=%6d\n", xyz[1]);
-		dev_info(&acc->client->dev, "z=%6d\n", xyz[2]);
-#endif
-	lis3dsh_acc_report_values(acc, xyz);
 }
 
 static int lis3dsh_acc_enable(struct lis3dsh_acc_data *acc)
@@ -1610,20 +1592,8 @@ static int lis3dsh_acc_input_init(struct lis3dsh_acc_data *acc)
 
 	input_set_drvdata(acc->input_dev, acc);
 
-	set_bit(EV_ABS, acc->input_dev->evbit);
-	/*	next is used for interruptA sources data if the case */
-	set_bit(ABS_MISC, acc->input_dev->absbit);
-	/*	next is used for interruptB sources data if the case */
-	set_bit(ABS_WHEEL, acc->input_dev->absbit);
-
-	input_set_abs_params(acc->input_dev, ABS_X, -G_MAX, G_MAX, 0, 0);
-	input_set_abs_params(acc->input_dev, ABS_Y, -G_MAX, G_MAX, 0, 0);
-	input_set_abs_params(acc->input_dev, ABS_Z, -G_MAX, G_MAX, 0, 0);
-	/*	next is used for interruptA sources data if the case */
-	/*  input_set_abs_params(acc->input_dev, ABS_MISC, INT_MIN, INT_MAX, 0, 0); */
-	/*	next is used for interruptB sources data if the case */
-	/*  input_set_abs_params(acc->input_dev, ABS_WHEEL, INT_MIN, INT_MAX, 0, 0); */
-
+	input_set_capability(acc->input_dev, EV_MSC, MSC_GESTURE);
+	__set_bit(EV_SYN, acc->input_dev->evbit);
 
 	err = input_register_device(acc->input_dev);
 	if (err) {

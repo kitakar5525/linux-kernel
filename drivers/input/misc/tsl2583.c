@@ -132,6 +132,27 @@ since atime * again is an integer
 
 /* end TSL2584TSV lux equation defines */
 
+/******************************************************************
+ start TSL2584TSV lux equation defines on Marvin
+ The lux equation is of the form:
+ Lux1 = 1000*((Ch0-(2.16*Ch1))/(Atime*Again))
+ Lux2 = 1000*((0.95*Ch0)-(1.11*Ch1)/(Atime*Again))
+ Lux = MAX(Lux1,Lux2)
+
+ in other form:
+ lux1 = (1000*ch0 - 2160*ch1) / (Atime*Again)
+ lux2 = (950*ch0 - 1110*ch1) / (Atime*Again)
+ Lux = MAX(Lux1,Lux2)
+******************************************************************/
+
+/* set the coefficients the TSL2584TSV equation will use on Marvin */
+#define TSL2584TSV_CH0_COFF0	1000
+#define TSL2584TSV_CH1_COFF0	2160
+#define TSL2584TSV_CH0_COFF1	950
+#define TSL2584TSV_CH1_COFF1	1110
+
+/* end TSL2584TSV lux equation defines on Marvin */
+
 enum {
 	TSL258X_CHIP_UNKNOWN = 0,
 	TSL258X_CHIP_WORKING = 1,
@@ -409,30 +430,6 @@ static int taos_chip_clear_interrupt(struct tsl258x_chip *chip)
 		TSL258X_CMD_REG | TSL258X_CMD_SPL_FN | TSL258X_CMD_ALS_INT_CLR);
 }
 
-static int taos_set_als_odr(struct tsl258x_chip *chip, int ms)
-{
-	int ret = 0;
-	int als_time = ms;
-
-	if (chip->taos_settings.als_odr == ms)
-		return 0;
-
-	if (als_time <= ALS_TIME_MAX * 2) {
-		als_time = (als_time / 50) * 50;
-		ret = taos_set_als_time(chip, als_time);
-		if (ret < 0)
-			return ret;
-	} else if (chip->taos_settings.als_time < ALS_TIME_MAX) {
-		als_time = ALS_TIME_MAX;
-		ret = taos_set_als_time(chip, als_time);
-		if (ret < 0)
-			return ret;
-	}
-
-	chip->taos_settings.als_odr = ms;
-	return ret;
-}
-
 static int taos_init_configure(struct tsl258x_chip *chip,
 		struct tsl258x_platform_data *pdata)
 {
@@ -472,6 +469,8 @@ static int taos_get_lux(struct tsl258x_chip *chip)
 	u32 ch0lux = 0;
 	u32 ch1lux = 0;
 	u32 gain;
+	int lux1;
+	int lux2;
 
 	if (chip->als_status != TSL258X_CHIP_WORKING) {
 		/* device is not enabled */
@@ -516,11 +515,13 @@ static int taos_get_lux(struct tsl258x_chip *chip)
 	}
 
 	if (chip->id == ID_TSL2584TSV) {
-		gain = (u32)(gainadj[chip->taos_settings.als_gain_idex].ch0 * chip->taos_settings.als_time);
-		/* Should be convert to 64 bits to calculate, else maybe overflow */
-		lux = ((((uint64_t)taos_device_lux[0].ch0) * ((uint64_t)ch0)) -
-						(((uint64_t)taos_device_lux[0].ch1) * ((uint64_t)ch1))) /
-						(gain << MPOW);
+		gain = chip->taos_settings.als_time *
+			tsl2584_als_gain_tbl[chip->taos_settings.als_gain_idex].gain_val;
+		lux1 = (TSL2584TSV_CH0_COFF0 * ch0 - TSL2584TSV_CH1_COFF0 * ch1) / gain;
+		lux2 = (TSL2584TSV_CH0_COFF1 * ch0 - TSL2584TSV_CH1_COFF1 * ch1) / gain;
+		if ((lux1 < 0) && (lux2 < 0))
+			return -ERANGE;
+		lux = (lux1 >= lux2) ? lux1 : lux2;
 	} else {
 		/* calculate ratio */
 		ratio = (ch1 << 15) / ch0;
@@ -736,7 +737,6 @@ static ssize_t taos_als_delay_store(struct device *dev,
 	struct i2c_client *client = to_i2c_client(dev);
 	struct tsl258x_chip *chip = i2c_get_clientdata(client);
 	unsigned int value;
-	int err;
 
 	if (kstrtouint(buf, 0, &value))
 		return -EINVAL;
@@ -744,9 +744,7 @@ static ssize_t taos_als_delay_store(struct device *dev,
 		return -EINVAL;
 
 	mutex_lock(&chip->als_mutex);
-	err = taos_set_als_odr(chip, value);
-	if (err < 0)
-		len = err;
+	chip->taos_settings.als_odr = value;
 	mutex_unlock(&chip->als_mutex);
 
 	return len;

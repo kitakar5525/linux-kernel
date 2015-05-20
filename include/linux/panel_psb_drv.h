@@ -54,6 +54,7 @@ enum panel_type {
 	SDC_25x16_CMD,
 	AUO_CMD,
 	TIANMA_CMD,
+	INNOLUX_CMD,
 	GCT_DETECT
 };
 

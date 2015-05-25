@@ -3678,12 +3678,10 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 	if ((hdisplay > fb->width ||
 	    vdisplay > fb->height ||
 	    crtc->x > fb->width - hdisplay ||
-	    crtc->y > fb->height - vdisplay) && !crtc->panning_en) {
+	    crtc->y > fb->height - vdisplay)) {
 		DRM_DEBUG_KMS("Invalid fb size %ux%u for CRTC viewport %ux%u+%d+%d%s.\n",
 			      fb->width, fb->height, hdisplay, vdisplay, crtc->x, crtc->y,
 			      crtc->invert_dimensions ? " (inverted)" : "");
-		ret = -ENOSPC;
-		goto out;
 	}
 
 	if (crtc->fb->pixel_format != fb->pixel_format)

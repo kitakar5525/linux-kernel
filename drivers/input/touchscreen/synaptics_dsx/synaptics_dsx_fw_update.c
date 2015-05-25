@@ -3073,6 +3073,7 @@ exit:
 static int fwu_start_reflash(void)
 {
 	int retval = 0;
+	bool stay_awake = false;
 	enum flash_area flash_area;
 	const struct firmware *fw_entry = NULL;
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
@@ -3084,6 +3085,7 @@ static int fwu_start_reflash(void)
 		return -ENODEV;
 	}
 
+	stay_awake = rmi4_data->stay_awake;
 	rmi4_data->stay_awake = true;
 
 	pr_notice("%s: Start of reflash process\n", __func__);
@@ -3207,7 +3209,7 @@ exit:
 
 	pr_notice("%s: End of reflash process\n", __func__);
 
-	rmi4_data->stay_awake = false;
+	rmi4_data->stay_awake = stay_awake;
 
 	return retval;
 }

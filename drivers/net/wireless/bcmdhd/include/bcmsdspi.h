@@ -1,7 +1,7 @@
 /*
  * SD-SPI Protocol Conversion - BCMSDH->SPI Translation Layer
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdspi.h 294363 2011-11-06 23:02:20Z $
+ * $Id: bcmsdspi.h 538677 2015-03-04 13:24:38Z $
  */
 #ifndef	_BCM_SD_SPI_H
 #define	_BCM_SD_SPI_H
@@ -61,6 +61,7 @@ struct sdioh_info {
 	uint32 caps;                    	/* cached value of capabilities reg */
 	uint		bar0;			/* BAR0 for PCI Device */
 	osl_t 		*osh;			/* osh handler */
+	void		*bcmsdh;		/* handler to upper layer stack (bcmsdh) */
 	void		*controller;	/* Pointer to SPI Controller's private data struct */
 
 	uint		lockcount; 		/* nest count of sdspi_lock() calls */

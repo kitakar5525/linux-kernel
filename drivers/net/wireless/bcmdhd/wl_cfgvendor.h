@@ -1,14 +1,14 @@
 /*
  * Linux cfg80211 Vendor Extension Code
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
- *
+ * Copyright (C) 1999-2015, Broadcom Corporation
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- *
+ * 
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,18 +16,14 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- *
+ * 
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_cfgvendor.h 473890 2014-04-30 01:55:06Z $
+ * $Id: wl_cfgvendor.h 455257 2014-02-20 08:10:24Z $
  */
 
-/*
- * New vendor interface additon to nl80211/cfg80211 to allow vendors
- * to implement proprietary features over the cfg80211 stack.
- */
 
 #ifndef _wl_cfgvendor_h_
 #define _wl_cfgvendor_h_
@@ -83,9 +79,7 @@ typedef enum {
 
 } ANDROID_VENDOR_SUB_COMMAND;
 
-enum wl_vendor_subcmd {
-	BRCM_VENDOR_SCMD_UNSPEC,
-	BRCM_VENDOR_SCMD_PRIV_STR,
+enum andr_vendor_subcmd {
 	GSCAN_SUBCMD_GET_CAPABILITIES = ANDROID_NL80211_SUBCMD_GSCAN_RANGE_START,
 	GSCAN_SUBCMD_SET_CONFIG,
 	GSCAN_SUBCMD_SET_SCAN_CONFIG,
@@ -100,6 +94,8 @@ enum wl_vendor_subcmd {
 	ANDR_WIFI_SUBCMD_GET_FEATURE_SET_MATRIX,
 	ANDR_WIFI_PNO_RANDOM_MAC_OUI,
 	ANDR_WIFI_NODFS_CHANNELS,
+	ANDR_WIFI_SET_COUNTRY,
+	GSCAN_SUBCMD_SET_EPNO_SSID,
 	RTT_SUBCMD_SET_CONFIG = ANDROID_NL80211_SUBCMD_RTT_RANGE_START,
 	RTT_SUBCMD_CANCEL_CONFIG,
 	RTT_SUBCMD_GETCAPABILITY,
@@ -161,6 +157,15 @@ enum gscan_attributes {
     GSCAN_ATTRIBUTE_MIN_BREACHING,
     GSCAN_ATTRIBUTE_SIGNIFICANT_CHANGE_BSSIDS,
     GSCAN_ATTRIBUTE_SIGNIFICANT_CHANGE_FLUSH,
+    /* EPNO */
+    GSCAN_ATTRIBUTE_EPNO_SSID_LIST = 70,
+    GSCAN_ATTRIBUTE_EPNO_SSID,
+    GSCAN_ATTRIBUTE_EPNO_SSID_LEN,
+    GSCAN_ATTRIBUTE_EPNO_RSSI,
+    GSCAN_ATTRIBUTE_EPNO_FLAGS,
+    GSCAN_ATTRIBUTE_EPNO_AUTH,
+    GSCAN_ATTRIBUTE_EPNO_SSID_NUM,
+    GSCAN_ATTRIBUTE_EPNO_FLUSH,
     GSCAN_ATTRIBUTE_MAX
 };
 
@@ -207,14 +212,16 @@ typedef enum wl_vendor_event {
 	GOOGLE_SCAN_FULL_RESULTS_EVENT,
 	GOOGLE_RTT_COMPLETE_EVENT,
 	GOOGLE_SCAN_COMPLETE_EVENT,
-	GOOGLE_GSCAN_GEOFENCE_LOST_EVENT
+	GOOGLE_GSCAN_GEOFENCE_LOST_EVENT,
+	GOOGLE_SCAN_EPNO_EVENT
 } wl_vendor_event_t;
 
 enum andr_wifi_attr {
-    ANDR_WIFI_ATTRIBUTE_NUM_FEATURE_SET,
-    ANDR_WIFI_ATTRIBUTE_FEATURE_SET,
-    ANDR_WIFI_ATTRIBUTE_PNO_RANDOM_MAC_OUI,
-    ANDR_WIFI_ATTRIBUTE_NODFS_SET,
+	ANDR_WIFI_ATTRIBUTE_NUM_FEATURE_SET,
+	ANDR_WIFI_ATTRIBUTE_FEATURE_SET,
+	ANDR_WIFI_ATTRIBUTE_PNO_RANDOM_MAC_OUI,
+	ANDR_WIFI_ATTRIBUTE_NODFS_SET,
+	ANDR_WIFI_ATTRIBUTE_COUNTRY
 };
 
 typedef enum wl_vendor_gscan_attribute {

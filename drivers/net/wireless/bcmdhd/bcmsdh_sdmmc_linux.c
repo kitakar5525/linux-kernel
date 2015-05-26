@@ -1,7 +1,7 @@
 /*
  * BCMSDH Function Driver for the native SDIO/MMC driver in the Linux Kernel
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -65,9 +65,6 @@
 #if !defined(SDIO_DEVICE_ID_BROADCOM_4334)
 #define SDIO_DEVICE_ID_BROADCOM_4334    0x4334
 #endif /* !defined(SDIO_DEVICE_ID_BROADCOM_4334) */
-#if !defined(SDIO_DEVICE_ID_BROADCOM_4335)
-#define SDIO_DEVICE_ID_BROADCOM_4335    0x4335
-#endif /* !defined(SDIO_DEVICE_ID_BROADCOM_4335) */
 #if !defined(SDIO_DEVICE_ID_BROADCOM_4324)
 #define SDIO_DEVICE_ID_BROADCOM_4324    0x4324
 #endif /* !defined(SDIO_DEVICE_ID_BROADCOM_4324) */
@@ -75,7 +72,7 @@
 #define SDIO_DEVICE_ID_BROADCOM_43239    43239
 #endif /* !defined(SDIO_DEVICE_ID_BROADCOM_43239) */
 #if !defined(SDIO_DEVICE_ID_BROADCOM_43430)
-#define SDIO_DEVICE_ID_BROADCOM_43430    0xa9a6
+#define SDIO_DEVICE_ID_BROADCOM_43430    0x9a96
 #endif /* !defined(SDIO_DEVICE_ID_BROADCOM_43430) */
 
 extern void wl_cfg80211_set_parent_dev(void *dev);
@@ -228,9 +225,18 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 
 /* devices we support, null terminated */
 static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
-	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4335) },
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_DEFAULT) },
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4325_SDGWB) },
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4325) },
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4329) },
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4319) },
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4330) },
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4334) },
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4324) },
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_43239) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_43430) },
-	{ /* end: all zeroes */                         },
+	{ SDIO_DEVICE_CLASS(SDIO_CLASS_NONE)		},
+	{ /* end: all zeroes */				},
 };
 
 MODULE_DEVICE_TABLE(sdio, bcmsdh_sdmmc_ids);

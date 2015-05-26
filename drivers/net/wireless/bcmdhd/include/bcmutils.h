@@ -1,14 +1,14 @@
 /*
  * Misc useful os-independent macros and functions.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
- *
+ * Copyright (C) 1999-2015, Broadcom Corporation
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- *
+ * 
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,12 +16,12 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- *
+ * 
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmutils.h 469595 2014-04-10 21:19:06Z $
+ * $Id: bcmutils.h 540885 2015-03-13 10:33:32Z $
  */
 
 #ifndef	_bcmutils_h_
@@ -34,6 +34,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 #ifdef PKTQ_LOG
 #include <wlioctl.h>
@@ -135,6 +136,7 @@ extern int ether_isnulladdr(const void *ea);
 #define BCM_RXCPL_CLR_VALID_INFO(a)	((a)->rxcpl_id.flags &= ~BCM_RXCPL_FLAGS_RXCPLVALID)
 #define BCM_RXCPL_VALID_INFO(a) (((a)->rxcpl_id.flags & BCM_RXCPL_FLAGS_RXCPLVALID) ? TRUE : FALSE)
 
+#define UP_TABLE_MAX	((IPV4_TOS_DSCP_MASK >> IPV4_TOS_DSCP_SHIFT) + 1)	/* 64 max */
 
 struct reorder_rxcpl_id_list {
 	uint16 head;
@@ -215,6 +217,7 @@ extern void *pktoffset(osl_t *osh, void *p,  uint offset);
 #define DSCP_EF		0x2E
 
 extern uint pktsetprio(void *pkt, bool update_vtag);
+extern uint pktsetprio_qms(void *pkt, uint8* up_table, bool update_vtag);
 extern bool pktgetdscp(uint8 *pktdata, uint pktlen, uint8 *dscp);
 
 /* string */
@@ -303,7 +306,7 @@ extern int bcm_iovar_lencheck(const bcm_iovar_t *table, void *arg, int len, bool
 #if defined(WLTINYDUMP) || defined(WLMSG_INFORM) || defined(WLMSG_ASSOC) || \
 	defined(WLMSG_PRPKT) || defined(WLMSG_WSEC)
 extern int bcm_format_ssid(char* buf, const uchar ssid[], uint ssid_len);
-#endif
+#endif 
 #endif	/* BCMDRIVER */
 
 /* Base type definitions */
@@ -668,6 +671,16 @@ typedef struct bcm_bit_desc_ex {
 /* buffer length for ethernet address from bcm_ether_ntoa() */
 #define ETHER_ADDR_STR_LEN	18	/* 18-bytes of Ethernet address buffer length */
 
+static INLINE uint32 /* 32bit word aligned xor-32 */
+bcm_compute_xor32(volatile uint32 *u32, int num_u32)
+{
+	int i;
+	uint32 xor32 = 0;
+	for (i = 0; i < num_u32; i++)
+		xor32 ^= *(u32 + i);
+	return xor32;
+}
+
 /* crypto utility function */
 /* 128-bit xor: *dst = *src1 xor *src2. dst1, src1 and src2 may have any alignment */
 static INLINE void
@@ -707,10 +720,7 @@ extern int bcm_format_field(const bcm_bit_desc_ex_t *bd, uint32 field, char* buf
 extern int bcm_format_flags(const bcm_bit_desc_t *bd, uint32 flags, char* buf, int len);
 #endif
 
-#if defined(DHD_DEBUG) || defined(WLMSG_PRHDRS) || defined(WLMSG_PRPKT) || \
-	defined(WLMSG_ASSOC) || defined(WLMEDIA_PEAKRATE)
 extern int bcm_format_hex(char *str, const void *bytes, int len);
-#endif
 
 extern const char *bcm_crypto_algo_name(uint algo);
 extern char *bcm_chipname(uint chipid, char *buf, uint len);
@@ -734,23 +744,43 @@ typedef struct bcm_xtlv {
 	uint8	data[1];
 } bcm_xtlv_t;
 
+/* descriptor of xtlv data src or dst  */
+typedef struct {
+	uint16	type;
+	uint16	len;
+	void	*ptr; /* ptr to memory location */
+} xtlv_desc_t;
+
+/* xtlv options */
+#define BCM_XTLV_OPTION_NONE	0x0000
+#define BCM_XTLV_OPTION_ALIGN32	0x0001
+
+typedef uint16 bcm_xtlv_opts_t;
+struct bcm_xtlvbuf {
+	bcm_xtlv_opts_t opts;
+	uint16 size;
+	uint8 *head; /* point to head of buffer */
+	uint8 *buf; /* current position of buffer */
+	/* allocated buffer may follow, but not necessarily */
+};
+typedef struct bcm_xtlvbuf bcm_xtlvbuf_t;
+
 #define BCM_TLV_MAX_DATA_SIZE (255)
 #define BCM_XTLV_MAX_DATA_SIZE (65535)
 #define BCM_TLV_HDR_SIZE (OFFSETOF(bcm_tlv_t, data))
 
 #define BCM_XTLV_HDR_SIZE (OFFSETOF(bcm_xtlv_t, data))
+/* LEN only stores the value's length without padding */
 #define BCM_XTLV_LEN(elt) ltoh16_ua(&(elt->len))
 #define BCM_XTLV_ID(elt) ltoh16_ua(&(elt->id))
-#define BCM_XTLV_SIZE(elt) (BCM_XTLV_HDR_SIZE + BCM_XTLV_LEN(elt))
+/* entire size of the XTLV including header, data, and optional padding */
+#define BCM_XTLV_SIZE(elt, opts) bcm_xtlv_size(elt, opts)
+#define bcm_valid_xtlv(elt, buflen, opts) (elt && ((int)(buflen) >= (int)BCM_XTLV_SIZE(elt, opts)))
 
 /* Check that bcm_tlv_t fits into the given buflen */
 #define bcm_valid_tlv(elt, buflen) (\
 	 ((int)(buflen) >= (int)BCM_TLV_HDR_SIZE) && \
 	 ((int)(buflen) >= (int)(BCM_TLV_HDR_SIZE + (elt)->len)))
-
-#define bcm_valid_xtlv(elt, buflen) (\
-	 ((int)(buflen) >= (int)BCM_XTLV_HDR_SIZE) && \
-	 ((int)(buflen) >= (int)BCM_XTLV_SIZE(elt)))
 
 extern bcm_tlv_t *bcm_next_tlv(bcm_tlv_t *elt, int *buflen);
 extern bcm_tlv_t *bcm_parse_tlvs(void *buf, int buflen, uint key);
@@ -769,7 +799,68 @@ extern uint8 *bcm_copy_tlv(const void *src, uint8 *dst);
 extern uint8 *bcm_copy_tlv_safe(const void *src, uint8 *dst, int dst_maxlen);
 
 /* xtlv */
-extern bcm_xtlv_t *bcm_next_xtlv(bcm_xtlv_t *elt, int *buflen);
+
+/* return the next xtlv element, and update buffer len (remaining). Buffer length
+ * updated includes padding as specified by options
+ */
+extern bcm_xtlv_t *bcm_next_xtlv(bcm_xtlv_t *elt, int *buflen, bcm_xtlv_opts_t opts);
+
+/* initialize an xtlv buffer. Use options specified for packing/unpacking using
+ * the buffer. Caller is responsible for allocating both buffers.
+ */
+extern int bcm_xtlv_buf_init(bcm_xtlvbuf_t *tlv_buf, uint8 *buf, uint16 len,
+	bcm_xtlv_opts_t opts);
+
+extern uint16 bcm_xtlv_buf_len(struct bcm_xtlvbuf *tbuf);
+extern uint16 bcm_xtlv_buf_rlen(struct bcm_xtlvbuf *tbuf);
+extern uint8 *bcm_xtlv_buf(struct bcm_xtlvbuf *tbuf);
+extern uint8 *bcm_xtlv_head(struct bcm_xtlvbuf *tbuf);
+extern int bcm_xtlv_put_data(bcm_xtlvbuf_t *tbuf, uint16 type, const void *data, uint16 dlen);
+extern int bcm_xtlv_put_8(bcm_xtlvbuf_t *tbuf, uint16 type, const int8 data);
+extern int bcm_xtlv_put_16(bcm_xtlvbuf_t *tbuf, uint16 type, const int16 data);
+extern int bcm_xtlv_put_32(bcm_xtlvbuf_t *tbuf, uint16 type, const int32 data);
+extern int bcm_unpack_xtlv_entry(uint8 **buf, uint16 xpct_type, uint16 xpct_len,
+	void *dst, bcm_xtlv_opts_t opts);
+extern int bcm_pack_xtlv_entry(uint8 **buf, uint16 *buflen, uint16 type, uint16 len,
+	void *src, bcm_xtlv_opts_t opts);
+extern int bcm_xtlv_size(const bcm_xtlv_t *elt, bcm_xtlv_opts_t opts);
+
+/* callback for unpacking xtlv from a buffer into context. */
+typedef int (bcm_xtlv_unpack_cbfn_t)(void *ctx, uint8 *buf, uint16 type, uint16 len);
+
+/* unpack a tlv buffer using buffer, options, and callback */
+extern int bcm_unpack_xtlv_buf(void *ctx, uint8 *buf, uint16 buflen,
+	bcm_xtlv_opts_t opts, bcm_xtlv_unpack_cbfn_t *cbfn);
+
+/* unpack a set of tlvs from the buffer using provided xtlv desc */
+extern int bcm_unpack_xtlv_buf_to_mem(void *buf, int *buflen, xtlv_desc_t *items,
+	bcm_xtlv_opts_t opts);
+
+/* pack a set of tlvs into buffer using provided xtlv desc */
+extern int bcm_pack_xtlv_buf_from_mem(void **buf, uint16 *buflen, xtlv_desc_t *items,
+	bcm_xtlv_opts_t opts);
+
+/* callback to return next tlv id and len to pack, if there is more tlvs to come and
+ * options e.g. alignment
+ */
+typedef bool (*bcm_pack_xtlv_next_info_cbfn_t)(void *ctx, uint16 *tlv_id, uint16 *tlv_len);
+
+/* callback to pack the tlv into length validated buffer */
+typedef void (*bcm_pack_xtlv_pack_next_cbfn_t)(void *ctx,
+	uint16 tlv_id, uint16 tlv_len, uint8* buf);
+
+/* pack a set of tlvs into buffer using get_next to interate */
+int bcm_pack_xtlv_buf(void *ctx, void *tlv_buf, uint16 buflen,
+	bcm_xtlv_opts_t opts, bcm_pack_xtlv_next_info_cbfn_t get_next,
+	bcm_pack_xtlv_pack_next_cbfn_t pack_next, int *outlen);
+
+#ifdef WL_ACSD
+/* return data pointer of a given ID from xtlv buffer
+ * xtlv data length is given to *datalen_out, if the pointer is valid
+ */
+extern void *bcm_get_data_from_xtlv_buf(uint8 *tlv_buf, uint16 buflen, uint16 id,
+	uint16 *datalen_out, bcm_xtlv_opts_t opts);
+#endif
 
 /* bcmerror */
 extern const char *bcmerrorstr(int bcmerror);
@@ -1037,7 +1128,7 @@ dll_next_p(dll_t *node_p)
 static INLINE dll_t *
 dll_prev_p(dll_t *node_p)
 {
-	return (node_p)->next_p;
+	return (node_p)->prev_p;
 }
 
 

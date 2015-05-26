@@ -196,7 +196,7 @@
 #define MAX_WHILE_COUNTER	20
 #define ACCEL_MIN_DIFF	90000		/* ug */
 #define ACCEL_MAX_DIFF	1700000		/* ug */
-#define GYRO_MIN_DIFF	250000000	/* udps @2000dps */
+#define GYRO_MIN_DIFF	150000000	/* udps @2000dps */
 #define GYRO_MAX_DIFF	700000000	/* udps @2000dps */
 #define ABS(n)			(((n) > 0) ? (n) : (0 - (n)))
 #endif

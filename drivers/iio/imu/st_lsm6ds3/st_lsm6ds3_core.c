@@ -2474,16 +2474,13 @@ EXPORT_SYMBOL(st_lsm6ds3_common_remove);
 #ifdef CONFIG_PM
 int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 {
-	int err;
+	int err, i;
 	struct lsm6ds3_sensor_data *sdata;
-#ifndef CONFIG_ST_LSM6DS3_IIO_SENSORS_WAKEUP
-	int i;
 	u8 tmp_sensors_enabled;
 
 	tmp_sensors_enabled = cdata->sensors_enabled;
-
 	for (i = 0; i < ST_INDIO_DEV_NUM; i++) {
-		if ((i == ST_INDIO_DEV_SIGN_MOTION) || (i == ST_INDIO_DEV_TILT))
+		if ((1 << i) & ST_LSM6DS3_WAKE_UP_SENSORS)
 			continue;
 
 		sdata = iio_priv(cdata->indio_dev[i]);
@@ -2493,7 +2490,7 @@ int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 			return err;
 	}
 	cdata->sensors_enabled = tmp_sensors_enabled;
-#else
+
 	/* Disable step detector irq */
 	if (cdata->sensors_enabled & (1 << ST_INDIO_DEV_STEP_DETECTOR)) {
 		dev_dbg(cdata->dev, "st_lsm6ds3_common_suspend disable step_d\n");
@@ -2511,7 +2508,6 @@ int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 		if (err < 0)
 			return err;
 	}
-#endif /* CONFIG_ST_LSM6DS3_IIO_SENSORS_WAKEUP */
 
 	if (cdata->sensors_enabled & ST_LSM6DS3_WAKE_UP_SENSORS) {
 		if (device_may_wakeup(cdata->dev))
@@ -2524,9 +2520,9 @@ EXPORT_SYMBOL(st_lsm6ds3_common_suspend);
 
 int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 {
-	int err;
+	int err, i;
 	struct lsm6ds3_sensor_data *sdata;
-#ifdef CONFIG_ST_LSM6DS3_IIO_SENSORS_WAKEUP
+
 	/* Enable step detector irq */
 	if (cdata->sensors_enabled & (1 << ST_INDIO_DEV_STEP_DETECTOR)) {
 		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume enable step_d\n");
@@ -2551,11 +2547,9 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 		if (err < 0)
 			return err;
 	}
-#else
-	int i;
 
 	for (i = 0; i < ST_INDIO_DEV_NUM; i++) {
-		if ((i == ST_INDIO_DEV_SIGN_MOTION) || (i == ST_INDIO_DEV_TILT))
+		if ((1 << i) & ST_LSM6DS3_WAKE_UP_SENSORS)
 			continue;
 
 		sdata = iio_priv(cdata->indio_dev[i]);
@@ -2566,7 +2560,6 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 				return err;
 		}
 	}
-#endif /* CONFIG_ST_LSM6DS3_IIO_SENSORS_WAKEUP */
 
 	if (cdata->sensors_enabled & ST_LSM6DS3_WAKE_UP_SENSORS) {
 		if (device_may_wakeup(cdata->dev))

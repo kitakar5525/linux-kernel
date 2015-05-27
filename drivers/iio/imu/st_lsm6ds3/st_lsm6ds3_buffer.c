@@ -64,6 +64,10 @@ static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len)
 	u8 ext0_sip, ext1_sip;
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 
+	dev_dbg(cdata->dev, "st_lsm6ds3_parse_fifo_data: sensors_enabled=0x%2x, sensors_pattern_en=0x%2x,"
+				"gyro_sip=%d, accel_sip=%d\n",
+				cdata->sensors_enabled, cdata->sensors_pattern_en,
+				cdata->gyro_samples_in_pattern, cdata->accel_samples_in_pattern);
 	while (fifo_offset < read_len) {
 		gyro_sip = cdata->gyro_samples_in_pattern;
 		accel_sip = cdata->accel_samples_in_pattern;
@@ -77,10 +81,16 @@ static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len)
 				if (cdata->gyro_samples_to_discard > 0)
 					cdata->gyro_samples_to_discard--;
 				else {
-					st_lsm6ds3_push_data_with_timestamp(
-						cdata, ST_INDIO_DEV_GYRO,
-						&cdata->fifo_data[fifo_offset],
-						cdata->gyro_timestamp);
+					if (cdata->sensors_pattern_en & (1 << ST_INDIO_DEV_GYRO))
+						st_lsm6ds3_push_data_with_timestamp(
+							cdata, ST_INDIO_DEV_GYRO,
+							&cdata->fifo_data[fifo_offset],
+							cdata->gyro_timestamp);
+					if (cdata->sensors_pattern_en & (1 << ST_INDIO_DEV_GYRO_WK))
+						st_lsm6ds3_push_data_with_timestamp(
+							cdata, ST_INDIO_DEV_GYRO_WK,
+							&cdata->fifo_data[fifo_offset],
+							cdata->gyro_timestamp);
 				}
 
 				cdata->gyro_timestamp += cdata->gyro_deltatime;
@@ -92,10 +102,16 @@ static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len)
 				if (cdata->accel_samples_to_discard > 0)
 					cdata->accel_samples_to_discard--;
 				else {
-					st_lsm6ds3_push_data_with_timestamp(
-						cdata, ST_INDIO_DEV_ACCEL,
-						&cdata->fifo_data[fifo_offset],
-						cdata->accel_timestamp);
+					if (cdata->sensors_pattern_en & (1 << ST_INDIO_DEV_ACCEL))
+						st_lsm6ds3_push_data_with_timestamp(
+							cdata, ST_INDIO_DEV_ACCEL,
+							&cdata->fifo_data[fifo_offset],
+							cdata->accel_timestamp);
+					if (cdata->sensors_pattern_en & (1 << ST_INDIO_DEV_ACCEL_WK))
+						st_lsm6ds3_push_data_with_timestamp(
+							cdata, ST_INDIO_DEV_ACCEL_WK,
+							&cdata->fifo_data[fifo_offset],
+							cdata->accel_timestamp);
 				}
 
 				cdata->accel_timestamp +=
@@ -281,8 +297,7 @@ static int st_lsm6ds3_buffer_postenable(struct iio_dev *indio_dev)
 			return -ENOMEM;
 	}
 
-	if ((sdata->sindex == ST_INDIO_DEV_ACCEL) ||
-					(sdata->sindex == ST_INDIO_DEV_GYRO)) {
+	if ((1 << sdata->sindex) & ST_INDIO_DEV_AG_MASK) {
 		err = st_lsm6ds3_set_axis_enable(sdata,
 					(u8)indio_dev->active_scan_mask[0]);
 		if (err < 0)
@@ -319,8 +334,7 @@ static int st_lsm6ds3_buffer_predisable(struct iio_dev *indio_dev)
 	if (err < 0)
 		return err;
 
-	if ((sdata->sindex == ST_INDIO_DEV_ACCEL) ||
-					(sdata->sindex == ST_INDIO_DEV_GYRO)) {
+	if ((1 << sdata->sindex) & ST_INDIO_DEV_AG_MASK) {
 		err = st_lsm6ds3_set_axis_enable(sdata, ST_LSM6DS3_ENABLE_AXIS);
 		if (err < 0)
 			return err;
@@ -359,18 +373,30 @@ int st_lsm6ds3_allocate_rings(struct lsm6ds3_data *cdata)
 	if (err < 0)
 		return err;
 
-	err = iio_triggered_buffer_setup(cdata->indio_dev[ST_INDIO_DEV_GYRO],
+	err = iio_triggered_buffer_setup(cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK],
 				&st_lsm6ds3_handler_empty, NULL,
 				&st_lsm6ds3_buffer_setup_ops);
 	if (err < 0)
 		goto buffer_cleanup_accel;
+
+	err = iio_triggered_buffer_setup(cdata->indio_dev[ST_INDIO_DEV_GYRO],
+				&st_lsm6ds3_handler_empty, NULL,
+				&st_lsm6ds3_buffer_setup_ops);
+	if (err < 0)
+		goto buffer_cleanup_accel_wk;
+
+	err = iio_triggered_buffer_setup(cdata->indio_dev[ST_INDIO_DEV_GYRO_WK],
+				&st_lsm6ds3_handler_empty, NULL,
+				&st_lsm6ds3_buffer_setup_ops);
+	if (err < 0)
+		goto buffer_cleanup_gyro;
 
 	err = iio_triggered_buffer_setup(
 				cdata->indio_dev[ST_INDIO_DEV_SIGN_MOTION],
 				&st_lsm6ds3_handler_empty, NULL,
 				&st_lsm6ds3_buffer_setup_ops);
 	if (err < 0)
-		goto buffer_cleanup_gyro;
+		goto buffer_cleanup_gyro_wk;
 
 	err = iio_triggered_buffer_setup(
 				cdata->indio_dev[ST_INDIO_DEV_STEP_COUNTER],
@@ -405,8 +431,12 @@ buffer_cleanup_step_counter:
 buffer_cleanup_sign_motion:
 	iio_triggered_buffer_cleanup(
 				cdata->indio_dev[ST_INDIO_DEV_SIGN_MOTION]);
+buffer_cleanup_gyro_wk:
+	iio_triggered_buffer_cleanup(cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]);
 buffer_cleanup_gyro:
 	iio_triggered_buffer_cleanup(cdata->indio_dev[ST_INDIO_DEV_GYRO]);
+buffer_cleanup_accel_wk:
+	iio_triggered_buffer_cleanup(cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]);
 buffer_cleanup_accel:
 	iio_triggered_buffer_cleanup(cdata->indio_dev[ST_INDIO_DEV_ACCEL]);
 	return err;
@@ -421,8 +451,10 @@ void st_lsm6ds3_deallocate_rings(struct lsm6ds3_data *cdata)
 				cdata->indio_dev[ST_INDIO_DEV_STEP_COUNTER]);
 	iio_triggered_buffer_cleanup(
 				cdata->indio_dev[ST_INDIO_DEV_SIGN_MOTION]);
-	iio_triggered_buffer_cleanup(cdata->indio_dev[ST_INDIO_DEV_ACCEL]);
+	iio_triggered_buffer_cleanup(cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]);
 	iio_triggered_buffer_cleanup(cdata->indio_dev[ST_INDIO_DEV_GYRO]);
+	iio_triggered_buffer_cleanup(cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]);
+	iio_triggered_buffer_cleanup(cdata->indio_dev[ST_INDIO_DEV_ACCEL]);
 }
 
 MODULE_AUTHOR("Denis Ciocca <denis.ciocca@st.com>");

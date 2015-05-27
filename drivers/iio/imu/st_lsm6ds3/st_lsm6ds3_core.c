@@ -216,6 +216,7 @@
 #define ST_LSM6DS3_STEP_DETECTOR_SUFFIX_NAME	"step_d"
 #define ST_LSM6DS3_SIGN_MOTION_SUFFIX_NAME	"sign_motion"
 #define ST_LSM6DS3_TILT_SUFFIX_NAME		"tilt"
+#define ST_LSM6DS3_WAKEUP_SUFFIX_NAME	"wk"
 
 #define ST_LSM6DS3_DEV_ATTR_SAMP_FREQ() \
 		IIO_DEV_ATTR_SAMP_FREQ(S_IWUSR | S_IRUGO, \
@@ -233,6 +234,7 @@
 #ifdef CONFIG_ST_LSM6DS3_CAL_SUPPORT
 static int accel_cal_data[3], gyro_cal_data[3];
 #endif
+static bool stay_wake;
 
 static struct st_lsm6ds3_selftest_table {
 	char *string_mode;
@@ -264,14 +266,18 @@ struct st_lsm6ds3_odr_reg {
 };
 
 static struct st_lsm6ds3_odr_table {
-	u8 addr[2];
-	u8 mask[2];
+	u8 addr[4];
+	u8 mask[4];
 	struct st_lsm6ds3_odr_reg odr_avl[ST_LSM6DS3_ODR_LIST_NUM];
 } st_lsm6ds3_odr_table = {
 	.addr[ST_INDIO_DEV_ACCEL] = ST_LSM6DS3_ACCEL_ODR_ADDR,
 	.mask[ST_INDIO_DEV_ACCEL] = ST_LSM6DS3_ACCEL_ODR_MASK,
+	.addr[ST_INDIO_DEV_ACCEL_WK] = ST_LSM6DS3_ACCEL_ODR_ADDR,
+	.mask[ST_INDIO_DEV_ACCEL_WK] = ST_LSM6DS3_ACCEL_ODR_MASK,
 	.addr[ST_INDIO_DEV_GYRO] = ST_LSM6DS3_GYRO_ODR_ADDR,
 	.mask[ST_INDIO_DEV_GYRO] = ST_LSM6DS3_GYRO_ODR_MASK,
+	.addr[ST_INDIO_DEV_GYRO_WK] = ST_LSM6DS3_GYRO_ODR_ADDR,
+	.mask[ST_INDIO_DEV_GYRO_WK] = ST_LSM6DS3_GYRO_ODR_MASK,
 	.odr_avl[0] = { .hz = 26, .value = ST_LSM6DS3_ODR_26HZ_VAL },
 	.odr_avl[1] = { .hz = 52, .value = ST_LSM6DS3_ODR_52HZ_VAL },
 	.odr_avl[2] = { .hz = 104, .value = ST_LSM6DS3_ODR_104HZ_VAL },
@@ -301,7 +307,31 @@ static struct st_lsm6ds3_fs_table {
 		.fs_avl[3] = { .gain = ST_LSM6DS3_ACCEL_FS_16G_GAIN,
 					.value = ST_LSM6DS3_ACCEL_FS_16G_VAL },
 	},
+	[ST_INDIO_DEV_ACCEL_WK] = {
+		.addr = ST_LSM6DS3_ACCEL_FS_ADDR,
+		.mask = ST_LSM6DS3_ACCEL_FS_MASK,
+		.fs_avl[0] = { .gain = ST_LSM6DS3_ACCEL_FS_2G_GAIN,
+					.value = ST_LSM6DS3_ACCEL_FS_2G_VAL },
+		.fs_avl[1] = { .gain = ST_LSM6DS3_ACCEL_FS_4G_GAIN,
+					.value = ST_LSM6DS3_ACCEL_FS_4G_VAL },
+		.fs_avl[2] = { .gain = ST_LSM6DS3_ACCEL_FS_8G_GAIN,
+					.value = ST_LSM6DS3_ACCEL_FS_8G_VAL },
+		.fs_avl[3] = { .gain = ST_LSM6DS3_ACCEL_FS_16G_GAIN,
+					.value = ST_LSM6DS3_ACCEL_FS_16G_VAL },
+	},
 	[ST_INDIO_DEV_GYRO] = {
+		.addr = ST_LSM6DS3_GYRO_FS_ADDR,
+		.mask = ST_LSM6DS3_GYRO_FS_MASK,
+		.fs_avl[0] = { .gain = ST_LSM6DS3_GYRO_FS_245_GAIN,
+					.value = ST_LSM6DS3_GYRO_FS_245_VAL },
+		.fs_avl[1] = { .gain = ST_LSM6DS3_GYRO_FS_500_GAIN,
+					.value = ST_LSM6DS3_GYRO_FS_500_VAL },
+		.fs_avl[2] = { .gain = ST_LSM6DS3_GYRO_FS_1000_GAIN,
+					.value = ST_LSM6DS3_GYRO_FS_1000_VAL },
+		.fs_avl[3] = { .gain = ST_LSM6DS3_GYRO_FS_2000_GAIN,
+					.value = ST_LSM6DS3_GYRO_FS_2000_VAL },
+	},
+	[ST_INDIO_DEV_GYRO_WK] = {
 		.addr = ST_LSM6DS3_GYRO_FS_ADDR,
 		.mask = ST_LSM6DS3_GYRO_FS_MASK,
 		.fs_avl[0] = { .gain = ST_LSM6DS3_GYRO_FS_245_GAIN,
@@ -620,26 +650,44 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 
 	indio_dev = cdata->indio_dev[ST_INDIO_DEV_ACCEL];
 	sdata_accel = iio_priv(indio_dev);
-	if ((1 << sdata_accel->sindex) & cdata->sensors_enabled) {
+	if (((1 << ST_INDIO_DEV_ACCEL) | (1 << ST_INDIO_DEV_ACCEL_WK)) & cdata->sensors_enabled) {
 		if (min_odr > sdata_accel->c_odr)
 			min_odr = sdata_accel->c_odr;
 
 		if (max_odr < sdata_accel->c_odr)
 			max_odr = sdata_accel->c_odr;
 
-		fifo_len_accel = (indio_dev->buffer->length / 2);
+		if ((1 << ST_INDIO_DEV_ACCEL) & cdata->sensors_enabled) {
+			if ((1 << ST_INDIO_DEV_ACCEL_WK) & cdata->sensors_enabled) {
+				fifo_len_accel =
+					(indio_dev->buffer->length < cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->length) ?
+					indio_dev->buffer->length : cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->length;
+				fifo_len_accel /= 2;
+			} else
+				fifo_len_accel = (indio_dev->buffer->length / 2);
+		} else
+			fifo_len_accel = (cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->length / 2);
 	}
 
 	indio_dev = cdata->indio_dev[ST_INDIO_DEV_GYRO];
 	sdata_gyro = iio_priv(indio_dev);
-	if ((1 << sdata_gyro->sindex) & cdata->sensors_enabled) {
+	if (((1 << ST_INDIO_DEV_GYRO) | (1 << ST_INDIO_DEV_GYRO_WK)) & cdata->sensors_enabled) {
 		if (min_odr > sdata_gyro->c_odr)
 			min_odr = sdata_gyro->c_odr;
 
 		if (max_odr < sdata_gyro->c_odr)
 			max_odr = sdata_gyro->c_odr;
 
-		fifo_len_gyro = (indio_dev->buffer->length / 2);
+		if ((1 << ST_INDIO_DEV_GYRO) & cdata->sensors_enabled) {
+			if ((1 << ST_INDIO_DEV_GYRO_WK) & cdata->sensors_enabled) {
+				fifo_len_gyro =
+					(indio_dev->buffer->length < cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->length) ?
+						indio_dev->buffer->length : cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->length;
+				fifo_len_gyro /= 2;
+			} else
+				fifo_len_gyro = (indio_dev->buffer->length / 2);
+		} else
+			fifo_len_gyro = (cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->length / 2);
 	}
 
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
@@ -688,7 +736,7 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 		if (i == ST_LSM6DS3_ODR_LIST_NUM)
 			return -EINVAL;
 
-		if (cdata->sensors_enabled & (1 << sdata_accel->sindex)) {
+		if (cdata->sensors_enabled & ((1 << ST_INDIO_DEV_ACCEL) | (1 << ST_INDIO_DEV_ACCEL_WK))) {
 			cdata->accel_samples_to_discard = ST_LSM6DS3_ACCEL_STD;
 
 			err = st_lsm6ds3_write_data_with_mask(cdata,
@@ -701,13 +749,23 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 	}
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 
-	if ((1 << sdata_accel->sindex) & cdata->sensors_enabled) {
+	if (((1 << ST_INDIO_DEV_ACCEL) | (1 << ST_INDIO_DEV_ACCEL_WK)) & cdata->sensors_enabled) {
 		cdata->accel_samples_in_pattern =
 						(sdata_accel->c_odr / min_odr);
 		num_pattern_accel = MAX(fifo_len_accel /
 					cdata->accel_samples_in_pattern, 1);
 		cdata->accel_deltatime = (1000000000ULL / sdata_accel->c_odr);
 		accel_decimator = max_odr / sdata_accel->c_odr;
+		if ((1 << ST_INDIO_DEV_ACCEL) & cdata->sensors_enabled)
+			cdata->sensors_pattern_en |= (1 << ST_INDIO_DEV_ACCEL);
+		else
+			cdata->sensors_pattern_en &= ~(1 << ST_INDIO_DEV_ACCEL);
+		if ((1 << ST_INDIO_DEV_ACCEL_WK) & cdata->sensors_enabled)
+			cdata->sensors_pattern_en |= (1 << ST_INDIO_DEV_ACCEL_WK);
+		else
+			cdata->sensors_pattern_en &= ~(1 << ST_INDIO_DEV_ACCEL_WK);
+		dev_dbg(cdata->dev, "Accel: sensors_enabled=0x%2x, sensors_pattern_en=0x%2x\n",
+					cdata->sensors_enabled, cdata->sensors_pattern_en);
 	} else
 		cdata->accel_samples_in_pattern = 0;
 
@@ -718,12 +776,22 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 	if (err < 0)
 		return err;
 
-	if ((1 << sdata_gyro->sindex) & cdata->sensors_enabled) {
+	if (((1 << ST_INDIO_DEV_GYRO) | (1 << ST_INDIO_DEV_GYRO_WK)) & cdata->sensors_enabled) {
 		cdata->gyro_samples_in_pattern = (sdata_gyro->c_odr / min_odr);
 		num_pattern_gyro = MAX(fifo_len_gyro /
 					cdata->gyro_samples_in_pattern, 1);
 		cdata->gyro_deltatime = (1000000000ULL / sdata_gyro->c_odr);
 		gyro_decimator = max_odr / sdata_gyro->c_odr;
+		if ((1 << ST_INDIO_DEV_GYRO) & cdata->sensors_enabled)
+			cdata->sensors_pattern_en |= (1 << ST_INDIO_DEV_GYRO);
+		else
+			cdata->sensors_pattern_en &= ~(1 << ST_INDIO_DEV_GYRO);
+		if ((1 << ST_INDIO_DEV_GYRO_WK) & cdata->sensors_enabled)
+			cdata->sensors_pattern_en |= (1 << ST_INDIO_DEV_GYRO_WK);
+		else
+			cdata->sensors_pattern_en &= ~(1 << ST_INDIO_DEV_GYRO_WK);
+		dev_dbg(cdata->dev, "Gyro: sensors_enabled=0x%2x, sensors_pattern_en=0x%2x\n",
+					cdata->sensors_enabled, cdata->sensors_pattern_en);
 	} else
 		cdata->gyro_samples_in_pattern = 0;
 
@@ -819,6 +887,7 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 	fifo_len = (cdata->accel_samples_in_pattern +
 			cdata->gyro_samples_in_pattern) *
 			min_num_pattern * ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
+
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 
 	if (fifo_len > 0) {
@@ -904,12 +973,37 @@ int st_lsm6ds3_set_drdy_irq(struct lsm6ds3_sensor_data *sdata, bool state)
 	case ST_INDIO_DEV_ACCEL:
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
 		if ((sdata->cdata->sensors_enabled &
-				(1 << ST_INDIO_DEV_GYRO)) ||
+				((1 << ST_INDIO_DEV_ACCEL_WK) |
+				(1 << ST_INDIO_DEV_GYRO) |
+				(1 << ST_INDIO_DEV_GYRO_WK))) ||
 					(sdata->cdata->sensors_enabled &
 						ST_LSM6DS3_EXT_SENSORS))
 			return 0;
 #else /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
-		if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO))
+		if (sdata->cdata->sensors_enabled &
+				((1 << ST_INDIO_DEV_ACCEL_WK) |
+				(1 << ST_INDIO_DEV_GYRO) |
+				(1 << ST_INDIO_DEV_GYRO_WK)))
+			return 0;
+#endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
+
+		reg_addr = ST_LSM6DS3_INT1_ADDR;
+		mask = ST_LSM6DS3_FIFO_THR_IRQ_MASK;
+		break;
+	case ST_INDIO_DEV_ACCEL_WK:
+#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
+		if ((sdata->cdata->sensors_enabled &
+				((1 << ST_INDIO_DEV_ACCEL) |
+				(1 << ST_INDIO_DEV_GYRO) |
+				(1 << ST_INDIO_DEV_GYRO_WK))) ||
+					(sdata->cdata->sensors_enabled &
+						ST_LSM6DS3_EXT_SENSORS))
+			return 0;
+#else /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
+		if (sdata->cdata->sensors_enabled &
+				((1 << ST_INDIO_DEV_ACCEL) |
+				(1 << ST_INDIO_DEV_GYRO) |
+				(1 << ST_INDIO_DEV_GYRO_WK)))
 			return 0;
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 
@@ -919,12 +1013,37 @@ int st_lsm6ds3_set_drdy_irq(struct lsm6ds3_sensor_data *sdata, bool state)
 	case ST_INDIO_DEV_GYRO:
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
 		if ((sdata->cdata->sensors_enabled &
-				(1 << ST_INDIO_DEV_ACCEL)) ||
+				((1 << ST_INDIO_DEV_ACCEL) |
+				(1 << ST_INDIO_DEV_ACCEL_WK) |
+				(1 << ST_INDIO_DEV_GYRO_WK))) ||
 					(sdata->cdata->sensors_enabled &
 						ST_LSM6DS3_EXT_SENSORS))
 			return 0;
 #else /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
-		if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL))
+		if (sdata->cdata->sensors_enabled &
+				((1 << ST_INDIO_DEV_ACCEL) |
+				(1 << ST_INDIO_DEV_ACCEL_WK) |
+				(1 << ST_INDIO_DEV_GYRO_WK)))
+			return 0;
+#endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
+
+		reg_addr = ST_LSM6DS3_INT1_ADDR;
+		mask = ST_LSM6DS3_FIFO_THR_IRQ_MASK;
+		break;
+	case ST_INDIO_DEV_GYRO_WK:
+#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
+		if ((sdata->cdata->sensors_enabled &
+				((1 << ST_INDIO_DEV_ACCEL) |
+				(1 << ST_INDIO_DEV_ACCEL_WK) |
+				(1 << ST_INDIO_DEV_GYRO))) ||
+					(sdata->cdata->sensors_enabled &
+						ST_LSM6DS3_EXT_SENSORS))
+			return 0;
+#else /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
+		if (sdata->cdata->sensors_enabled &
+				((1 << ST_INDIO_DEV_ACCEL) |
+				(1 << ST_INDIO_DEV_ACCEL_WK) |
+				(1 << ST_INDIO_DEV_GYRO)))
 			return 0;
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 
@@ -958,9 +1077,11 @@ int st_lsm6ds3_set_drdy_irq(struct lsm6ds3_sensor_data *sdata, bool state)
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
 	case ST_INDIO_DEV_EXT0:
 		if ((sdata->cdata->sensors_enabled &
-					(1 << ST_INDIO_DEV_ACCEL)) ||
+						((1 << ST_INDIO_DEV_ACCEL) |
+						(1 << ST_INDIO_DEV_ACCEL_WK))) ||
 					(sdata->cdata->sensors_enabled &
-						(1 << ST_INDIO_DEV_GYRO)) ||
+						((1 << ST_INDIO_DEV_GYRO) |
+						(1 << ST_INDIO_DEV_GYRO_WK))) ||
 					(sdata->cdata->sensors_enabled &
 						(1 << ST_INDIO_DEV_EXT1)))
 			return 0;
@@ -970,9 +1091,11 @@ int st_lsm6ds3_set_drdy_irq(struct lsm6ds3_sensor_data *sdata, bool state)
 		break;
 	case ST_INDIO_DEV_EXT1:
 		if ((sdata->cdata->sensors_enabled &
-					(1 << ST_INDIO_DEV_ACCEL)) ||
+						((1 << ST_INDIO_DEV_ACCEL) |
+						(1 << ST_INDIO_DEV_ACCEL_WK))) ||
 					(sdata->cdata->sensors_enabled &
-						(1 << ST_INDIO_DEV_GYRO)) ||
+						((1 << ST_INDIO_DEV_GYRO) |
+						(1 << ST_INDIO_DEV_GYRO_WK))) ||
 					(sdata->cdata->sensors_enabled &
 						(1 << ST_INDIO_DEV_EXT0)))
 			return 0;
@@ -992,21 +1115,46 @@ EXPORT_SYMBOL(st_lsm6ds3_set_drdy_irq);
 
 int st_lsm6ds3_set_axis_enable(struct lsm6ds3_sensor_data *sdata, u8 value)
 {
+	int err;
 	u8 reg_addr;
 
 	switch (sdata->sindex) {
 	case ST_INDIO_DEV_ACCEL:
+		if (sdata->cdata->axis_enabled & (1 << ST_INDIO_DEV_ACCEL_WK))
+			return 0;
+		reg_addr = ST_LSM6DS3_ACCEL_AXIS_EN_ADDR;
+		break;
+	case ST_INDIO_DEV_ACCEL_WK:
+		if (sdata->cdata->axis_enabled & (1 << ST_INDIO_DEV_ACCEL))
+			return 0;
 		reg_addr = ST_LSM6DS3_ACCEL_AXIS_EN_ADDR;
 		break;
 	case ST_INDIO_DEV_GYRO:
+		if (sdata->cdata->axis_enabled & (1 << ST_INDIO_DEV_GYRO_WK))
+			return 0;
+		reg_addr = ST_LSM6DS3_GYRO_AXIS_EN_ADDR;
+		break;
+	case ST_INDIO_DEV_GYRO_WK:
+		if (sdata->cdata->axis_enabled & (1 << ST_INDIO_DEV_GYRO))
+			return 0;
 		reg_addr = ST_LSM6DS3_GYRO_AXIS_EN_ADDR;
 		break;
 	default:
 		return 0;
 	}
 
-	return st_lsm6ds3_write_data_with_mask(sdata->cdata,
+	err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
 				reg_addr, ST_LSM6DS3_AXIS_EN_MASK, value, true);
+	if (err < 0)
+		return err;
+
+	if (!(value & ST_LSM6DS3_AXIS_EN_MASK))
+		sdata->cdata->axis_enabled &= ~(1 << sdata->sindex);
+	else
+		sdata->cdata->axis_enabled |= (1 << sdata->sindex);
+
+	return 0;
+
 }
 EXPORT_SYMBOL(st_lsm6ds3_set_axis_enable);
 
@@ -1084,21 +1232,129 @@ static int st_lsm6ds3_enable_pedometer(struct lsm6ds3_sensor_data *sdata,
 
 }
 
+void update_current_odr(struct lsm6ds3_sensor_data *sdata,
+							unsigned int odr)
+{
+		switch (sdata->sindex) {
+		case ST_INDIO_DEV_ACCEL:
+			{
+				struct lsm6ds3_sensor_data *sdata_accel_wk =
+					iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]);
+				sdata_accel_wk->c_odr = sdata->c_odr = odr;
+			}
+			break;
+		case ST_INDIO_DEV_ACCEL_WK:
+			{
+				struct lsm6ds3_sensor_data *sdata_accel =
+					iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_ACCEL]);
+				sdata_accel->c_odr = sdata->c_odr = odr;
+			}
+			break;
+		case ST_INDIO_DEV_GYRO:
+			{
+				struct lsm6ds3_sensor_data *sdata_gyro_wk =
+					iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]);
+				sdata_gyro_wk->c_odr = sdata->c_odr = odr;
+			}
+			break;
+		case ST_INDIO_DEV_GYRO_WK:
+			{
+				struct lsm6ds3_sensor_data *sdata_gyro =
+					iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_GYRO]);
+				sdata_gyro->c_odr = sdata->c_odr = odr;
+			}
+			break;
+		}
+}
+
+static int st_lsm6ds3_set_odr(struct lsm6ds3_sensor_data *sdata,
+							unsigned int odr,
+							bool need_set_register)
+{
+	int err, i;
+
+	for (i = 0; i < ST_LSM6DS3_ODR_LIST_NUM; i++) {
+		if (st_lsm6ds3_odr_table.odr_avl[i].hz == odr)
+			break;
+	}
+	if (i == ST_LSM6DS3_ODR_LIST_NUM)
+		return -EINVAL;
+
+	if (need_set_register) {
+		disable_irq(sdata->cdata->irq);
+		st_lsm6ds3_flush_works();
+
+		if ((sdata->sindex == ST_INDIO_DEV_ACCEL) ||
+				(sdata->sindex == ST_INDIO_DEV_ACCEL_WK))
+			sdata->cdata->accel_samples_to_discard =
+							ST_LSM6DS3_ACCEL_STD;
+
+		sdata->cdata->gyro_samples_to_discard = ST_LSM6DS3_GYRO_STD;
+
+		err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
+				st_lsm6ds3_odr_table.addr[sdata->sindex],
+				st_lsm6ds3_odr_table.mask[sdata->sindex],
+				st_lsm6ds3_odr_table.odr_avl[i].value, true);
+		if (err < 0) {
+			enable_irq(sdata->cdata->irq);
+			return err;
+		}
+
+		update_current_odr(sdata, st_lsm6ds3_odr_table.odr_avl[i].hz);
+
+		st_lsm6ds3_reconfigure_fifo(sdata->cdata, false);
+		enable_irq(sdata->cdata->irq);
+	}
+	sdata->odr = st_lsm6ds3_odr_table.odr_avl[i].hz;
+
+	return 0;
+}
+
 static int st_lsm6ds3_enable_sensors(struct lsm6ds3_sensor_data *sdata)
 {
 	int err, i;
 
 	switch (sdata->sindex) {
 	case ST_INDIO_DEV_ACCEL:
+		if ((sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL_WK)) &&
+				((sdata->odr <= sdata->c_odr) || (sdata->c_odr != 0)))
+			goto OUT;
+		else
+			goto SET_ODR;
+
+	case ST_INDIO_DEV_ACCEL_WK:
+		stay_wake = true;
+		if ((sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL)) &&
+				((sdata->odr <= sdata->c_odr) || (sdata->c_odr != 0)))
+			goto OUT;
+		else
+			goto SET_ODR;
+
 	case ST_INDIO_DEV_GYRO:
+		if ((sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO_WK)) &&
+				((sdata->odr <= sdata->c_odr) || (sdata->c_odr != 0)))
+			goto OUT;
+		else
+			goto SET_ODR;
+
+	case ST_INDIO_DEV_GYRO_WK:
+		stay_wake = true;
+		if ((sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO)) &&
+				((sdata->odr <= sdata->c_odr) || (sdata->c_odr != 0)))
+			goto OUT;
+		else
+			goto SET_ODR;
+
+SET_ODR:
 		for (i = 0; i < ST_LSM6DS3_ODR_LIST_NUM; i++) {
-			if (st_lsm6ds3_odr_table.odr_avl[i].hz == sdata->c_odr)
+			if (st_lsm6ds3_odr_table.odr_avl[i].hz == sdata->odr)
 				break;
 		}
 		if (i == ST_LSM6DS3_ODR_LIST_NUM)
 			return -EINVAL;
 
-		if (sdata->sindex == ST_INDIO_DEV_ACCEL) {
+		if ((sdata->sindex == ST_INDIO_DEV_ACCEL) ||
+				(sdata->sindex == ST_INDIO_DEV_ACCEL_WK)) {
 			sdata->cdata->accel_samples_to_discard =
 							ST_LSM6DS3_ACCEL_STD;
 		}
@@ -1112,8 +1368,7 @@ static int st_lsm6ds3_enable_sensors(struct lsm6ds3_sensor_data *sdata)
 		if (err < 0)
 			return err;
 
-		sdata->c_odr = st_lsm6ds3_odr_table.odr_avl[i].hz;
-
+		update_current_odr(sdata, st_lsm6ds3_odr_table.odr_avl[i].hz);
 		break;
 	case ST_INDIO_DEV_SIGN_MOTION:
 		err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
@@ -1172,6 +1427,7 @@ static int st_lsm6ds3_enable_sensors(struct lsm6ds3_sensor_data *sdata)
 		return -EINVAL;
 	}
 
+OUT:
 	err = st_lsm6ds3_set_extra_dependency(sdata, true);
 	if (err < 0)
 		return err;
@@ -1183,31 +1439,71 @@ static int st_lsm6ds3_enable_sensors(struct lsm6ds3_sensor_data *sdata)
 
 static int st_lsm6ds3_disable_sensors(struct lsm6ds3_sensor_data *sdata)
 {
-	int err;
+	int err, i;
+	u8 odr = 0;
+	struct lsm6ds3_sensor_data *sdata_bak;
 
 	switch (sdata->sindex) {
 	case ST_INDIO_DEV_ACCEL:
-		if (sdata->cdata->sensors_enabled &
-						ST_LSM6DS3_EXTRA_DEPENDENCY) {
-			err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
-				st_lsm6ds3_odr_table.addr[sdata->sindex],
-				st_lsm6ds3_odr_table.mask[sdata->sindex],
-				st_lsm6ds3_odr_table.odr_avl[0].value, true);
-		} else {
-			err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
-				st_lsm6ds3_odr_table.addr[sdata->sindex],
-				st_lsm6ds3_odr_table.mask[sdata->sindex],
-				ST_LSM6DS3_ODR_POWER_OFF_VAL, true);
+		if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL_WK)) {
+			sdata_bak = iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]);
+			odr = sdata_bak->odr;
+			goto SET_ODR;
 		}
-		if (err < 0)
-			return err;
 
-		break;
+	case ST_INDIO_DEV_ACCEL_WK:
+		if (!(sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO_WK)))
+			stay_wake = false;
+		if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL)) {
+			sdata_bak = iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_ACCEL]);
+			odr = sdata_bak->odr;
+			goto SET_ODR;
+		}
+
 	case ST_INDIO_DEV_GYRO:
-		err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
+		if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO_WK)) {
+			sdata_bak = iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]);
+			odr = sdata_bak->odr;
+			goto SET_ODR;
+		}
+	case ST_INDIO_DEV_GYRO_WK:
+		if (!(sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL_WK)))
+			stay_wake = false;
+		if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO)) {
+			sdata_bak = iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_GYRO]);
+			odr = sdata_bak->odr;
+			goto SET_ODR;
+		}
+
+SET_ODR:
+		if (odr) {
+			for (i = 0; i < ST_LSM6DS3_ODR_LIST_NUM; i++) {
+				if (st_lsm6ds3_odr_table.odr_avl[i].hz == odr)
+					break;
+			}
+			if (i == ST_LSM6DS3_ODR_LIST_NUM)
+				return -EINVAL;
+
+			err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
+				st_lsm6ds3_odr_table.addr[sdata->sindex],
+				st_lsm6ds3_odr_table.mask[sdata->sindex],
+				st_lsm6ds3_odr_table.odr_avl[i].value, true);
+			if (err >= 0)
+				update_current_odr(sdata, odr);
+		} else if (((sdata->sindex == ST_INDIO_DEV_ACCEL) ||
+				(sdata->sindex == ST_INDIO_DEV_ACCEL_WK)) &&
+					(sdata->cdata->sensors_enabled &
+						ST_LSM6DS3_EXTRA_DEPENDENCY)) {
+				err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
+					st_lsm6ds3_odr_table.addr[sdata->sindex],
+					st_lsm6ds3_odr_table.mask[sdata->sindex],
+					st_lsm6ds3_odr_table.odr_avl[0].value, true);
+		} else
+			err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
 				st_lsm6ds3_odr_table.addr[sdata->sindex],
 				st_lsm6ds3_odr_table.mask[sdata->sindex],
 				ST_LSM6DS3_ODR_POWER_OFF_VAL, true);
+
 		if (err < 0)
 			return err;
 
@@ -1269,47 +1565,6 @@ int st_lsm6ds3_set_enable(struct lsm6ds3_sensor_data *sdata, bool enable)
 		return st_lsm6ds3_disable_sensors(sdata);
 }
 EXPORT_SYMBOL(st_lsm6ds3_set_enable);
-
-static int st_lsm6ds3_set_odr(struct lsm6ds3_sensor_data *sdata,
-							unsigned int odr)
-{
-	int err, i;
-
-	for (i = 0; i < ST_LSM6DS3_ODR_LIST_NUM; i++) {
-		if (st_lsm6ds3_odr_table.odr_avl[i].hz == odr)
-			break;
-	}
-	if (i == ST_LSM6DS3_ODR_LIST_NUM)
-		return -EINVAL;
-
-	if (sdata->cdata->sensors_enabled & (1 << sdata->sindex)) {
-		disable_irq(sdata->cdata->irq);
-		st_lsm6ds3_flush_works();
-
-		if (sdata->sindex == ST_INDIO_DEV_ACCEL)
-			sdata->cdata->accel_samples_to_discard =
-							ST_LSM6DS3_ACCEL_STD;
-
-		sdata->cdata->gyro_samples_to_discard = ST_LSM6DS3_GYRO_STD;
-
-		err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
-				st_lsm6ds3_odr_table.addr[sdata->sindex],
-				st_lsm6ds3_odr_table.mask[sdata->sindex],
-				st_lsm6ds3_odr_table.odr_avl[i].value, true);
-		if (err < 0) {
-			enable_irq(sdata->cdata->irq);
-			return err;
-		}
-
-		sdata->c_odr = st_lsm6ds3_odr_table.odr_avl[i].hz;
-
-		st_lsm6ds3_reconfigure_fifo(sdata->cdata, false);
-		enable_irq(sdata->cdata->irq);
-	} else
-		sdata->c_odr = st_lsm6ds3_odr_table.odr_avl[i].hz;
-
-	return 0;
-}
 
 static int st_lsm6ds3_set_fs(struct lsm6ds3_sensor_data *sdata,
 							unsigned int gain)
@@ -1459,10 +1714,12 @@ static int st_lsm6ds3_read_raw(struct iio_dev *indio_dev,
 			return -EBUSY;
 		}
 
-		if (sdata->sindex == ST_INDIO_DEV_ACCEL)
+		if ((sdata->sindex == ST_INDIO_DEV_ACCEL) ||
+				(sdata->sindex == ST_INDIO_DEV_ACCEL_WK))
 			msleep(40);
 
-		if (sdata->sindex == ST_INDIO_DEV_GYRO)
+		if ((sdata->sindex == ST_INDIO_DEV_GYRO) ||
+				(sdata->sindex == ST_INDIO_DEV_GYRO_WK))
 			msleep(120);
 
 		err = sdata->cdata->tf->read(sdata->cdata, ch->address,
@@ -1482,11 +1739,11 @@ static int st_lsm6ds3_read_raw(struct iio_dev *indio_dev,
 		return IIO_VAL_INT;
 #ifdef CONFIG_ST_LSM6DS3_CAL_SUPPORT
 	case IIO_CHAN_INFO_OFFSET:
-		if (sdata->sindex == ST_INDIO_DEV_ACCEL) {
+		if ((sdata->sindex == ST_INDIO_DEV_ACCEL) || (sdata->sindex == ST_INDIO_DEV_ACCEL_WK)) {
 			*val = accel_cal_data[ch->scan_index];
 			return IIO_VAL_INT;
 		}
-		if (sdata->sindex == ST_INDIO_DEV_GYRO) {
+		if ((sdata->sindex == ST_INDIO_DEV_GYRO) || (sdata->sindex == ST_INDIO_DEV_GYRO_WK)) {
 			*val = gyro_cal_data[ch->scan_index];
 			return IIO_VAL_INT;
 		}
@@ -1524,9 +1781,9 @@ static int st_lsm6ds3_write_raw(struct iio_dev *indio_dev,
 #ifdef CONFIG_ST_LSM6DS3_CAL_SUPPORT
 	case IIO_CHAN_INFO_OFFSET:
 		err = 0;
-		if (sdata->sindex == ST_INDIO_DEV_ACCEL)
+		if ((sdata->sindex == ST_INDIO_DEV_ACCEL) || (sdata->sindex == ST_INDIO_DEV_ACCEL_WK))
 			accel_cal_data[chan->scan_index] = val;
-		else if (sdata->sindex == ST_INDIO_DEV_GYRO)
+		else if ((sdata->sindex == ST_INDIO_DEV_GYRO) || (sdata->sindex == ST_INDIO_DEV_GYRO_WK))
 			gyro_cal_data[chan->scan_index] = val;
 		else
 			err = -EINVAL;
@@ -1603,7 +1860,9 @@ static int st_lsm6ds3_init_sensor(struct lsm6ds3_data *cdata)
 
 		switch (sdata->sindex) {
 		case ST_INDIO_DEV_ACCEL:
+		case ST_INDIO_DEV_ACCEL_WK:
 		case ST_INDIO_DEV_GYRO:
+		case ST_INDIO_DEV_GYRO_WK:
 			sdata->num_data_channels =
 					ARRAY_SIZE(st_lsm6ds3_accel_ch) - 1;
 
@@ -1802,7 +2061,7 @@ static ssize_t st_lsm6ds3_sysfs_get_sampling_frequency(struct device *dev,
 {
 	struct lsm6ds3_sensor_data *sdata = iio_priv(dev_get_drvdata(dev));
 
-	return sprintf(buf, "%d\n", sdata->c_odr);
+	return sprintf(buf, "%d\n", sdata->odr);
 }
 
 static ssize_t st_lsm6ds3_sysfs_set_sampling_frequency(struct device *dev,
@@ -1812,17 +2071,67 @@ static ssize_t st_lsm6ds3_sysfs_set_sampling_frequency(struct device *dev,
 	unsigned int odr;
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct lsm6ds3_sensor_data *sdata = iio_priv(indio_dev);
+	bool need_set_register = false;
 
 	err = kstrtoint(buf, 10, &odr);
 	if (err < 0)
 		return err;
 
-	mutex_lock(&indio_dev->mlock);
+	if (sdata->odr != odr) {
+		switch (sdata->sindex) {
+		case ST_INDIO_DEV_ACCEL:
+			if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL)) {
+				if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL_WK)) {
+					if (odr > sdata->c_odr)
+						need_set_register = true;
+				} else
+					need_set_register = true;
+			}
+			mutex_lock(&indio_dev->mlock);
+			err = st_lsm6ds3_set_odr(sdata, odr, need_set_register);
+			mutex_unlock(&indio_dev->mlock);
+			break;
 
-	if (sdata->c_odr != odr)
-		err = st_lsm6ds3_set_odr(sdata, odr);
+		case ST_INDIO_DEV_ACCEL_WK:
+			if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL_WK)) {
+				if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL)) {
+					if (odr > sdata->c_odr)
+						need_set_register = true;
+				} else
+					need_set_register = true;
+			}
+			mutex_lock(&indio_dev->mlock);
+			err = st_lsm6ds3_set_odr(sdata, odr, need_set_register);
+			mutex_unlock(&indio_dev->mlock);
+			break;
 
-	mutex_unlock(&indio_dev->mlock);
+		case ST_INDIO_DEV_GYRO:
+			if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO)) {
+				if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO_WK)) {
+					if (odr > sdata->c_odr)
+						need_set_register = true;
+				} else
+					need_set_register = true;
+			}
+			mutex_lock(&indio_dev->mlock);
+			err = st_lsm6ds3_set_odr(sdata, odr, need_set_register);
+			mutex_unlock(&indio_dev->mlock);
+			break;
+
+		case ST_INDIO_DEV_GYRO_WK:
+			if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO_WK)) {
+				if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO)) {
+					if (odr > sdata->c_odr)
+						need_set_register = true;
+				} else
+					need_set_register = true;
+			}
+			mutex_lock(&indio_dev->mlock);
+			err = st_lsm6ds3_set_odr(sdata, odr, need_set_register);
+			mutex_unlock(&indio_dev->mlock);
+			break;
+		}
+	}
 
 	return err < 0 ? err : size;
 }
@@ -2189,13 +2498,33 @@ static struct attribute *st_lsm6ds3_accel_attributes[] = {
 	NULL,
 };
 
+static struct attribute *st_lsm6ds3_accel_wk_attributes[] = {
+	&iio_dev_attr_sampling_frequency_available.dev_attr.attr,
+	&iio_dev_attr_in_accel_scale_available.dev_attr.attr,
+	&iio_dev_attr_sampling_frequency.dev_attr.attr,
+	&iio_dev_attr_hw_fifo_lenght.dev_attr.attr,
+	&iio_dev_attr_flush.dev_attr.attr,
+	NULL,
+};
+
 static const struct attribute_group st_lsm6ds3_accel_attribute_group = {
 	.attrs = st_lsm6ds3_accel_attributes,
+};
+
+static const struct attribute_group st_lsm6ds3_accel_wk_attribute_group = {
+	.attrs = st_lsm6ds3_accel_wk_attributes,
 };
 
 static const struct iio_info st_lsm6ds3_accel_info = {
 	.driver_module = THIS_MODULE,
 	.attrs = &st_lsm6ds3_accel_attribute_group,
+	.read_raw = &st_lsm6ds3_read_raw,
+	.write_raw = &st_lsm6ds3_write_raw,
+};
+
+static const struct iio_info st_lsm6ds3_accel_wk_info = {
+	.driver_module = THIS_MODULE,
+	.attrs = &st_lsm6ds3_accel_wk_attribute_group,
 	.read_raw = &st_lsm6ds3_read_raw,
 	.write_raw = &st_lsm6ds3_write_raw,
 };
@@ -2217,13 +2546,33 @@ static struct attribute *st_lsm6ds3_gyro_attributes[] = {
 	NULL,
 };
 
+static struct attribute *st_lsm6ds3_gyro_wk_attributes[] = {
+	&iio_dev_attr_sampling_frequency_available.dev_attr.attr,
+	&iio_dev_attr_in_anglvel_scale_available.dev_attr.attr,
+	&iio_dev_attr_sampling_frequency.dev_attr.attr,
+	&iio_dev_attr_hw_fifo_lenght.dev_attr.attr,
+	&iio_dev_attr_flush.dev_attr.attr,
+	NULL,
+};
+
 static const struct attribute_group st_lsm6ds3_gyro_attribute_group = {
 	.attrs = st_lsm6ds3_gyro_attributes,
+};
+
+static const struct attribute_group st_lsm6ds3_gyro_wk_attribute_group = {
+	.attrs = st_lsm6ds3_gyro_wk_attributes,
 };
 
 static const struct iio_info st_lsm6ds3_gyro_info = {
 	.driver_module = THIS_MODULE,
 	.attrs = &st_lsm6ds3_gyro_attribute_group,
+	.read_raw = &st_lsm6ds3_read_raw,
+	.write_raw = &st_lsm6ds3_write_raw,
+};
+
+static const struct iio_info st_lsm6ds3_gyro_wk_info = {
+	.driver_module = THIS_MODULE,
+	.attrs = &st_lsm6ds3_gyro_wk_attribute_group,
 	.read_raw = &st_lsm6ds3_read_raw,
 	.write_raw = &st_lsm6ds3_write_raw,
 };
@@ -2340,8 +2689,11 @@ int st_lsm6ds3_common_probe(struct lsm6ds3_data *cdata, int irq)
 		sdata->cdata = cdata;
 		sdata->sindex = i;
 
-		if ((i == ST_INDIO_DEV_ACCEL) || (i == ST_INDIO_DEV_GYRO)) {
-			sdata->c_odr = st_lsm6ds3_odr_table.odr_avl[0].hz;
+		if ((i == ST_INDIO_DEV_ACCEL) ||
+				(i == ST_INDIO_DEV_ACCEL_WK) ||
+				(i == ST_INDIO_DEV_GYRO) ||
+				(i == ST_INDIO_DEV_GYRO_WK)) {
+			sdata->odr = st_lsm6ds3_odr_table.odr_avl[0].hz;
 			sdata->c_gain[0] =
 					st_lsm6ds3_fs_table[i].fs_avl[0].gain;
 		}
@@ -2361,12 +2713,28 @@ int st_lsm6ds3_common_probe(struct lsm6ds3_data *cdata, int irq)
 	cdata->indio_dev[ST_INDIO_DEV_ACCEL]->num_channels =
 						ARRAY_SIZE(st_lsm6ds3_accel_ch);
 
+	cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->name =
+		kasprintf(GFP_KERNEL, "%s_%s_%s", cdata->name,
+					ST_LSM6DS3_ACCEL_SUFFIX_NAME, ST_LSM6DS3_WAKEUP_SUFFIX_NAME);
+	cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->info = &st_lsm6ds3_accel_wk_info;
+	cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->channels = st_lsm6ds3_accel_ch;
+	cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->num_channels =
+						ARRAY_SIZE(st_lsm6ds3_accel_ch);
+
 	cdata->indio_dev[ST_INDIO_DEV_GYRO]->name =
 		kasprintf(GFP_KERNEL, "%s_%s", cdata->name,
 					ST_LSM6DS3_GYRO_SUFFIX_NAME);
 	cdata->indio_dev[ST_INDIO_DEV_GYRO]->info = &st_lsm6ds3_gyro_info;
 	cdata->indio_dev[ST_INDIO_DEV_GYRO]->channels = st_lsm6ds3_gyro_ch;
 	cdata->indio_dev[ST_INDIO_DEV_GYRO]->num_channels =
+						ARRAY_SIZE(st_lsm6ds3_gyro_ch);
+
+	cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->name =
+		kasprintf(GFP_KERNEL, "%s_%s_%s", cdata->name,
+					ST_LSM6DS3_GYRO_SUFFIX_NAME, ST_LSM6DS3_WAKEUP_SUFFIX_NAME);
+	cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->info = &st_lsm6ds3_gyro_wk_info;
+	cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->channels = st_lsm6ds3_gyro_ch;
+	cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->num_channels =
 						ARRAY_SIZE(st_lsm6ds3_gyro_ch);
 
 	cdata->indio_dev[ST_INDIO_DEV_SIGN_MOTION]->name =
@@ -2476,20 +2844,22 @@ int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 {
 	int err, i;
 	struct lsm6ds3_sensor_data *sdata;
-	u8 tmp_sensors_enabled;
+	u8 tmp_sensors_enabled = cdata->sensors_enabled;
 
-	tmp_sensors_enabled = cdata->sensors_enabled;
-	for (i = 0; i < ST_INDIO_DEV_NUM; i++) {
-		if ((1 << i) & ST_LSM6DS3_WAKE_UP_SENSORS)
-			continue;
+	if (!stay_wake && (tmp_sensors_enabled & ST_INDIO_DEV_AG_MASK)) {
+		for (i = 0; i < (ST_INDIO_DEV_GYRO_WK + 1); i++) {
+			sdata = iio_priv(cdata->indio_dev[i]);
 
-		sdata = iio_priv(cdata->indio_dev[i]);
+			err = st_lsm6ds3_set_enable(sdata, false);
+			if (err < 0)
+				return err;
 
-		err = st_lsm6ds3_set_enable(sdata, false);
-		if (err < 0)
-			return err;
+			err = st_lsm6ds3_set_drdy_irq(sdata, false);
+			if (err < 0)
+				return err;
+		}
+		cdata->sensors_enabled = tmp_sensors_enabled;
 	}
-	cdata->sensors_enabled = tmp_sensors_enabled;
 
 	/* Disable step detector irq */
 	if (cdata->sensors_enabled & (1 << ST_INDIO_DEV_STEP_DETECTOR)) {
@@ -2509,10 +2879,9 @@ int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 			return err;
 	}
 
-	if (cdata->sensors_enabled & ST_LSM6DS3_WAKE_UP_SENSORS) {
+	if (stay_wake)
 		if (device_may_wakeup(cdata->dev))
 			enable_irq_wake(cdata->irq);
-	}
 
 	return 0;
 }
@@ -2522,6 +2891,10 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 {
 	int err, i;
 	struct lsm6ds3_sensor_data *sdata;
+
+	if (stay_wake)
+		if (device_may_wakeup(cdata->dev))
+			disable_irq_wake(cdata->irq);
 
 	/* Enable step detector irq */
 	if (cdata->sensors_enabled & (1 << ST_INDIO_DEV_STEP_DETECTOR)) {
@@ -2548,28 +2921,25 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 			return err;
 	}
 
-	for (i = 0; i < ST_INDIO_DEV_NUM; i++) {
-		if ((1 << i) & ST_LSM6DS3_WAKE_UP_SENSORS)
-			continue;
-
-		sdata = iio_priv(cdata->indio_dev[i]);
-
-		if ((1 << sdata->sindex) & cdata->sensors_enabled) {
-			err = st_lsm6ds3_set_enable(sdata, true);
-			if (err < 0)
-				return err;
-		}
-	}
-
-	if (cdata->sensors_enabled & ST_LSM6DS3_WAKE_UP_SENSORS) {
-		if (device_may_wakeup(cdata->dev))
-			disable_irq_wake(cdata->irq);
-	}
-
-	if ((cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL)) ||
-			(cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO)))
+	if (cdata->sensors_enabled & ST_INDIO_DEV_AG_MASK) {
 		st_lsm6ds3_read_fifo(cdata, true);
+		if (!stay_wake) {
+			for (i = 0; i < (ST_INDIO_DEV_GYRO_WK + 1); i++) {
+				sdata = iio_priv(cdata->indio_dev[i]);
 
+				if ((1 << sdata->sindex) & cdata->sensors_enabled) {
+					err = st_lsm6ds3_set_drdy_irq(sdata, true);
+					if (err < 0)
+						return err;
+
+					err = st_lsm6ds3_set_enable(sdata, true);
+					if (err < 0)
+						return err;
+				}
+			}
+		}
+
+	}
 	return 0;
 }
 EXPORT_SYMBOL(st_lsm6ds3_common_resume);

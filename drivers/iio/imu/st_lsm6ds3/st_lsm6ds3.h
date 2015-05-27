@@ -21,17 +21,25 @@
 #define LSM6DS3_DEV_NAME			"lsm6ds3"
 
 #define ST_INDIO_DEV_ACCEL			0
-#define ST_INDIO_DEV_GYRO			1
-#define ST_INDIO_DEV_SIGN_MOTION		2
-#define ST_INDIO_DEV_STEP_COUNTER		3
-#define ST_INDIO_DEV_STEP_DETECTOR		4
-#define ST_INDIO_DEV_TILT			5
-#define ST_INDIO_DEV_NUM			6
+#define ST_INDIO_DEV_ACCEL_WK			1
+#define ST_INDIO_DEV_GYRO			2
+#define ST_INDIO_DEV_GYRO_WK			3
+#define ST_INDIO_DEV_SIGN_MOTION		4
+#define ST_INDIO_DEV_STEP_COUNTER		5
+#define ST_INDIO_DEV_STEP_DETECTOR		6
+#define ST_INDIO_DEV_TILT			7
+#define ST_INDIO_DEV_NUM			8
 
 #define ST_INDIO_DEV_EXT0			ST_INDIO_DEV_NUM
 #define ST_INDIO_DEV_EXT1			(ST_INDIO_DEV_NUM + 1)
 
+#define ST_INDIO_DEV_AG_MASK		((1 << ST_INDIO_DEV_ACCEL) | \
+					(1 << ST_INDIO_DEV_ACCEL_WK) | \
+					(1 << ST_INDIO_DEV_GYRO) | \
+					(1 << ST_INDIO_DEV_GYRO_WK))
+
 #define ST_LSM6DS3_ACCEL_DEPENDENCY	((1 << ST_INDIO_DEV_ACCEL) | \
+					(1 << ST_INDIO_DEV_ACCEL_WK) | \
 					(1 << ST_INDIO_DEV_STEP_COUNTER) | \
 					(1 << ST_INDIO_DEV_TILT) | \
 					(1 << ST_INDIO_DEV_SIGN_MOTION) | \
@@ -51,7 +59,9 @@
 					(1 << ST_INDIO_DEV_EXT1))
 
 #define ST_LSM6DS3_USE_BUFFER		((1 << ST_INDIO_DEV_ACCEL) | \
+					(1 << ST_INDIO_DEV_ACCEL_WK) | \
 					(1 << ST_INDIO_DEV_GYRO) | \
+					(1 << ST_INDIO_DEV_GYRO_WK) | \
 					(1 << ST_INDIO_DEV_STEP_COUNTER))
 
 #define ST_LSM6DS3_EXT_SENSORS		((1 << ST_INDIO_DEV_EXT0) | \
@@ -64,7 +74,9 @@
 #define ST_LSM6DS3_WAKE_UP_SENSORS	((1 << ST_INDIO_DEV_SIGN_MOTION) | \
 					(1 << ST_INDIO_DEV_TILT) | \
 					(1 << ST_INDIO_DEV_ACCEL) | \
+					(1 << ST_INDIO_DEV_ACCEL_WK) | \
 					(1 << ST_INDIO_DEV_GYRO) | \
+					(1 << ST_INDIO_DEV_GYRO_WK) | \
 					(1 << ST_INDIO_DEV_STEP_COUNTER) | \
 					(1 << ST_INDIO_DEV_STEP_DETECTOR) | \
 					(1 << ST_INDIO_DEV_EXT0) | \
@@ -129,6 +141,8 @@ struct lsm6ds3_data {
 
 	u8 *fifo_data;
 	u8 sensors_enabled;
+	u8 axis_enabled;
+	u8 sensors_pattern_en;
 	u8 gyro_selftest_status;
 	u8 accel_selftest_status;
 	u8 accel_samples_in_pattern;
@@ -188,7 +202,8 @@ struct st_lsm6ds3_transfer_function {
 struct lsm6ds3_sensor_data {
 	struct lsm6ds3_data *cdata;
 
-	unsigned int c_odr;
+	unsigned int c_odr;	/* current effective */
+	unsigned int odr;	/* want to set */
 	unsigned int c_gain[3];
 
 	u8 num_data_channels;

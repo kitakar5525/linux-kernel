@@ -89,6 +89,7 @@
 	.type = device_type, \
 	.modified = modif, \
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) | \
+			BIT(IIO_CHAN_INFO_OFFSET) | \
 			BIT(IIO_CHAN_INFO_SCALE), \
 	.scan_index = index, \
 	.channel2 = mod, \

@@ -75,6 +75,8 @@ MODULE_DESCRIPTION("Driver for "DEVICE_NAME);
 #define GPIO_LEVEL_HIGH	1
 #define GPIO_LEVEL_LOW	0
 
+#define SIZE_OTP_MEMORY	FEEDBACK_CONTROL_REG - RATED_VOLTAGE_REG + 1
+
 static struct drv260x {
 	struct class *class;
 	struct device *device;
@@ -95,12 +97,22 @@ static struct vibrator {
 	volatile int should_stop;
 	unsigned gpio_en;
 	bool otp_status;
+	int calibrate_status;
 	struct drv2605_platform_data *pdata;
 } vibdata;
+
+enum calibrate_state {
+	NEVER_LAUNCH,
+	ONGOING,
+	SUCCESSFUL,
+	FAILED,
+};
 
 static int device_id = -1;
 
 static int drv260x_setup(void);
+static int drv260x_calibrate(void);
+static void drv260x_change_mode(char mode);
 
 static void drv260x_write_reg_val(const unsigned char *data, unsigned int size)
 {
@@ -130,6 +142,134 @@ static unsigned char drv260x_read_reg(unsigned char reg)
 {
 	return i2c_smbus_read_byte_data(drv260x->client, reg);
 }
+
+static ssize_t drv260x_calibration_status_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	switch (vibdata.calibrate_status) {
+	case NEVER_LAUNCH:
+		return sprintf(buf, "never_launched\n");
+		break;
+	case ONGOING:
+		return sprintf(buf, "ongoing\n");
+		break;
+	case SUCCESSFUL:
+		return sprintf(buf, "vibrator calibrated\n");
+		break;
+	case FAILED:
+		return sprintf(buf, "failed\n");
+		break;
+	default:
+		return sprintf(buf, "unknown state\n");
+	}
+}
+
+static ssize_t drv260x_do_calibration_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	if (vibdata.calibrate_status == ONGOING)
+		return sprintf(buf, "1");
+	else
+		return sprintf(buf, "0");
+}
+
+ssize_t drv260x_do_calibration_store (struct device *d, struct device_attribute *attr,
+		const char *buffer, size_t size)
+{
+	int i;
+	sscanf(buffer, "%d", &i);
+	if (i == 1)
+		return drv260x_calibrate();
+
+	dev_err(drv260x->device, "value not permited \n");
+	return -EINVAL;
+}
+
+static ssize_t drv260x_OTP_status_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	if (vibdata.otp_status == true)
+		return sprintf(buf, "memory lock\n");
+	else
+		return sprintf(buf, "memory unlock\n");
+}
+
+/*
+if you launch the save procedure you have to follow this step:
+	-your device has to be calibrated.
+	-"vsys" has to be between 4V and 4.4V
+*/
+
+ssize_t drv260x_OTP_save_store (struct device *d, struct  device_attribute *attr,
+		const char *buffer, size_t size)
+{
+	char save[] = {AUTOCAL_MEM_INTERFACE_REG, OTP_PROGRAM};
+	char reset[] = {MODE_REG, MODE_RESET};
+	char value_init[SIZE_OTP_MEMORY], value_result[SIZE_OTP_MEMORY];
+	int i, j = 0;
+
+	drv260x_change_mode(MODE_SOFT_STANDBY);
+	if (vibdata.calibrate_status != SUCCESSFUL) {
+		dev_err(drv260x->device, "calibration must be run before saving \n");
+		goto fail;
+	}
+
+	for (i = RATED_VOLTAGE_REG; i <= FEEDBACK_CONTROL_REG; i++) {
+		value_init[j] = drv260x_read_reg(i);
+		j++;
+	}
+
+	drv260x_write_reg_val(save, sizeof(save));
+	msleep(500);
+	if ((drv260x_read_reg(AUTOCAL_MEM_INTERFACE_REG) & OTP_STATUS_MASK) == false) {
+		dev_err(drv260x->device, "otp save failed\n");
+		goto fail;
+	}
+	vibdata.otp_status = true;
+
+	drv260x_write_reg_val(reset, sizeof(reset));
+	while (drv260x_read_reg(MODE_REG) & MODE_RESET)
+		schedule_timeout_interruptible(msecs_to_jiffies(GO_BIT_POLL_INTERVAL));
+
+	j = 0;
+	for (i = RATED_VOLTAGE_REG; i <= FEEDBACK_CONTROL_REG; i++) {
+		value_result[j] = drv260x_read_reg(i);
+		j++;
+	}
+
+	for (j = 0; j < SIZE_OTP_MEMORY; j++)
+		dev_info(drv260x->device, "value saved of calibration %02x->%02x\n", value_init[j], value_result[j]);
+
+	for (j = 0; j < SIZE_OTP_MEMORY; j++)
+		if (value_result[j] != value_init[j]) {
+			dev_err(drv260x->device, "save failed, value saved is not correct %02x!=%02x\n",
+									value_init[j], value_result[j]);
+			goto fail;
+		}
+	drv260x_change_mode(MODE_STANDBY);
+	return size;
+
+fail:
+	drv260x_change_mode(MODE_STANDBY);
+	return -EIO;
+}
+
+static DEVICE_ATTR(calibration_status, S_IRUGO, drv260x_calibration_status_show, NULL);
+static DEVICE_ATTR(OTP_status, S_IRUGO, drv260x_OTP_status_show, NULL);
+static DEVICE_ATTR(do_calibration, S_IWUSR | S_IRUGO, drv260x_do_calibration_show, drv260x_do_calibration_store);
+static DEVICE_ATTR(OTP_save, S_IWUSR, NULL, drv260x_OTP_save_store);
+
+static struct attribute *drv260x_attr[] = {
+	&dev_attr_calibration_status.attr,
+	&dev_attr_OTP_status.attr,
+	&dev_attr_do_calibration.attr,
+	&dev_attr_OTP_save.attr,
+	NULL,
+};
+
+static const struct attribute_group drv260x_attr_group  = {
+	.attrs = drv260x_attr,
+};
 
 static void drv2605_poll_go_bit(void)
 {
@@ -309,11 +449,18 @@ static int drv260x_calibrate(void)
 {
 	char status;
 
+	if (vibdata.calibrate_status == ONGOING) {
+		dev_err(drv260x->device, "calibration already ongoing \n");
+		return -EBUSY;
+	}
+	vibdata.calibrate_status = ONGOING;
 	drv260x_write_reg_val(vibdata.pdata->parameter_sequence, vibdata.pdata->size_sequence);
 
 	if (vibdata.otp_status == true) {
 		dev_info(drv260x->device, "otp status: memory lock\n");
-		return 0;
+		vibdata.calibrate_status = SUCCESSFUL;
+		status = drv260x_read_reg(STATUS_REG);
+		return status;
 	}
 
 	dev_info(drv260x->device, "otp status: memory unlock\n");
@@ -343,6 +490,11 @@ static int drv260x_calibrate(void)
 	drv260x_read_reg(AUTO_CALI_RESULT_REG);
 	drv260x_read_reg(AUTO_CALI_BACK_EMF_RESULT_REG);
 	drv260x_read_reg(FEEDBACK_CONTROL_REG);
+	if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED)
+		vibdata.calibrate_status = FAILED;
+	else
+		vibdata.calibrate_status = SUCCESSFUL;
+
 	return status;
 }
 
@@ -362,6 +514,7 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 		return -ENODEV;
 	}
 
+	drv260x->client = client;
 	setup_status = drv260x_setup();
 	if (setup_status) {
 		dev_err(drv260x->device, "setup failed");
@@ -369,7 +522,6 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 	}
 
 	vibdata.gpio_en = pdata->gpio_en;
-	drv260x->client = client;
 
 	if (gpio_request(vibdata.gpio_en, "drv2605") < 0) {
 		dev_err(drv260x->device, "error requesting gpio\n");
@@ -599,6 +751,7 @@ static int drv260x_init(void)
 static int drv260x_setup(void)
 {
 	int reval = -ENOMEM;
+	struct i2c_client *client = drv260x->client;
 
 	drv260x->version = MKDEV(0, 0);
 	reval = alloc_chrdev_region(&drv260x->version, 0, 1, DEVICE_NAME);
@@ -642,9 +795,17 @@ static int drv260x_setup(void)
 	wake_lock_init(&vibdata.wklock, WAKE_LOCK_SUSPEND, "vibrator");
 	mutex_init(&vibdata.lock);
 
+	reval = sysfs_create_group(&client->dev.kobj, &drv260x_attr_group);
+	if (reval) {
+		dev_err(drv260x->device, "Failed to create sysfs attributes\n");
+		goto fail5;
+	}
+
 	dev_err(drv260x->device, "initialized\n");
 	return 0;
 
+fail5:
+	sysfs_remove_group(&client->dev.kobj, &drv260x_attr_group);
 fail4:
 	unregister_chrdev_region(drv260x->version, 1);
 fail3:
@@ -662,6 +823,7 @@ fail0:
 
 static void drv260x_exit(void)
 {
+	sysfs_remove_group(&drv260x->client->dev.kobj, &drv260x_attr_group);
 	gpio_direction_output(vibdata.gpio_en, GPIO_LEVEL_LOW);
 	gpio_free(vibdata.gpio_en);
 	device_destroy(drv260x->class, drv260x->version);

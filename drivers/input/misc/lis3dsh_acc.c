@@ -1496,7 +1496,7 @@ static struct device_attribute attributes[] = {
 	__ATTR(enable_state_prog, 0664, attr_get_enable_state_prog,
 						attr_set_enable_state_prog),
 #ifdef CONFIG_ST_LIS3DSH_SELFTEST
-	__ATTR(selftest, 0664, attr_selftest, NULL),
+	__ATTR(selftest, 0444, attr_selftest, NULL),
 #endif
 
 #ifdef DEBUG
@@ -1684,18 +1684,30 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	}
 
 	if (acc->pdata->gpio_int1 > 0) {
-		gpio_direction_input(acc->pdata->gpio_int1);
-		acc->irq1 = gpio_to_irq(acc->pdata->gpio_int1);
-		pr_info("%s: %s has set irq1 to irq: %d mapped on gpio:%d\n",
-			LIS3DSH_ACC_DEV_NAME, __func__, acc->irq1,
-							acc->pdata->gpio_int1);
+		err = gpio_request(acc->pdata->gpio_int1, "tilt_irq1");
+		if (err < 0) {
+			pr_err("Failed to config GPIO %d\n", acc->pdata->gpio_int1);
+			gpio_free(acc->pdata->gpio_int1);
+		} else {
+			gpio_direction_input(acc->pdata->gpio_int1);
+			acc->irq1 = gpio_to_irq(acc->pdata->gpio_int1);
+			pr_info("%s: %s has set irq1 to irq: %d mapped on gpio:%d\n",
+				LIS3DSH_ACC_DEV_NAME, __func__, acc->irq1,
+								acc->pdata->gpio_int1);
+		}
 	}
 
 	if (acc->pdata->gpio_int2 > 0) {
-		acc->irq2 = gpio_to_irq(acc->pdata->gpio_int2);
-		pr_info("%s: %s has set irq2 to irq: %d mapped on gpio:%d\n",
-			LIS3DSH_ACC_DEV_NAME, __func__, acc->irq2,
-							acc->pdata->gpio_int2);
+		err = gpio_request(acc->pdata->gpio_int2, "tilt_irq2");
+		if (err < 0) {
+			pr_err("Failed to config GPIO %d\n", acc->pdata->gpio_int2);
+			gpio_free(acc->pdata->gpio_int2);
+		} else {
+			acc->irq2 = gpio_to_irq(acc->pdata->gpio_int2);
+			pr_info("%s: %s has set irq2 to irq: %d mapped on gpio:%d\n",
+				LIS3DSH_ACC_DEV_NAME, __func__, acc->irq2,
+								acc->pdata->gpio_int2);
+		}
 	}
 
 	/* resume state init config */

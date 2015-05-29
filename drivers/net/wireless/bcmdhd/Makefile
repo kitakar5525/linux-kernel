@@ -99,6 +99,9 @@ DHDCFLAGS += -DSET_RANDOM_MAC_SOFTAP
 DHDCFLAGS += -DCUSTOM_FORCE_NODFS_FLAG
 DHDCFLAGS += -DCUSTOM_SET_SHORT_DWELL_TIME
 
+# fix build issue due to cfg80211 patch backporting
+DHDCFLAGS += -DBACKPORT_CFG80211_VASTLY_SIMPLIFY_LOCKING
+
 ##########################
 # driver type
 # m: module type driver

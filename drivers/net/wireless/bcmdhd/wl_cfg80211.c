@@ -9808,6 +9808,7 @@ wl_cfg80211_netdev_notifier_call(struct notifier_block * nb,
 	switch (state) {
 		case NETDEV_DOWN:
 		{
+#ifndef BACKPORT_CFG80211_VASTLY_SIMPLIFY_LOCKING
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0))
 			int max_wait_timeout = 2;
 			int max_wait_count = 100;
@@ -9839,6 +9840,7 @@ wl_cfg80211_netdev_notifier_call(struct notifier_block * nb,
 				refcnt++;
 			}
 #endif /* LINUX_VERSION <  VERSION(3, 14, 0) */
+#endif
 			break;
 		}
 

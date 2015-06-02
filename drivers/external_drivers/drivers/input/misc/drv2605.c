@@ -309,18 +309,18 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 
 	struct drv2605_platform_data *pdata = client->dev.platform_data;
 	if (!pdata) {
-		printk(KERN_ALERT"No vibrator platform data\n");
+		dev_err(drv260x->device, "No vibrator platform data\n");
 		return -EINVAL;
 	}
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-		printk(KERN_ALERT "drv260x probe failed");
+		dev_err(drv260x->device, "probe failed");
 		return -ENODEV;
 	}
 
 	setup_status = drv260x_setup();
 	if (setup_status) {
-		printk(KERN_ALERT "drv260x setup failed");
+		dev_err(drv260x->device, "setup failed");
 		return setup_status;
 	}
 
@@ -328,7 +328,7 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 	drv260x->client = client;
 
 	if (gpio_request(vibdata.gpio_en, "drv2605") < 0) {
-		printk(KERN_ALERT "drv260x: error requesting gpio\n");
+		dev_err(drv260x->device, "error requesting gpio\n");
 		return -EINVAL;
 	}
 
@@ -348,12 +348,12 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 
 	/* Check result */
 	if ((pdata->repeat_sequence == true) && ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED)) {
-		printk(KERN_ALERT "drv260x auto-cal failed.\n");
+		dev_err(drv260x->device, "auto-cal failed.\n");
 		drv260x_write_reg_val(pdata->parameter_sequence, pdata->size_sequence);
 		drv2605_poll_go_bit();
 		status = drv260x_read_reg(STATUS_REG);
 		if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED)
-			printk(KERN_ALERT "drv260x auto-cal retry failed.\n");
+			dev_err(drv260x->device, "auto-cal retry failed.\n");
 			/* return -ENODEV;*/
 	}
 
@@ -366,13 +366,13 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 	device_id = (status & DEV_ID_MASK);
 	switch (device_id) {
 	case DRV2605:
-		printk(KERN_ALERT "drv260x driver found: drv2605.\n");
+		dev_err(drv260x->device, "driver found: drv2605.\n");
 		break;
 	case DRV2604:
-		printk(KERN_ALERT "drv260x driver found: drv2604.\n");
+		dev_err(drv260x->device, "driver found: drv2604.\n");
 		break;
 	default:
-		printk(KERN_ALERT "drv260x driver found: unknown.\n");
+		dev_err(drv260x->device, "driver found: unknown.\n");
 		break;
 	}
 
@@ -382,14 +382,14 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 	/* Put hardware in standby */
 	drv260x_change_mode(MODE_STANDBY);
 
-	printk(KERN_ALERT "drv260x probe succeeded");
-	printk(KERN_ALERT "drv260x driver version: "DRIVER_VERSION);
+	dev_err(drv260x->device, "probe succeeded");
+	dev_err(drv260x->device, "driver version: "DRIVER_VERSION);
 	return 0;
 }
 
 static int drv260x_remove(struct i2c_client *client)
 {
-	printk(KERN_ALERT "drv260x remove");
+	dev_err(drv260x->device, "remove");
 	return 0;
 }
 
@@ -556,13 +556,13 @@ static int drv260x_init(void)
 
 	drv260x = kmalloc(sizeof *drv260x, GFP_KERNEL);
 	if (!drv260x) {
-		printk(KERN_ALERT "drv260x: cannot allocate memory for drv260x driver\n");
+		dev_err(drv260x->device, "cannot allocate memory for drv260x driver\n");
 		return reval;
 	}
 
 	reval = i2c_add_driver(&drv260x_driver);
 	if (reval) {
-		printk(KERN_ALERT "drv260x driver initialization error \n");
+		dev_err(drv260x->device, "driver initialization error \n");
 		i2c_unregister_device(drv260x->client);
 		return reval;
 	}
@@ -576,19 +576,19 @@ static int drv260x_setup(void)
 	drv260x->version = MKDEV(0, 0);
 	reval = alloc_chrdev_region(&drv260x->version, 0, 1, DEVICE_NAME);
 	if (reval < 0) {
-		printk(KERN_ALERT "drv260x: error getting major number %d\n", reval);
+		dev_err(drv260x->device, "error getting major number %d\n", reval);
 		goto fail0;
 	}
 
 	drv260x->class = class_create(THIS_MODULE, DEVICE_NAME);
 	if (!drv260x->class) {
-		printk(KERN_ALERT "drv260x: error creating class\n");
+		dev_err(drv260x->device, "error creating class\n");
 		goto fail1;
 	}
 
 	drv260x->device = device_create(drv260x->class, NULL, drv260x->version, NULL, DEVICE_NAME);
 	if (!drv260x->device) {
-		printk(KERN_ALERT "drv260x: error creating device 2605\n");
+		dev_err(drv260x->device, "error creating device 2605\n");
 		goto fail2;
 	}
 
@@ -598,12 +598,12 @@ static int drv260x_setup(void)
 	reval = cdev_add(&drv260x->cdev, drv260x->version, 1);
 
 	if (reval) {
-		printk(KERN_ALERT "drv260x: fail to add cdev\n");
+		dev_err(drv260x->device, "fail to add cdev\n");
 		goto fail3;
 	}
 
 	if (timed_output_dev_register(&to_dev) < 0) {
-		printk(KERN_ALERT "drv260x: fail to create timed output dev\n");
+		dev_err(drv260x->device, "fail to create timed output dev\n");
 		goto fail4;
 	}
 
@@ -615,7 +615,7 @@ static int drv260x_setup(void)
 	wake_lock_init(&vibdata.wklock, WAKE_LOCK_SUSPEND, "vibrator");
 	mutex_init(&vibdata.lock);
 
-	printk(KERN_ALERT "drv260x: initialized\n");
+	dev_err(drv260x->device, "initialized\n");
 	return 0;
 
 fail4:
@@ -644,7 +644,7 @@ static void drv260x_exit(void)
 	kfree(drv260x);
 	i2c_del_driver(&drv260x_driver);
 
-	printk(KERN_ALERT "drv260x: exit\n");
+	dev_err(drv260x->device, "exit\n");
 }
 
 module_init(drv260x_init);

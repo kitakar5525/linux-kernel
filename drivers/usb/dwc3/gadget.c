@@ -287,6 +287,10 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
 			req->request.length, status);
 
 	spin_unlock(&dwc->lock);
+	if (!req->request.complete) {
+		spin_lock(&dwc->lock);
+		return;
+	}
 	req->request.complete(&dep->endpoint, &req->request);
 	spin_lock(&dwc->lock);
 }

@@ -2234,7 +2234,10 @@ static void synaptics_rmi4_set_configured(struct synaptics_rmi4_data *rmi4_data)
 		return;
 	}
 
-	rmi4_data->no_sleep_setting = device_ctrl & NO_SLEEP_ON;
+	rmi4_data->no_sleep_setting = device_ctrl & NO_SLEEP_OFF;
+	device_ctrl = (device_ctrl & ~MASK_3BIT);
+	device_ctrl = (device_ctrl | NO_SLEEP_OFF | NORMAL_OPERATION);
+
 	device_ctrl |= CONFIGURED;
 
 	retval = synaptics_rmi4_reg_write(rmi4_data,

@@ -511,6 +511,22 @@ int bq24232_get_charger_status(void)
 	return status;
 }
 
+void bq24232_set_charging_status(bool chg_stat)
+{
+	if (!bq24232_charger)
+		return;
+
+	mutex_lock(&bq24232_charger->stat_lock);
+	bq24232_charger->charging_status_n = chg_stat;
+	mutex_unlock(&bq24232_charger->stat_lock);
+	dev_info(bq24232_charger->dev, "%s: status %d\n",
+			__func__,
+			bq24232_charger->charging_status_n);
+	bq24232_update_charging_status(bq24232_charger);
+
+	power_supply_changed(&bq24232_charger->pow_sply);
+}
+
 static void bq24232_exception_mon_wrk(struct work_struct *work)
 {
 	struct bq24232_charger *chip = container_of(work,

@@ -14,6 +14,7 @@ struct pmic_platform_data {
 	void (*cc_to_reg)(int, u8*);
 	void (*cv_to_reg)(int, u8*);
 	void (*inlmt_to_reg)(int, u8*);
+	void (*notify_charging_stat)(bool);
 	int max_tbl_row_cnt;
 	struct temp_lookup *adc_tbl;
 };

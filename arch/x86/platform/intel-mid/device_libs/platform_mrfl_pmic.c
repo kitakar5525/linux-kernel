@@ -18,6 +18,7 @@
 #include <asm/pmic_pdata.h>
 #include <asm/intel_mid_remoteproc.h>
 #include <linux/power/bq24261_charger.h>
+#include <linux/power/bq24232_charger.h>
 #include <asm/intel_scu_pmic.h>
 
 #include "platform_ipc.h"
@@ -105,6 +106,9 @@ void __init *mrfl_pmic_ccsm_platform_data(void *info)
 	pmic_pdata.cc_to_reg = bq24261_cc_to_reg;
 	pmic_pdata.cv_to_reg = bq24261_cv_to_reg;
 	pmic_pdata.inlmt_to_reg = bq24261_inlmt_to_reg;
+#endif
+#ifdef CONFIG_BQ24232_CHARGER
+	pmic_pdata.notify_charging_stat = bq24232_set_charging_status;
 #endif
 	register_rpmsg_service("rpmsg_pmic_ccsm", RPROC_SCU,
 				RP_PMIC_CCSM);

@@ -91,6 +91,7 @@
 /* Type definitions */
 static void pmic_bat_zone_changed(void);
 static void pmic_battery_overheat_handler(bool);
+static void pmic_battery_charging_handler(bool);
 
 /* Extern definitions */
 
@@ -133,6 +134,15 @@ static struct interrupt_info chgrirq0_info[] = {
 		"Battery1 temperature outside boundary",
 		NULL,
 		NULL
+	},
+	{
+		CHGIRQ0_CHGINTB_ALRT_MASK,
+		SCHGIRQ0_SCHGINTB_ALRT_MASK,
+		"Battery charger: CHGINT toggled",
+		"Battery charger: end of charge",
+		"Battery charger: charge in progress",
+		NULL,
+		pmic_battery_charging_handler
 	},
 };
 
@@ -732,6 +742,12 @@ static void pmic_battery_overheat_handler(bool stat)
 	else
 		chc.health = POWER_SUPPLY_HEALTH_GOOD;
 	return;
+}
+
+static void pmic_battery_charging_handler(bool chg_stat)
+{
+	if (chc.pdata->notify_charging_stat)
+		chc.pdata->notify_charging_stat(chg_stat);
 }
 
 int pmic_get_health(void)

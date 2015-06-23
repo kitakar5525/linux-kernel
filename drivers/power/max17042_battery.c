@@ -1745,11 +1745,15 @@ static int max17042_get_batt_health(void)
 			"battery pack temp read fail:%d", ret);
 		return POWER_SUPPLY_HEALTH_UNSPEC_FAILURE;
 	}
-	if ((temp <= chip->pdata->temp_min_lim) ||
-			(temp >= chip->pdata->temp_max_lim)) {
+	if (temp >= chip->pdata->temp_max_lim) {
 		dev_info(&chip->client->dev,
 			"Battery Over Temp condition Detected:%d\n", temp);
 		return POWER_SUPPLY_HEALTH_OVERHEAT;
+	}
+	if (temp <= chip->pdata->temp_min_lim) {
+		dev_info(&chip->client->dev,
+			"Battery Under Temp condition Detected:%d\n", temp);
+		return POWER_SUPPLY_HEALTH_COLD;
 	}
 
 	stat = max17042_read_reg(chip->client, MAX17042_STATUS);

@@ -7811,9 +7811,9 @@ fail:
 #endif 
 
 #ifdef WL_SCHED_SCAN
-#define PNO_TIME		30
-#define PNO_REPEAT		4
-#define PNO_FREQ_EXPO_MAX	2
+#define PNO_TIME		19
+#define PNO_REPEAT		0
+#define PNO_FREQ_EXPO_MAX	4
 static bool
 is_ssid_in_list(struct cfg80211_ssid *ssid, struct cfg80211_ssid *ssid_list, int count)
 {

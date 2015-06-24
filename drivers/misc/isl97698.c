@@ -72,8 +72,8 @@
 #define ISL97698_BST_FREQ_1275KHZ	0x0E
 #define ISL97698_BST_FREQ_1457KHZ	0x0F
 
-/* Brightness max value */
-#define ISL_BRIGHTNESS_VAL_MAX		0xFF
+/* Brightness max value, limit to 50% to avoid current overload */
+#define ISL_BRIGHTNESS_VAL_MAX		(0xFF>>1)
 
 /* Brightness level: Min(0), Max (100), Defalut(50) */
 #define ISL_BRIGHTNESS_LEVEL_MIN	0
@@ -88,7 +88,7 @@
 /* PFM peak current: 296mA, Average inductor current to enter PFM mode: 93mA. */
 #define ISL_PFM_MODE_DEF	0x83
 
-#define ISL_BST_MODE_DEF	(ISL97698_BST_RATE_FAST | \
+#define ISL_BST_MODE_DEF	(ISL97698_BST_RATE_FASTEST | \
 							ISL97698_BST_SYNC_PULSE | \
 							ISL97698_BST_ABS_ENABLE | \
 							ISL97698_BST_FREQ_850KHZ)

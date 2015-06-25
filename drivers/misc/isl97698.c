@@ -21,7 +21,10 @@
 #include <linux/delay.h>
 #include <linux/sysfs.h>
 #include <linux/gpio.h>
+#include <linux/backlight.h>
 #include <linux/isl97698.h>
+
+#define BACKLIGHT_NAME		"i2c-bl"
 
 #define ISL97698_REG_LED_H8		0x00
 #define ISL97698_REG_LED_L3		0x01
@@ -78,7 +81,7 @@
 /* Brightness level: Min(0), Max (100), Defalut(50) */
 #define ISL_BRIGHTNESS_LEVEL_MIN	0
 #define ISL_BRIGHTNESS_LEVEL_MAX	100
-#define ISL_BRIGHTNESS_LEVEL_DEF	50
+#define ISL_BRIGHTNESS_LEVEL_INIT	50
 
 /* Default config:  PWMI x I2C, Enable Fault(OPCP, OTP), Enable VSC,
  * Use 16V OVP, Disable dither, enable channel0, disable channel 1.
@@ -97,11 +100,11 @@
 #define ISL_CHIP_ENABLE		1
 
 struct isl97698_st {
-	struct mutex isl_mutex;
 	struct i2c_client *client;
+	struct device *dev;
+	struct backlight_device *bl;
 	int bias_en;
 	int enable;
-	int brightness;
 };
 
 static int isl97698_i2c_write(struct i2c_client *client, u8 addr, u8 val)
@@ -138,21 +141,34 @@ static int isl97698_i2c_read(struct i2c_client *client, u8 addr, u8 *val)
 	return i2c_transfer(client->adapter, msgs, 2);
 }
 
+static int brightness_get_value(struct isl97698_st *isl, int *level)
+{
+	int ret;
+	u8 regval;
+
+	/* PWMI x I2C mode use reg<0x0> for brightness only */
+	ret = isl97698_i2c_read(isl->client, ISL97698_REG_LED_H8, &regval);
+	if (ret < 0) {
+		dev_err(&isl->client->dev, "Read brightness current H8 reg failed.");
+		return ret;
+	}
+	*level = regval * ISL_BRIGHTNESS_LEVEL_MAX / ISL_BRIGHTNESS_VAL_MAX;
+
+	return 0;
+}
+
 static int brightness_set_value(struct isl97698_st *isl, int level)
 {
 	int ret;
 	u8 regval;
 
-	mutex_lock(&isl->isl_mutex);
 	/* PWMI x I2C mode use reg<0x0> for brightness only */
 	regval = (ISL_BRIGHTNESS_VAL_MAX * level) / ISL_BRIGHTNESS_LEVEL_MAX;
 	ret = isl97698_i2c_write(isl->client, ISL97698_REG_LED_H8, regval);
-	mutex_unlock(&isl->isl_mutex);
 	if (ret < 0) {
 		dev_err(&isl->client->dev, "Write brightness current H8 reg failed.");
 		return ret;
 	}
-	isl->brightness = level;
 
 	return 0;
 }
@@ -167,29 +183,19 @@ static int brightness_defconfig(struct isl97698_st *isl)
 {
 	int ret;
 
-	mutex_lock(&isl->isl_mutex);
 	ret = isl97698_i2c_write(isl->client, ISL97698_REG_CONF, ISL_CONF_DEF);
 	if (ret < 0) {
 		dev_err(&isl->client->dev, "ISL97698_REG_CONF write failed.");
-		mutex_unlock(&isl->isl_mutex);
 		return ret;
 	}
 
 	ret = isl97698_i2c_write(isl->client, ISL97698_REG_PFM, ISL_PFM_MODE_DEF);
 	if (ret < 0) {
 		dev_err(&isl->client->dev, "ISL97698_REG_PFM write failed.");
-		mutex_unlock(&isl->isl_mutex);
 		return ret;
 	}
 
 	ret = isl97698_i2c_write(isl->client, ISL97698_REG_BOOST, ISL_BST_MODE_DEF);
-	mutex_unlock(&isl->isl_mutex);
-	if (ret < 0) {
-		dev_err(&isl->client->dev, "ISL97698_REG_BOOST write failed.");
-		return ret;
-	}
-
-	ret = brightness_set_value(isl, ISL_BRIGHTNESS_LEVEL_DEF);
 	if (ret < 0) {
 		dev_err(&isl->client->dev, "ISL97698_REG_BOOST write failed.");
 		return ret;
@@ -203,16 +209,13 @@ static int brightness_chip_check(struct isl97698_st *isl)
 	int ret;
 	u8 val;
 
-	mutex_lock(&isl->isl_mutex);
 	ret = isl97698_i2c_read(isl->client, ISL97698_REG_LED_H8, &val);
 	if (ret < 0) {
 		dev_err(&isl->client->dev, "ISL97698_REG_LED_H8 read failed.");
-		mutex_unlock(&isl->isl_mutex);
 		return ret;
 	}
 
 	ret = isl97698_i2c_read(isl->client, ISL97698_REG_STATUS, &val);
-	mutex_unlock(&isl->isl_mutex);
 	if (ret < 0) {
 		dev_err(&isl->client->dev, "ISL97698_REG_STATUS read failed.");
 		return ret;
@@ -225,52 +228,63 @@ static int brightness_chip_check(struct isl97698_st *isl)
 	return 0;
 }
 
-static ssize_t brightness_show(struct device *dev,
-			struct device_attribute *attr, char *buf)
+static int isl97698_backlight_get_brightness(struct backlight_device *bl)
 {
-	struct isl97698_st *isl = i2c_get_clientdata(to_i2c_client(dev));
+	int ret;
+	struct isl97698_st *isl = bl_get_data(bl);
 
-	return sprintf(buf, "%d\n", isl->brightness);
-}
-
-static ssize_t brightness_store(struct device *dev,
-		struct device_attribute *attr, const  char *buf, size_t count)
-{
-	int ret, level;
-	struct isl97698_st *isl = i2c_get_clientdata(to_i2c_client(dev));
-
-	if (kstrtoint(buf, 10, &level))
-		return -EINVAL;
-	if ((level < ISL_BRIGHTNESS_LEVEL_MIN) ||
-			(level > ISL_BRIGHTNESS_LEVEL_MAX))
-		return -EINVAL;
-
-	ret = brightness_set_value(isl, level);
+	ret = brightness_get_value(isl, &(bl->props.brightness));
 	if (ret < 0)
-		return -EIO;
+		dev_err(isl->dev, "i2c failed to access register\n");
 
-	return count;
+	return bl->props.brightness;
 }
 
-static ssize_t max_brightness_show(struct device *dev,
-			struct device_attribute *attr, char *buf)
+static int isl97698_backlight_update_brightness(struct backlight_device *bl)
 {
-	return sprintf(buf, "%d\n", ISL_BRIGHTNESS_LEVEL_MAX);
+	int ret;
+	struct isl97698_st *isl = bl_get_data(bl);
+
+	if (bl->props.brightness < ISL_BRIGHTNESS_LEVEL_MIN)
+		bl->props.brightness = ISL_BRIGHTNESS_LEVEL_MIN;
+
+	if (bl->props.brightness > ISL_BRIGHTNESS_LEVEL_MAX)
+		bl->props.brightness = ISL_BRIGHTNESS_LEVEL_MAX;
+
+	ret = brightness_set_value(isl, bl->props.brightness);
+	if (ret < 0)
+		dev_err(isl->dev, "i2c failed to access register\n");
+
+	return bl->props.brightness;
 }
 
-static DEVICE_ATTR(brightness, S_IRUGO|S_IWUSR|S_IWGRP, brightness_show, brightness_store);
-static DEVICE_ATTR(max_brightness, S_IRUGO|S_IWUSR|S_IWGRP, max_brightness_show, NULL);
-
-
-static struct attribute *isl_att_brightness[] = {
-	&dev_attr_brightness.attr,
-	&dev_attr_max_brightness.attr,
-	NULL
+static const struct backlight_ops isl97698_backlight_ops = {
+	.update_status = isl97698_backlight_update_brightness,
+	.get_brightness = isl97698_backlight_get_brightness,
 };
 
-static struct attribute_group isl_brightness_group = {
-	.attrs = isl_att_brightness
-};
+static int isl97698_backlight_register(struct isl97698_st *chip)
+{
+	struct backlight_properties props;
+
+	props.type = BACKLIGHT_RAW;
+	props.brightness = ISL_BRIGHTNESS_LEVEL_INIT;
+	props.max_brightness = ISL_BRIGHTNESS_LEVEL_MAX;
+	chip->bl = backlight_device_register(BACKLIGHT_NAME, chip->dev, chip,
+				      &isl97698_backlight_ops, &props);
+	if (IS_ERR(chip->bl))
+		return PTR_ERR(chip->bl);
+
+	backlight_update_status(chip->bl);
+
+	return 0;
+}
+
+static void isl97698_backlight_unregister(struct isl97698_st *chip)
+{
+	if (chip->bl)
+		backlight_device_unregister(chip->bl);
+}
 
 static int  isl97698_probe(struct i2c_client *client,
 					const struct i2c_device_id *id)
@@ -295,9 +309,9 @@ static int  isl97698_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 	chip->client = client;
+	chip->dev = &client->dev;
 	chip->bias_en = pdata->bias_en;
 	i2c_set_clientdata(client, chip);
-	mutex_init(&chip->isl_mutex);
 
 	brightness_set_chip_enable(chip, ISL_CHIP_ENABLE);
 	res = brightness_chip_check(chip);
@@ -314,9 +328,9 @@ static int  isl97698_probe(struct i2c_client *client,
 		goto isl_probe_fail;
 	}
 
-	res = sysfs_create_group(&client->dev.kobj, &isl_brightness_group);
-	if (res) {
-		dev_err(&client->dev, "device create sys file failed\n");
+	res = isl97698_backlight_register(chip);
+	if (res < 0) {
+		dev_err(&client->dev, "register backlight failed\n");
 		goto isl_probe_fail;
 	}
 	dev_info(&client->dev, "Brightness isl97698_probe successed\n");
@@ -331,7 +345,9 @@ isl_probe_fail:
 
 static int isl97698_remove(struct i2c_client *client)
 {
-	sysfs_remove_group(&client->dev.kobj, &isl_brightness_group);
+	struct isl97698_st *isl = i2c_get_clientdata(client);
+
+	isl97698_backlight_unregister(isl);
 	return 0;
 }
 

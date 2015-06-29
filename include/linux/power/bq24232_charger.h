@@ -71,6 +71,7 @@ struct bq24232_plat_data {
 	int chg_rate_temp_gpio;
 
 	int (*enable_charging) (bool val);
+	int (*enable_vbus) (bool val);
 	int (*get_charging_status) (bool *charging_status);
 };
 

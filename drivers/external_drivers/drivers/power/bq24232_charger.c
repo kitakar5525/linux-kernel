@@ -735,6 +735,15 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	bq24232_charger->status = POWER_SUPPLY_STATUS_UNKNOWN;
 	bq24232_charger->charging_status_n = 0;
 
+	if(pdata->enable_vbus) {
+		ret = pdata->enable_vbus(true);
+		if (ret)
+			dev_err(bq24232_charger->dev, "%s: error(%d) in master enable_vbus\n",
+					__func__, ret);
+	} else
+		dev_warn(bq24232_charger->dev, "%s: enable_vbus unavailable\n", __func__);
+
+
 	INIT_DELAYED_WORK(&bq24232_charger->bat_temp_mon_work,
 				bq24232_exception_mon_wrk);
 

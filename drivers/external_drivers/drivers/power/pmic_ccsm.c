@@ -845,7 +845,7 @@ int pmic_get_ext_charging_status(bool *charging_status)
 
 int pmic_enable_charging(bool enable)
 {
-	int ret;
+	int ret, ret1, ret2;
 	u8 val;
 
 	if (enable) {
@@ -857,17 +857,26 @@ int pmic_enable_charging(bool enable)
 
 	val = (enable) ? 0 : EXTCHRDIS_ENABLE;
 
-	ret = intel_scu_ipc_update_register(CHGRCTRL0_ADDR,
+	ret1 = intel_scu_ipc_update_register(CHGRCTRL0_ADDR,
 			val, CHGRCTRL0_EXTCHRDIS_MASK);
+
+	val = (enable) ? SWCONTROL_ENABLE : 0;
+
+	ret2 = intel_scu_ipc_update_register(CHGRCTRL0_ADDR, val,
+			CHGRCTRL0_SWCONTROL_MASK);
+
 	/* If access is blocked return success to avoid additional
 	*  error handling at client side
 	*/
-	if (ret == -EACCES) {
+	if ((ret1 == -EACCES) || (ret2 == -EACCES)) {
 		dev_warn(chc.dev, "IPC blocked due to unsigned kernel/invalid battery\n");
-		ret = 0;
+		return 0;
 	}
 
-	return ret;
+	if (ret1)
+		return ret1;
+	else
+		return ret2;
 }
 
 static inline int update_zone_cc(int zone, u8 reg_val)

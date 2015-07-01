@@ -495,6 +495,21 @@ static int bq24232_charger_set_property(struct power_supply *psy,
 #endif
 }
 
+static int bq24232_charger_property_is_writeable(struct power_supply *psy,
+						enum power_supply_property psp)
+{
+#ifdef BQ24232_DBG
+	switch (psp) {
+	case POWER_SUPPLY_PROP_ONLINE:
+	case POWER_SUPPLY_PROP_CABLE_TYPE:
+	case POWER_SUPPLY_PROP_ENABLE_CHARGING:
+	case POWER_SUPPLY_PROP_ENABLE_CHARGER:
+		return 1;
+	}
+#endif
+	return 0;
+}
+
 int bq24232_get_charger_status(void)
 {
 	unsigned long flags;
@@ -722,6 +737,7 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	pow_sply->num_properties = ARRAY_SIZE(bq24232_charger_properties);
 	pow_sply->get_property = bq24232_charger_get_property;
 	pow_sply->set_property = bq24232_charger_set_property;
+	pow_sply->property_is_writeable = bq24232_charger_property_is_writeable;
 
 	pow_sply->supplied_to = bq24232_charger->pdata->supplied_to;
 	pow_sply->num_supplicants = bq24232_charger->pdata->num_supplicants;

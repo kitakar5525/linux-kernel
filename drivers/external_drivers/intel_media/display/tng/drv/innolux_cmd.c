@@ -26,10 +26,13 @@
 
 #include "mdfld_dsi_dbi.h"
 #include "mdfld_dsi_esd.h"
+#include "mdfld_dsi_dbi_dsr.h"
 #include <asm/intel_scu_pmic.h>
 #include <asm/intel_mid_rpmsg.h>
 #include <asm/intel_mid_remoteproc.h>
 #include <linux/lnw_gpio.h>
+#include <linux/debugfs.h>
+#include <linux/ctype.h>
 
 #include "displays/innolux_cmd.h"
 #include "innolux_init.h"
@@ -50,6 +53,21 @@ static int readback_initcode(struct mdfld_dsi_config *);
 
 static int mipi_reset_gpio;
 static int bias_en_gpio;
+
+typedef struct {
+	struct dentry *dir;
+/* atomic ops */
+	struct dentry *addr_set;
+	struct dentry *send_lp;
+	struct dentry *send_hs;
+	struct dentry *read_lp;
+	struct dentry *read_hs;
+	unsigned int addr;
+} dbgfs_t;
+
+
+static dbgfs_t dbgfs;
+static struct mdfld_dsi_config *dbgfs_dsi_config;
 
 static
 int innolux_cmd_drv_ic_init(struct mdfld_dsi_config *dsi_config)
@@ -424,6 +442,9 @@ int innolux_cmd_panel_reset(
 
 	PSB_DEBUG_ENTRY("\n");
 
+	if (dbgfs_dsi_config == NULL)
+		dbgfs_dsi_config = dsi_config;
+
 	gpio_direction_output(bias_en_gpio, 1);
 	gpio_direction_output(mipi_reset_gpio, 0);
 
@@ -506,6 +527,47 @@ void innolux_cmd_get_panel_info(int pipe,
 	}
 }
 
+/* atomic operations from debugfs */
+enum dbgfs_type { ADDR, HIGH_SPEED, LOW_POWER };
+/* reading operations */
+static ssize_t dbgfs_read(char __user *, size_t , loff_t *, enum dbgfs_type);
+static ssize_t dbgfs_addr_read(struct file *, char __user *, size_t , loff_t *);
+static ssize_t dbgfs_read_hs_read(struct file *, char __user *, size_t , loff_t *);
+static ssize_t dbgfs_read_lp_read(struct file *, char __user *, size_t , loff_t *);
+/* writting operations */
+static int dbgfs_write(const char __user *buff, size_t , enum dbgfs_type);
+static ssize_t dbgfs_addr_write(struct file *, const char __user *, size_t , loff_t *);
+static ssize_t dbgfs_send_lp_write(struct file *, const char __user *, size_t , loff_t *);
+static ssize_t dbgfs_send_hs_write(struct file *, const char __user *, size_t , loff_t *);
+
+/* ops for atomic operations */
+static const struct file_operations dbgfs_addr_ops = {
+	.open		= nonseekable_open,
+	.read		= dbgfs_addr_read,
+	.write		= dbgfs_addr_write,
+	.llseek		= no_llseek,
+};
+static const struct file_operations dbgfs_send_lp_ops = {
+	.open		= nonseekable_open,
+	.write		= dbgfs_send_lp_write,
+	.llseek		= no_llseek,
+};
+static const struct file_operations dbgfs_send_hs_ops = {
+	.open		= nonseekable_open,
+	.write		= dbgfs_send_hs_write,
+	.llseek		= no_llseek,
+};
+static const struct file_operations dbgfs_read_lp_ops = {
+	.open		= nonseekable_open,
+	.read		= dbgfs_read_lp_read,
+	.llseek		= no_llseek,
+};
+static const struct file_operations dbgfs_read_hs_ops = {
+	.open		= nonseekable_open,
+	.read		= dbgfs_read_hs_read,
+	.llseek		= no_llseek,
+};
+
 void innolux_cmd_init(struct drm_device *dev,
 		struct panel_funcs *p_funcs)
 {
@@ -538,6 +600,281 @@ void innolux_cmd_init(struct drm_device *dev,
 	p_funcs->detect = innolux_cmd_panel_connection_detect;
 	p_funcs->set_brightness = innolux_cmd_set_brightness;
 	p_funcs->exit_deep_standby = innolux_cmd_exit_deep_standby;
+
+	/* debugfs */
+	dbgfs_dsi_config = NULL;
+
+	dbgfs.dir = debugfs_create_dir("innolux", NULL);
+	if (dbgfs.dir == NULL) {
+		DRM_ERROR("%s-%d: cannot create debugfs directory\n", __func__, __LINE__);
+		return;
+	}
+	/* atomic ops */
+	dbgfs.addr_set = debugfs_create_file("addr",
+				S_IFREG | S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP,
+				dbgfs.dir, NULL,
+				&dbgfs_addr_ops);
+	if (dbgfs.addr_set == NULL)
+		DRM_ERROR("%s-%d: cannot create debugfs entry addr_set\n", __func__, __LINE__);
+
+	dbgfs.send_lp = debugfs_create_file("send_lp",
+				S_IFREG | S_IWUSR | S_IWGRP,
+				dbgfs.dir, NULL,
+				&dbgfs_send_lp_ops);
+	if (dbgfs.send_lp == NULL)
+		DRM_ERROR("%s-%d: cannot create debugfs entry send_lp\n", __func__, __LINE__);
+
+	dbgfs.send_hs = debugfs_create_file("send_hs",
+				S_IFREG | S_IWUSR | S_IWGRP,
+				dbgfs.dir, NULL,
+				&dbgfs_send_hs_ops);
+	if (dbgfs.send_hs == NULL)
+		DRM_ERROR("%s-%d: cannot create debugfs entry send_hs\n", __func__, __LINE__);
+
+	dbgfs.read_lp = debugfs_create_file("read_lp",
+				S_IFREG | S_IRUSR | S_IRGRP,
+				dbgfs.dir, NULL,
+				&dbgfs_read_lp_ops);
+	if (dbgfs.read_lp == NULL)
+		DRM_ERROR("%s-%d: cannot create debugfs entry read_lp\n", __func__, __LINE__);
+
+	dbgfs.read_hs = debugfs_create_file("read_hs",
+				S_IFREG | S_IRUSR | S_IRGRP,
+				dbgfs.dir, NULL,
+				&dbgfs_read_hs_ops);
+	if (dbgfs.read_hs == NULL)
+		DRM_ERROR("%s-%d: cannot create debugfs entry read_hs\n", __func__, __LINE__);
+}
+
+/* atomic operations */
+static ssize_t dbgfs_read(char __user *buff, size_t count, loff_t *ppos, enum dbgfs_type type)
+{
+	char *str;
+	u8 data = 0;
+	ssize_t len = 0;
+	u32 power_island = 0;
+	struct mdfld_dsi_pkg_sender *sender
+		= mdfld_dsi_get_pkg_sender(dbgfs_dsi_config);
+
+	/* setting display and MIPI bus in correct state for reading */
+	if ((type == HIGH_SPEED) || (type == LOW_POWER)) {
+		power_island = pipe_to_island(dbgfs_dsi_config->pipe);
+
+		if (power_island & (OSPM_DISPLAY_A | OSPM_DISPLAY_C))
+			power_island |= OSPM_DISPLAY_MIO;
+
+		if (!power_island_get(power_island))
+			return -EIO;
+
+		mdfld_dsi_dsr_forbid(dbgfs_dsi_config);
+	}
+
+	str = kzalloc(count, GFP_KERNEL);
+	if (!str)
+		return -ENOMEM;
+
+	switch (type) {
+	case ADDR:
+		len = sprintf(str, "addr = 0x%x\n", (u8)dbgfs.addr);
+		break;
+	case HIGH_SPEED:
+		mdfld_dsi_read_mcs_hs(sender, (u8)dbgfs.addr, &data, 1);
+		break;
+	case LOW_POWER:
+		mdfld_dsi_read_mcs_lp(sender, (u8)dbgfs.addr, &data, 1);
+		break;
+	}
+
+	/* releasing display and MIPI bus */
+	if ((type == HIGH_SPEED) || (type == LOW_POWER)) {
+		len = sprintf(str, "addr = 0x%x, value = 0x%x\n", (u8)dbgfs.addr, data);
+		mdfld_dsi_dsr_allow(dbgfs_dsi_config);
+		power_island_put(power_island);
+	}
+
+	if (len < 0)
+		DRM_ERROR("Can't read data\n");
+	else
+		len = simple_read_from_buffer(buff, count, ppos, str, len);
+
+	kfree(str);
+
+	return len;
+}
+
+static ssize_t dbgfs_addr_read(struct file *file, char __user *buff,
+				size_t count, loff_t *ppos)
+{
+	ssize_t len = 0;
+
+	if (*ppos < 0 || !count)
+		return -EINVAL;
+
+	len = dbgfs_read(buff, count, ppos, ADDR);
+
+	return len;
+}
+
+static ssize_t dbgfs_read_hs_read(struct file *file, char __user *buff,
+				   size_t count, loff_t *ppos)
+{
+	ssize_t len;
+
+	if (*ppos < 0 || !count)
+		return -EINVAL;
+
+	len = dbgfs_read(buff, count, ppos, HIGH_SPEED);
+
+	return len;
+}
+
+static ssize_t dbgfs_read_lp_read(struct file *file, char __user *buff,
+				   size_t count, loff_t *ppos)
+{
+	ssize_t len;
+
+	if (*ppos < 0 || !count)
+		return -EINVAL;
+
+	len = dbgfs_read(buff, count, ppos, LOW_POWER);
+
+	return len;
+}
+
+static int dbgfs_write(const char __user *buff, size_t count, enum dbgfs_type type)
+{
+	int err = 0, i = 0, ret = 0;
+	unsigned int arg = 0;
+	u32 power_island = 0;
+	char *start, *str;
+	struct mdfld_dsi_pkg_sender *sender
+		= mdfld_dsi_get_pkg_sender(dbgfs_dsi_config);
+
+	str = kzalloc(count, GFP_KERNEL);
+	if (!str)
+		return -ENOMEM;
+
+	if (copy_from_user(str, buff, count))
+		return -EFAULT;
+
+	start = str;
+
+	while (*start == ' ')
+		start++;
+
+	/* strip ending whitespace */
+	for (i = count - 1; i > 0 && isspace(str[i]); i--)
+		str[i] = 0;
+
+	/* setting display and MIPI bus in correct state for writting */
+	if ((type == HIGH_SPEED) || (type == LOW_POWER)) {
+		power_island = pipe_to_island(dbgfs_dsi_config->pipe);
+
+		if (power_island & (OSPM_DISPLAY_A | OSPM_DISPLAY_C))
+			power_island |= OSPM_DISPLAY_MIO;
+
+		if (!power_island_get(power_island))
+			return -EIO;
+
+		mdfld_dsi_dsr_forbid_locked(dbgfs_dsi_config);
+
+		if (kstrtouint(start, 16, &arg)) {
+			ret = -EINVAL;
+		}
+	}
+
+	switch (type) {
+	case ADDR:
+		if (kstrtouint(start, 16, &(dbgfs.addr)))
+			return -EINVAL;
+		return 0;
+	case HIGH_SPEED:
+		err = mdfld_dsi_send_mcs_short_hs(sender,
+					(u8)dbgfs.addr, (u8)arg, 1,
+					MDFLD_DSI_SEND_PACKAGE);
+		ret = 0;
+		break;
+	case LOW_POWER:
+		err = mdfld_dsi_send_mcs_short_lp(sender,
+					(u8)dbgfs.addr, (u8)arg, 1,
+					MDFLD_DSI_SEND_PACKAGE);
+		ret = 0;
+		break;
+	}
+
+	if (err) {
+		DRM_ERROR("%s: %d: error\n",
+		__func__, __LINE__);
+		ret = -1;
+	}
+
+	/* releasing display and MIPI bus */
+	if ((type == HIGH_SPEED) || (type == LOW_POWER)) {
+		mdfld_dsi_dsr_allow_locked(dbgfs_dsi_config);
+		power_island_put(power_island);
+	}
+
+	return ret;
+}
+
+static ssize_t dbgfs_addr_write(struct file *file, const char __user *buff,
+				size_t count, loff_t *ppos)
+{
+	ssize_t ret = 0;
+	int err = 0;
+
+	ret = count;
+
+	if (*ppos < 0 || !count)
+		return -EINVAL;
+
+	err = dbgfs_write(buff, count, ADDR);
+	if (err < 0)
+		ret = 0;
+
+	*ppos += ret;
+
+	return ret;
+}
+
+static ssize_t dbgfs_send_hs_write(struct file *file, const char __user *buff,
+				    size_t count, loff_t *ppos)
+{
+	ssize_t ret = 0;
+	int err = 0;
+
+	ret = count;
+
+	if (*ppos < 0 || !count)
+		return -EINVAL;
+
+	err = dbgfs_write(buff, count, HIGH_SPEED);
+	if (err < 0)
+		ret = 0;
+
+	*ppos += ret;
+
+	return count;
+}
+
+static ssize_t dbgfs_send_lp_write(struct file *file, const char __user *buff,
+				    size_t count, loff_t *ppos)
+{
+	ssize_t ret = 0;
+	int err = 0;
+
+	ret = count;
+
+	if (*ppos < 0 || !count)
+		return -EINVAL;
+
+	err = dbgfs_write(buff, count, LOW_POWER);
+	if (err < 0)
+		ret = 0;
+
+	*ppos += ret;
+
+	return count;
 }
 
 #ifdef INNOLUX_DEBUG

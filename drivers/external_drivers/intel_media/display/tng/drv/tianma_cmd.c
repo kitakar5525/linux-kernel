@@ -63,8 +63,8 @@ typedef struct {
 	unsigned int addr;
 } dbgfs_t;
 
-dbgfs_t dbgfs;
-struct mdfld_dsi_config *dbgfs_dsi_config;
+static dbgfs_t dbgfs;
+static struct mdfld_dsi_config *dbgfs_dsi_config;
 
 static
 int tianma_cmd_drv_ic_init(struct mdfld_dsi_config *dsi_config)
@@ -482,7 +482,7 @@ static ssize_t dbgfs_addr_read(struct file *, char __user *, size_t , loff_t *);
 static ssize_t dbgfs_read_hs_read(struct file *, char __user *, size_t , loff_t *);
 static ssize_t dbgfs_read_lp_read(struct file *, char __user *, size_t , loff_t *);
 /* writting operations */
-int dbgfs_write(const char __user *buff, size_t , enum dbgfs_type);
+static int dbgfs_write(const char __user *buff, size_t , enum dbgfs_type);
 static ssize_t dbgfs_addr_write(struct file *, const char __user *, size_t , loff_t *);
 static ssize_t dbgfs_send_lp_write(struct file *, const char __user *, size_t , loff_t *);
 static ssize_t dbgfs_send_hs_write(struct file *, const char __user *, size_t , loff_t *);
@@ -688,7 +688,7 @@ static ssize_t dbgfs_read_lp_read(struct file *file, char __user *buff,
 	return len;
 }
 
-int dbgfs_write(const char __user *buff, size_t count, enum dbgfs_type type)
+static int dbgfs_write(const char __user *buff, size_t count, enum dbgfs_type type)
 {
 	int err = 0, i = 0, ret = 0;
 	unsigned int arg = 0;

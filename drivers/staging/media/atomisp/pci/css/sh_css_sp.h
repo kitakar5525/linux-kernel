@@ -62,16 +62,18 @@ sh_css_sp_init_pipeline(struct ia_css_pipeline *me,
 			enum sh_css_pipe_config_override copy_ovrd,
 			enum ia_css_input_mode input_mode,
 			const struct ia_css_metadata_config *md_config,
-			const struct ia_css_metadata_info *md_info
+			const struct ia_css_metadata_info *md_info,
 #if !defined(HAS_NO_INPUT_SYSTEM)
-			, const mipi_port_ID_t port_id
+			const mipi_port_ID_t port_id,
 #endif
-			);
+			const struct ia_css_coordinate *internal_frame_origin_bqs_on_sctbl, /* Origin of internal frame
+							positioned on shading table at shading correction in ISP. */
+			const struct ia_css_isp_parameters *params);
 
 void
 sh_css_sp_uninit_pipeline(unsigned int pipe_num);
 
-void
+bool
 sh_css_write_host2sp_command(enum host2sp_commands host2sp_command);
 
 #if defined(HAS_SEC_SP)

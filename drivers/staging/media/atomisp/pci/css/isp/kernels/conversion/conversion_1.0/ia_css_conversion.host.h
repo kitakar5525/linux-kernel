@@ -26,4 +26,6 @@ ia_css_conversion_encode(
 	const struct ia_css_conversion_config *from,
 	unsigned size);
 
+/* workaround until code generation in isp_kernelparameters.host.c is fixed */
+#define ia_css_conversion_par_encode(to, from, size) ia_css_conversion_encode(to, from, size)
 #endif /* __IA_CSS_CONVERSION_HOST_H */

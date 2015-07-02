@@ -257,6 +257,9 @@ struct ia_css_binary_info {
 		uint8_t	routing_rgb_to_yuvp1;/**< connect RGB with YUVP1 ACCs*/
 		uint8_t	routing_yuvp1_to_yuvp2;/**< connect YUVP1 with YUVP2 ACCs*/
 #endif
+		uint8_t	luma_only;
+		uint8_t	input_yuv;
+		uint8_t	input_raw;
 		uint8_t	reduced_pipe;
 		uint8_t	vf_veceven;
 		uint8_t	dis;
@@ -353,7 +356,6 @@ struct ia_css_sp_info {
 	uint32_t host_sp_queues_initialized; /**< Polled from the SP */
 	uint32_t sleep_mode;  /**< different mode to halt SP */
 	uint32_t invalidate_tlb;		/**< inform SP to invalidate mmu TLB */
-	uint32_t stop_copy_preview;       /**< suspend copy and preview pipe when capture */
 	uint32_t debug_buffer_ddr_address;	/**< inform SP the address
 	of DDR debug queue */
 	uint32_t perf_counter_input_system_error; /**< input system perf

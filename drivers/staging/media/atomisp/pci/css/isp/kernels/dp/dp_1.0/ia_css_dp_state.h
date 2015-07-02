@@ -18,7 +18,7 @@
 #include "type_support.h"
 
 #include "vmem.h"
-#if NEED_BDS_OTHER_THAN_1_00
+#if ENABLE_FIXED_BAYER_DS
 #define MAX_VECTORS_PER_DP_LINE MAX_VECTORS_PER_BUF_INPUT_LINE
 #else
 #define MAX_VECTORS_PER_DP_LINE MAX_VECTORS_PER_BUF_LINE

@@ -63,6 +63,10 @@ int ia_css_eventq_send(
 	ia_css_event_encode(tmp, 4, &sw_event);
 
 	/* queue the software event (busy-waiting) */
+#ifdef IS_ISP_2500_SYSTEM
+	/* due to the buffer handling in Skycam we should never reach a Full queue at this point */
+	error = ia_css_queue_enqueue(eventq_handle, sw_event);
+#else
 	for ( ; ; ) {
 		error = ia_css_queue_enqueue(eventq_handle, sw_event);
 		if (ENOBUFS != error) {
@@ -73,6 +77,7 @@ int ia_css_eventq_send(
 		/* Wait for the queue to be not full and try again*/
 		hrt_sleep();
 	}
+#endif
 
 	return error;
 }

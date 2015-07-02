@@ -99,7 +99,6 @@ struct ia_css_3a_grid_info {
 
 
 #if defined(SYSTEM_css_skycam_c0_system)
-#if defined USE_NEW_AE_STRUCT || defined USE_NEW_AWB_STRUCT
 #define DEFAULT_3A_GRID_INFO \
 { \
 	0,				/* ae_enable */ \
@@ -112,21 +111,6 @@ struct ia_css_3a_grid_info {
 	{0,0,0,0,0,0,0},                  /* AWB_FR: width,height,b_width,b_height,x_start,y_start,ff_en*/ \
 	0,				/* elem_bit_depth */ \
 }
-#else
-#define DEFAULT_3A_GRID_INFO \
-{ \
-	0,				/* ae_enable */ \
-	{0,0,0,0,0,0,0,0,0},	        /* AE:     width,height,b_width,b_height,x_start,y_start,x_end,y_end*/ \
-	0,				/* awb_enable */ \
-	{0,0,0,0,0,0,0,0},              /* AWB:    width,height,b_width,b_height,x_start,y_start,x_end,y_end*/ \
-	0,				/* af_enable */ \
-	{0,0,0,0,0,0,0},		/* AF:     width,height,b_width,b_height,x_start,y_start,ff_en*/ \
-	0,				/* awb_fr_enable */ \
-	{0,0,0,0,0,0,0},                  /* AWB_FR: width,height,b_width,b_height,x_start,y_start,ff_en*/ \
-	0,				/* elem_bit_depth */ \
-}
-#endif /* USE_NEW_AE_STRUCT || defined USE_NEW_AWB_STRUCT */
-
 #else
 #define DEFAULT_3A_GRID_INFO \
 { \

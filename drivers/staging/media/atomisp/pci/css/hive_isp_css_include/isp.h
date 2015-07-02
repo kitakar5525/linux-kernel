@@ -31,7 +31,9 @@
 
 #include "storage_class.h"
 
+#ifndef PIPE_GENERATION
 #include "system_local.h"
+#endif
 #include "isp_local.h"
 
 #ifndef __INLINE_ISP__

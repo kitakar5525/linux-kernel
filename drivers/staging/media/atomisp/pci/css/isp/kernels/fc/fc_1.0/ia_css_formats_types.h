@@ -30,7 +30,9 @@
 struct ia_css_formats_config {
 	uint32_t video_full_range_flag; /**< selects the range of YUV output.
 				u8.0, [0,1],
-				default 1, ineffective n/a */
+				default 1, ineffective n/a\n
+				1 - full range, luma 0-255, chroma 0-255\n
+				0 - reduced range, luma 16-235, chroma 16-240 */
 };
 
 #endif /* __IA_CSS_FORMATS_TYPES_H */

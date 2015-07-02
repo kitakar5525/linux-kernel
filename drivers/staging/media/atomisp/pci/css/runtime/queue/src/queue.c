@@ -372,11 +372,15 @@ int ia_css_queue_is_empty(
 
 		/* b. Operate on the queue */
 		*is_empty = ia_css_circbuf_desc_is_empty(&cb_desc);
+/*SP queues are all in LOCAL. Hence marking this block of code as text*/
+#if defined(__SP)
+#pragma hivecc section = "text"
+#endif
 		return 0;
 	}
 
 	return EINVAL;
-#if defined(IS_ISP_2500_SYSTEM) && defined(__SP)
+#if defined(__SP)
 #pragma hivecc section = "critical"
 #endif
 }

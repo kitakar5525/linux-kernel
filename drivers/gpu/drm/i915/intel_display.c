@@ -2467,15 +2467,15 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 				     i915_gem_obj_ggtt_offset(obj) + intel_crtc->dspaddr_offset);
 		if (rotate) {
 			intel_crtc->reg.tileoff =
-					(((y + fb->height - 1) << 16) |
-					(x + fb->width - 1));
+					(((y + mode->vdisplay - 1) << 16) |
+					(x + mode->hdisplay - 1));
 			/* Linear Offset should be the difference b/w the last pixel of
 			 * the last line of the display data in its unrotated orientation
 			 * and the display surface address.
 			 */
 			intel_crtc->reg.linoff = linear_offset +
-					(fb->height - 1) * fb->pitches[0] +
-					(fb->width - 1) * pixel_size;
+					(mode->vdisplay - 1) * fb->pitches[0] +
+					(mode->hdisplay - 1) * pixel_size;
 			if (!dev_priv->atomic_update) {
 				I915_WRITE(DSPTILEOFF(plane),
 						intel_crtc->reg.tileoff);

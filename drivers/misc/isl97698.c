@@ -358,13 +358,15 @@ static struct i2c_device_id isl97698_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, isl97698_id);
 
-#if (defined ENABLE_BACKLIGHT_PM) && (defined CONFIG_PM)
+#ifdef CONFIG_PM
 static int isl97698_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct isl97698_st *isl = i2c_get_clientdata(client);
 
-	brightness_set_chip_enable(isl, ISL_CHIP_DISABLE);
+	if (isl->bl->props.brightness == 0)
+		brightness_set_chip_enable(isl, ISL_CHIP_DISABLE);
+
 	return 0;
 }
 
@@ -373,7 +375,9 @@ static int isl97698_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct isl97698_st *isl = i2c_get_clientdata(client);
 
-	brightness_set_chip_enable(isl, ISL_CHIP_ENABLE);
+	if (isl->enable == ISL_CHIP_DISABLE)
+		brightness_set_chip_enable(isl, ISL_CHIP_ENABLE);
+
 	return 0;
 }
 static SIMPLE_DEV_PM_OPS(isl97698_pm_ops, isl97698_suspend, isl97698_resume);

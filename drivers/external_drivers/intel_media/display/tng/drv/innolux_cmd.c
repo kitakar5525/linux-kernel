@@ -754,8 +754,10 @@ static int dbgfs_write(const char __user *buff, size_t count, enum dbgfs_type ty
 	if (!str)
 		return -ENOMEM;
 
-	if (copy_from_user(str, buff, count))
-		return -EFAULT;
+	if (copy_from_user(str, buff, count)) {
+		ret = -EFAULT;
+		goto exit_dbgfs_write;
+	}
 
 	start = str;
 
@@ -773,32 +775,33 @@ static int dbgfs_write(const char __user *buff, size_t count, enum dbgfs_type ty
 		if (power_island & (OSPM_DISPLAY_A | OSPM_DISPLAY_C))
 			power_island |= OSPM_DISPLAY_MIO;
 
-		if (!power_island_get(power_island))
-			return -EIO;
+		if (!power_island_get(power_island)) {
+			ret = -EIO;
+			goto exit_dbgfs_write;
+		}
 
 		mdfld_dsi_dsr_forbid_locked(dbgfs_dsi_config);
 
 		if (kstrtouint(start, 16, &arg)) {
 			ret = -EINVAL;
+			goto exit_dbgfs_write;
 		}
 	}
 
 	switch (type) {
 	case ADDR:
 		if (kstrtouint(start, 16, &(dbgfs.addr)))
-			return -EINVAL;
-		return 0;
+			ret = -EINVAL;
+		break;
 	case HIGH_SPEED:
 		err = mdfld_dsi_send_mcs_short_hs(sender,
 					(u8)dbgfs.addr, (u8)arg, 1,
 					MDFLD_DSI_SEND_PACKAGE);
-		ret = 0;
 		break;
 	case LOW_POWER:
 		err = mdfld_dsi_send_mcs_short_lp(sender,
 					(u8)dbgfs.addr, (u8)arg, 1,
 					MDFLD_DSI_SEND_PACKAGE);
-		ret = 0;
 		break;
 	}
 
@@ -814,6 +817,8 @@ static int dbgfs_write(const char __user *buff, size_t count, enum dbgfs_type ty
 		power_island_put(power_island);
 	}
 
+exit_dbgfs_write:
+	kfree(str);
 	return ret;
 }
 

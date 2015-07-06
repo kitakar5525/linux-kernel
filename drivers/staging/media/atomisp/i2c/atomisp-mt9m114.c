@@ -1853,7 +1853,6 @@ static int mt9m114_probe(struct i2c_client *client)
 	if (ret) {
 		v4l2_device_unregister_subdev(&dev->sd);
 		kfree(dev);
-		/* Coverity CID 298095 - return on error */
 		return ret;
 	}
 

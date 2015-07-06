@@ -54,6 +54,7 @@ struct bq24232_charger {
 
 	struct usb_phy *transceiver;
 
+	bool force_disable_charging;
 	int cc;
 	enum power_supply_type cable_type;
 	int status;
@@ -257,13 +258,15 @@ static inline bool bq24232_can_enable_charging(struct bq24232_charger *chip)
 	bq24232_update_pgood_status(chip);
 	bat_temp_ok = is_bat_temp_allowed(chip, BQ24232_NORM_CHARGE);
 
-	if (!chip->pgood_valid || !chip->is_charger_enabled || !bat_temp_ok) {
+	if (!chip->pgood_valid || !chip->is_charger_enabled || !bat_temp_ok || chip->force_disable_charging) {
 		dev_warn(chip->dev,
-				"%s: cannot enable charging, pgood_valid = %d is_charger_enabled = %d, bat_temp_ok = %d\n",
+				"%s: cannot enable charging, pgood_valid = %d is_charger_enabled = %d,\n"
+				"bat_temp_ok = %d, force_disable_charging = %d\n",
 				__func__,
 				chip->pgood_valid,
 				chip->is_charger_enabled,
-				bat_temp_ok);
+				bat_temp_ok,
+				chip->force_disable_charging);
 		return false;
 	}
 	return true;
@@ -330,7 +333,6 @@ static void bq24232_update_boost_status(struct bq24232_charger *chip)
 {
 	int ret;
 	bool chgr_can_boost = bq24232_charger_can_enable_boost(chip);
-
 	ret = bq24232_enable_boost(chip, chgr_can_boost);
 	mutex_lock(&chip->stat_lock);
 	chip->boost_mode = ret ? 0 : chgr_can_boost;
@@ -377,8 +379,6 @@ static void bq24232_update_charging_status(struct bq24232_charger *chip)
 	if (!ret)
 		chip->is_charging_enabled = false;
 
-	bq24232_enable_charging(chip, false);
-	chip->is_charging_enabled = false;
 	if (!chip->pgood_valid)
 		chip->status = POWER_SUPPLY_STATUS_DISCHARGING;
 	else
@@ -398,6 +398,7 @@ static void bq24232_update_charger_enabled(struct bq24232_charger *chip,
 	chip->cable_type = cable_type;
 	spin_unlock_irqrestore(&chip->pow_sply.changed_lock, flags);
 
+	cancel_delayed_work_sync(&chip->bat_temp_mon_work);
 	if (evt == POWER_SUPPLY_CHARGER_EVENT_CONNECT ||
 			evt == POWER_SUPPLY_CHARGER_EVENT_UPDATE ||
 			evt == POWER_SUPPLY_CHARGER_EVENT_RESUME) {
@@ -407,7 +408,6 @@ static void bq24232_update_charger_enabled(struct bq24232_charger *chip,
 	} else {
 		/* POWER_SUPPLY_CHARGER_EVENT_SUSPEND POWER_SUPPLY_CHARGER_EVENT_DISCONNECT */
 		chip->is_charger_enabled = false;
-		cancel_delayed_work_sync(&chip->bat_temp_mon_work);
 	}
 
 	dev_info(chip->dev, "%s: is_charger_enabled %d",
@@ -459,6 +459,7 @@ static int bq24232_charger_set_property(struct power_supply *psy,
 #ifdef BQ24232_DBG
 	struct bq24232_charger *chip = container_of(psy, struct bq24232_charger, pow_sply);
 	int ret = 0;
+	bool notify = true;
 
 	mutex_lock(&chip->stat_lock);
 
@@ -466,34 +467,20 @@ static int bq24232_charger_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ONLINE:
 		chip->online = val->intval;
 		break;
-	case POWER_SUPPLY_PROP_CHARGE_CURRENT:
-		ret = -EPERM;
-		break;
 	case POWER_SUPPLY_PROP_CABLE_TYPE:
 		chip->cable_type = val->intval;
 		chip->pow_sply.type = get_power_supply_type(chip->cable_type);
 		break;
 	case POWER_SUPPLY_PROP_ENABLE_CHARGING:
-		if (val->intval) {
-			if (bq24232_can_enable_charging(chip)) {
-				ret = bq24232_enable_charging(chip, true);
-				if (!ret)
-					chip->is_charging_enabled = val->intval;
-				else
-					dev_warn(chip->dev, "%s: enable_charging(%d) failed with error %d\n", __func__, val->intval, ret);
-			} else
-				dev_err(chip->dev, "%s: conditions not met to enable charging\n", __func__);
-		} else {
+		chip->force_disable_charging = !val->intval;
+		cancel_delayed_work_sync(&chip->bat_temp_mon_work);
+		if (!val->intval) {
 			ret = bq24232_enable_charging(chip, false);
 			if (!ret)
-				chip->is_charging_enabled = val->intval;
-			else
-				dev_err(chip->dev, "%s: enable_charging(%d) failed with error %d\n", __func__, val->intval, ret);
+				chip->is_charging_enabled = 0;
 		}
-		power_supply_changed(&chip->pow_sply);
-		break;
-	case POWER_SUPPLY_PROP_ENABLE_CHARGER:
-		chip->is_charger_enabled = val->intval;
+		schedule_delayed_work(&chip->bat_temp_mon_work, 0);
+		notify = false;
 		break;
 	default:
 		ret = -ENODATA;
@@ -501,6 +488,10 @@ static int bq24232_charger_set_property(struct power_supply *psy,
 	mutex_unlock(&chip->stat_lock);
 
 	dev_dbg(chip->dev, "bq24232_charger_set_property: property = %d, value = %d\n", psp, val->intval);
+
+	if (notify)
+		power_supply_changed(&chip->pow_sply);
+
 	return ret;
 #else
 	return -EPERM;
@@ -515,7 +506,6 @@ static int bq24232_charger_property_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ONLINE:
 	case POWER_SUPPLY_PROP_CABLE_TYPE:
 	case POWER_SUPPLY_PROP_ENABLE_CHARGING:
-	case POWER_SUPPLY_PROP_ENABLE_CHARGER:
 		return 1;
 	}
 #endif
@@ -524,7 +514,6 @@ static int bq24232_charger_property_is_writeable(struct power_supply *psy,
 
 int bq24232_get_charger_status(void)
 {
-	unsigned long flags;
 	int status;
 	if (!bq24232_charger)
 		return -ENODEV;
@@ -550,6 +539,8 @@ void bq24232_set_charging_status(bool chg_stat)
 			__func__,
 			bq24232_charger->charging_status_n);
 	bq24232_update_charging_status(bq24232_charger);
+	bq24232_update_boost_status(bq24232_charger);
+	bq24232_update_chrg_current_status(bq24232_charger);
 
 	power_supply_changed(&bq24232_charger->pow_sply);
 }
@@ -767,6 +758,7 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	bq24232_charger->boost_mode = 0;
 	bq24232_charger->status = POWER_SUPPLY_STATUS_UNKNOWN;
 	bq24232_charger->charging_status_n = 0;
+	bq24232_charger->force_disable_charging = 0;
 
 	if(pdata->enable_vbus) {
 		ret = pdata->enable_vbus(true);

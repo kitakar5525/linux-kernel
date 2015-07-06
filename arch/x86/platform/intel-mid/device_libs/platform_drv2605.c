@@ -84,7 +84,9 @@ if (INTEL_MID_BOARD(2, PHONE, MRFL, RBY, PRO) ||
 	pdata->size_autocal_sequence = ARRAY_SIZE(LRA_autocal_sequence_prod1);
 	pdata->parameter_autocal_sequence = LRA_autocal_sequence_prod1;
 } else if (INTEL_MID_BOARD(2, PHONE, MRFL, MVN, PRO) ||
-	INTEL_MID_BOARD(2, PHONE, MRFL, MVN, ENG)) {
+	INTEL_MID_BOARD(2, PHONE, MRFL, MVN, ENG) ||
+	INTEL_MID_BOARD(2, PHONE, MRFL, GLC, PRO) ||
+	INTEL_MID_BOARD(2, PHONE, MRFL, GLC, ENG)) {
 	pdata->effect_library = LIBRARY_A; /* ERM open loop */
 	pdata->real_time_playback = 0x38; /* ~44% of overdrive voltage (open loop)*/
 	pdata->repeat_autocal_sequence = true;

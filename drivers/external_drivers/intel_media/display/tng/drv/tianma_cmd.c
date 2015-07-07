@@ -290,26 +290,6 @@ int tianma_cmd_power_on(
 
 	msleep(60);
 
-	/* set backlight on */
-	err = mdfld_dsi_send_mcs_short_lp(sender,
-			write_ctrl_display, 0x2c, 1,
-			MDFLD_DSI_SEND_PACKAGE);
-	if (err) {
-		DRM_ERROR("%s: %d: Set Backlight On\n",
-		__func__, __LINE__);
-		goto power_err;
-	}
-
-	/* set backlight brightness */
-	err = mdfld_dsi_send_mcs_short_lp(sender,
-			write_display_brightness, 0xff, 1,
-			MDFLD_DSI_SEND_PACKAGE);
-	if (err) {
-		DRM_ERROR("%s: %d: Set Backlight Brightness\n",
-		__func__, __LINE__);
-		goto power_err;
-	}
-
 	/* set CABC/IE disable */
 	err = mdfld_dsi_send_mcs_short_lp(sender,
 			write_ctrl_cabc, 0x00, 1,
@@ -351,15 +331,6 @@ static int tianma_cmd_power_off(
 		return -EINVAL;
 	}
 
-	err = mdfld_dsi_send_mcs_short_lp(sender,
-			write_ctrl_display, 0x00, 1,
-			MDFLD_DSI_SEND_PACKAGE);
-	if (err) {
-		DRM_ERROR("%s: %d: Set Backlight Off\n",
-		__func__, __LINE__);
-		goto power_off_err;
-	}
-
 	/* assert panel reset : delay > 85 ms */
 	usleep_range(85000, 85100);
 	gpio_set_value(mipi_reset_gpio, 0);
@@ -376,19 +347,6 @@ int tianma_cmd_set_brightness(
 		struct mdfld_dsi_config *dsi_config,
 		int level)
 {
-	struct mdfld_dsi_pkg_sender *sender =
-		mdfld_dsi_get_pkg_sender(dsi_config);
-	u8 duty_val = 0;
-
-	if (!sender) {
-		DRM_ERROR("Failed to get DSI packet sender\n");
-		return -EINVAL;
-	}
-
-	duty_val = (0xFF * level) / 255;
-	mdfld_dsi_send_mcs_short_hs(sender,
-			write_display_brightness, duty_val, 1,
-			MDFLD_DSI_SEND_PACKAGE);
 	return 0;
 }
 

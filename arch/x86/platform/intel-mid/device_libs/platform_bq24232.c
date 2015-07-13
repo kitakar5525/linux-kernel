@@ -39,8 +39,11 @@ void *bq24232_charger_platform_data(void *info)
 
 	bq24232_pdata.chg_rate_temp_gpio = get_gpio_by_name("chg_rate_temp");
 	bq24232_pdata.pgood_gpio = get_gpio_by_name("chg_pgood");
+	bq24232_pdata.charger_ce_n_gpio = get_gpio_by_name("charger_ce_n");
+	bq24232_pdata.enable_charging = bq24232_assert_ce_n;
 #if CONFIG_PMIC_CCSM
-	bq24232_pdata.enable_charging = pmic_enable_charging;
+	if (bq24232_pdata.charger_ce_n_gpio < 0)
+		bq24232_pdata.enable_charging = pmic_enable_charging;
 	bq24232_pdata.get_charging_status = pmic_get_ext_charging_status;
 	bq24232_pdata.enable_vbus = pmic_enable_vbus;
 #endif

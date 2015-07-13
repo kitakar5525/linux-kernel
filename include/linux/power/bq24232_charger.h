@@ -43,6 +43,7 @@ void bq24232_set_charging_status(bool chg_stat)
 	return;
 }
 #endif
+int bq24232_assert_ce_n(bool val);
 
 enum bq24232_chrgrate_temp_limit {
 	BQ24232_NORM_CHARGE_TEMP_LOW,
@@ -59,6 +60,7 @@ enum bq24232_chrgrate_temp_limit {
  * @bat_temp_profile:	Temperature ranges in wich normal/boost charge is allowed
  * @pgood_gpio:	GPIO which is used to indicate the chargers status
  * @chg_rate_temp_gpio:	GPIO which is used to select the charge rate
+ * @charger_ce_n_gpio:	GPIO to assert low to charge enable, high to disable it
  * @enable_charging:	Function callback to activate the CE_N signal on the charger
  */
 struct bq24232_plat_data {
@@ -69,6 +71,7 @@ struct bq24232_plat_data {
 	int *bat_temp_profile;
 	int pgood_gpio;
 	int chg_rate_temp_gpio;
+	int charger_ce_n_gpio;
 
 	int (*enable_charging) (bool val);
 	int (*enable_vbus) (bool val);

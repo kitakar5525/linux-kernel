@@ -286,6 +286,18 @@ static int bq24232_enable_charging(
 	return ret;
 }
 
+int bq24232_assert_ce_n(bool val)
+{
+	if (bq24232_charger->pdata->charger_ce_n_gpio) {
+		bool ce_n = (val) ? 0 : 1;
+		gpio_set_value(bq24232_charger->pdata->charger_ce_n_gpio, ce_n);
+		dev_dbg(bq24232_charger->dev, "%s = %d complete\n", __func__, ce_n);
+		return 0;
+	} else
+		dev_err(bq24232_charger->dev, "%s: no charger_ce_n_gpio\n", __func__);
+	return -ENODATA;
+}
+
 static void bq24232_update_chrg_current_status(struct bq24232_charger *chip)
 {
 	mutex_lock(&chip->stat_lock);
@@ -726,6 +738,9 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	ret = gpio_request_one(bq24232_charger->pdata->chg_rate_temp_gpio, GPIOF_INIT_LOW, pdev->name);
 	if (ret < 0)
 		goto io_error2;
+	ret = gpio_request_one(bq24232_charger->pdata->charger_ce_n_gpio, GPIOF_INIT_LOW, pdev->name);
+	if (ret < 0)
+		goto io_error3;
 
 	mutex_init(&bq24232_charger->stat_lock);
 	spin_lock_init(&bq24232_charger->pgood_lock);
@@ -759,6 +774,8 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	} else
 		dev_warn(bq24232_charger->dev, "%s: enable_vbus unavailable\n", __func__);
 
+	if (pdata->charger_ce_n_gpio)
+		gpio_set_value(pdata->charger_ce_n_gpio, 0);
 
 	INIT_DELAYED_WORK(&bq24232_charger->bat_temp_mon_work,
 				bq24232_exception_mon_wrk);
@@ -769,14 +786,14 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	ret = register_otg_notification(bq24232_charger);
 	if (ret) {
 		dev_err(bq24232_charger->dev, "REGISTER OTG NOTIFICATION FAILED\n");
-		goto io_error3;
+		goto io_error4;
 	}
 
 	ret = power_supply_register(bq24232_charger->dev, pow_sply);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to register power supply: %d\n",
 			ret);
-		goto io_error4;
+		goto io_error5;
 	}
 
 	power_supply_query_charger_caps(&chgr_cap);
@@ -796,8 +813,10 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 
 	return 0;
 
-io_error4:
+io_error5:
 	usb_unregister_notifier(bq24232_charger->transceiver, &bq24232_charger->otg_nb);
+io_error4:
+	gpio_free(bq24232_charger->pdata->charger_ce_n_gpio);
 io_error3:
 	gpio_free(bq24232_charger->pdata->chg_rate_temp_gpio);
 io_error2:

@@ -214,8 +214,14 @@
 
 #ifdef CONFIG_ST_LSM6DS3_CAL_SUPPORT
 /* Macro for calibrate */
-#define CALIBRATE_SAMPLE_COUNT		50
-#define GRAVITY_ACCEL_LSB_2G				(1000000 / ST_LSM6DS3_ACCEL_FS_2G_SENSITIVITY)
+#define	CALIBRATE_SAMPLE_COUNT		50
+#define	GRAVITY_ACCEL_LSB_2G		(1000000 / ST_LSM6DS3_ACCEL_FS_2G_SENSITIVITY)
+#define	SIGN_X_A			1
+#define	SIGN_Y_A			(-1)
+#define	SIGN_Z_A			(-1)
+#define	SIGN_X_G			1
+#define	SIGN_Y_G			1
+#define	SIGN_Z_G			(-1)
 #endif
 
 #define ST_LSM6DS3_ACCEL_SUFFIX_NAME		"accel"
@@ -2447,12 +2453,18 @@ ssize_t st_lsm6ds3_sysfs_do_calibrate(struct device *dev,
 	/* The 4th parameter used for data sum check */
 	if (sdata->sindex == ST_INDIO_DEV_ACCEL)
 		return sprintf(buf, "%d %d %d %d\n",
-						-no_cali[0], -no_cali[1], GRAVITY_ACCEL_LSB_2G - no_cali[2],
-						GRAVITY_ACCEL_LSB_2G - no_cali[0] - no_cali[1] - no_cali[2]);
+					0 * SIGN_X_A - no_cali[0],
+					0 * SIGN_Y_A - no_cali[1],
+					GRAVITY_ACCEL_LSB_2G * SIGN_Z_A - no_cali[2],
+					0 * SIGN_X_A + 0 * SIGN_Y_A + GRAVITY_ACCEL_LSB_2G * SIGN_Z_A -
+					no_cali[0] - no_cali[1] - no_cali[2]);
 	else
 		return sprintf(buf, "%d %d %d %d\n",
-						-no_cali[0], -no_cali[1], -no_cali[2],
-						0 - no_cali[0] - no_cali[1] - no_cali[2]);
+					0 * SIGN_X_G - no_cali[0],
+					0 * SIGN_Y_G - no_cali[1],
+					0 * SIGN_Z_G - no_cali[2],
+					0 * SIGN_X_G + 0 * SIGN_Y_G + 0 * SIGN_Z_G -
+					no_cali[0] - no_cali[1] - no_cali[2]);
 
 }
 #endif

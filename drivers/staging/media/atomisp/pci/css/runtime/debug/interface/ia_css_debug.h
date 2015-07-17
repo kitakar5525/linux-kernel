@@ -491,6 +491,14 @@ void ia_css_debug_pc_dump(sp_ID_t id, unsigned int num_of_dumps);
  */
 void ia_css_debug_dump_hang_status(
 	struct ia_css_pipe *pipe);
+
+/*! @brief External command handler
+ * External command handler
+ *
+ * @return	None
+ */
+void ia_css_debug_ext_command_handler(void);
+
 #endif
 
 #endif /* _IA_CSS_DEBUG_H_ */

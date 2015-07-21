@@ -9555,8 +9555,12 @@ static void intel_crtc_flip_commit(struct drm_crtc *crtc,
 	if (disp->update_flag & DRM_MODE_SET_DISPLAY_UPDATE_ZORDER) {
 		I915_WRITE_BITS(SPCNTR(intel_crtc->pipe, 0),
 				intel_crtc->reg.spacntr, 0x00000007);
+		I915_WRITE(SPSURF(intel_crtc->pipe, 0),
+				I915_READ(SPSURF(intel_crtc->pipe, 0)));
 		I915_WRITE_BITS(SPCNTR(intel_crtc->pipe, 1),
 				intel_crtc->reg.spbcntr, 0x00000007);
+		I915_WRITE(SPSURF(intel_crtc->pipe, 1),
+				I915_READ(SPSURF(intel_crtc->pipe, 1)));
 	}
 	/* Write to all display registers */
 	for (i = disp->num_planes-1; i >= 0; i--) {

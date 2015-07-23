@@ -29,7 +29,6 @@
  *
  * DMA Port.
  *
- * zhengjie.lu@intel.com:
  * The DMA port definition for the input system
  * 2401 DMA is the duplication of the DMA port
  * definition for the CSS system DMA. It is duplicated
@@ -53,7 +52,6 @@ struct isys2401_dma_port_cfg_s {
  *
  * DMA Device.
  *
- * zhengjie.lu@intel.com:
  * The DMA device definition for the input system
  * 2401 DMA is the duplicattion of the DMA device
  * definition for the CSS system DMA. It is duplicated

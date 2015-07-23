@@ -849,8 +849,6 @@ static bool sh_css_translate_stream_cfg_to_input_system_input_port_attr(
 		}
 
 		/*
-		 * zhengjie.lu@intel.com:
-		 *
 		 * TODO
 		 * - Make "color_cfg" as part of "ia_css_tpg_config".
 		 */
@@ -869,8 +867,6 @@ static bool sh_css_translate_stream_cfg_to_input_system_input_port_attr(
 		isys_stream_descr->tpg_port_attr.delta_cfg.v_delta = stream_cfg->source.tpg.y_delta;
 
 		/*
-		 * zhengjie.lu@intel.com:
-		 *
 		 * TODO
 		 * - Make "sync_gen_cfg" as part of "ia_css_tpg_config".
 		 */
@@ -888,8 +884,6 @@ static bool sh_css_translate_stream_cfg_to_input_system_input_port_attr(
 		isys_stream_descr->prbs_port_attr.seed1 = stream_cfg->source.prbs.seed1;
 
 		/*
-		 * zhengjie.lu@intel.com:
-		 *
 		 * TODO
 		 * - Make "sync_gen_cfg" as part of "ia_css_prbs_config".
 		 */
@@ -1713,8 +1707,10 @@ ia_css_load_firmware(const struct ia_css_env *env,
 	/* make sure we initialize my_css */
 	if ((my_css.malloc != env->cpu_mem_env.alloc) ||
 		(my_css.free != env->cpu_mem_env.free) ||
+		#if !defined(__SVOS__)
 		(my_css.malloc_ex != env->cpu_mem_env.alloc_ex) ||
 		(my_css.free_ex != env->cpu_mem_env.free_ex) ||
+		#endif
 		(my_css.flush != env->cpu_mem_env.flush)
 		)
 	{
@@ -1722,8 +1718,10 @@ ia_css_load_firmware(const struct ia_css_env *env,
 
 		my_css.malloc = env->cpu_mem_env.alloc;
 		my_css.free = env->cpu_mem_env.free;
+		#if !defined(__SVOS__)
 		my_css.malloc_ex = env->cpu_mem_env.alloc_ex;
 		my_css.free_ex = env->cpu_mem_env.free_ex;
+		#endif
 		my_css.flush = env->cpu_mem_env.flush;
 	}
 
@@ -1813,8 +1811,10 @@ ia_css_init(const struct ia_css_env *env,
 
 	malloc_func    = env->cpu_mem_env.alloc;
 	free_func      = env->cpu_mem_env.free;
+	#if !defined(__SVOS__)
 	malloc_func_ex = env->cpu_mem_env.alloc_ex;
 	free_func_ex   = env->cpu_mem_env.free_ex;
+	#endif
 	flush_func     = env->cpu_mem_env.flush;
 
 	pipe_global_init();

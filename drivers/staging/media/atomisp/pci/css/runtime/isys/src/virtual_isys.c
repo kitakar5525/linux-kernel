@@ -744,7 +744,6 @@ static bool calculate_ibuf_ctrl_cfg(
 	cfg->ib_buffer.lines			= channel->ib_buffer.lines;
 
 	/*
-	 * zhengjie.lu@intel.com:
 	 * "dest_buf_cfg" should be part of the input system output
 	 * port configuration.
 	 *
@@ -770,7 +769,6 @@ static bool calculate_ibuf_ctrl_cfg(
 	}
 
 	/*
-	 * zhengjie.lu@intel.com:
 	 * "items_per_store" is hard coded as "1", which is ONLY valid
 	 * when the CSI-MIPI long packet is transferred.
 	 *

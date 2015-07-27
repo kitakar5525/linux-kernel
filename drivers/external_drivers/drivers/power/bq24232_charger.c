@@ -288,7 +288,7 @@ static int bq24232_enable_charging(
 
 int bq24232_assert_ce_n(bool val)
 {
-	if (bq24232_charger->pdata->charger_ce_n_gpio) {
+	if (bq24232_charger->pdata->charger_ce_n_gpio >= 0) {
 		bool ce_n = (val) ? 0 : 1;
 		gpio_set_value(bq24232_charger->pdata->charger_ce_n_gpio, ce_n);
 		dev_dbg(bq24232_charger->dev, "%s = %d complete\n", __func__, ce_n);
@@ -738,9 +738,11 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	ret = gpio_request_one(bq24232_charger->pdata->chg_rate_temp_gpio, GPIOF_INIT_LOW, pdev->name);
 	if (ret < 0)
 		goto io_error2;
-	ret = gpio_request_one(bq24232_charger->pdata->charger_ce_n_gpio, GPIOF_INIT_LOW, pdev->name);
-	if (ret < 0)
-		goto io_error3;
+	if (bq24232_charger->pdata->charger_ce_n_gpio >= 0) {
+		ret = gpio_request_one(bq24232_charger->pdata->charger_ce_n_gpio, GPIOF_INIT_LOW, pdev->name);
+		if (ret < 0)
+			goto io_error3;
+	}
 
 	mutex_init(&bq24232_charger->stat_lock);
 	spin_lock_init(&bq24232_charger->pgood_lock);
@@ -774,7 +776,7 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	} else
 		dev_warn(bq24232_charger->dev, "%s: enable_vbus unavailable\n", __func__);
 
-	if (pdata->charger_ce_n_gpio)
+	if (pdata->charger_ce_n_gpio >= 0)
 		gpio_set_value(pdata->charger_ce_n_gpio, 0);
 
 	INIT_DELAYED_WORK(&bq24232_charger->bat_temp_mon_work,

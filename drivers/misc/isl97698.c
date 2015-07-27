@@ -75,9 +75,6 @@
 #define ISL97698_BST_FREQ_1275KHZ	0x0E
 #define ISL97698_BST_FREQ_1457KHZ	0x0F
 
-/* Brightness max value, limit to 50% to avoid current overload */
-#define ISL_BRIGHTNESS_VAL_MAX		(0xFF>>1)
-
 /* Brightness level: Min(0), Max (100), Defalut(50) */
 #define ISL_BRIGHTNESS_LEVEL_MIN	0
 #define ISL_BRIGHTNESS_LEVEL_MAX	100
@@ -104,6 +101,7 @@ struct isl97698_st {
 	struct device *dev;
 	struct backlight_device *bl;
 	int bias_en;
+	int isl_brightness_val_max;
 	int enable;
 };
 
@@ -152,7 +150,7 @@ static int brightness_get_value(struct isl97698_st *isl, int *level)
 		dev_err(&isl->client->dev, "Read brightness current H8 reg failed.");
 		return ret;
 	}
-	*level = regval * ISL_BRIGHTNESS_LEVEL_MAX / ISL_BRIGHTNESS_VAL_MAX;
+	*level = regval * ISL_BRIGHTNESS_LEVEL_MAX / isl->isl_brightness_val_max;
 
 	return 0;
 }
@@ -163,7 +161,7 @@ static int brightness_set_value(struct isl97698_st *isl, int level)
 	u8 regval;
 
 	/* PWMI x I2C mode use reg<0x0> for brightness only */
-	regval = (ISL_BRIGHTNESS_VAL_MAX * level) / ISL_BRIGHTNESS_LEVEL_MAX;
+	regval = (isl->isl_brightness_val_max * level) / ISL_BRIGHTNESS_LEVEL_MAX;
 	ret = isl97698_i2c_write(isl->client, ISL97698_REG_LED_H8, regval);
 	if (ret < 0) {
 		dev_err(&isl->client->dev, "Write brightness current H8 reg failed.");
@@ -311,6 +309,7 @@ static int  isl97698_probe(struct i2c_client *client,
 	chip->client = client;
 	chip->dev = &client->dev;
 	chip->bias_en = pdata->bias_en;
+	chip->isl_brightness_val_max = pdata->isl_brightness_val_max;
 	i2c_set_clientdata(client, chip);
 
 	brightness_set_chip_enable(chip, ISL_CHIP_ENABLE);

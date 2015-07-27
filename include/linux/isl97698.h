@@ -18,6 +18,7 @@
 
 struct isl97698_platform_data {
 	int bias_en;
+	int isl_brightness_val_max;
 };
 
 #endif /* _ISL97698_BRIGHTNESS_H_ */

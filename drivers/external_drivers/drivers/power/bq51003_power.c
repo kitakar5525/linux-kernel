@@ -22,6 +22,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/workqueue.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
@@ -39,13 +40,16 @@ static int bq51003_set_property(struct power_supply *psy,
 static int bq51003_property_is_writeable(struct power_supply *psy,
 					enum power_supply_property psp);
 
-
 struct bq51003_power {
 	const struct bq51003_plat_data *pdata;
 	struct power_supply psy;
+	struct work_struct detector_evt_work;
+	spinlock_t online_lock;
 	unsigned int irq;
-	int online; /* Wireless Power Transmission ongoing */
+	int online; /* Device on the Wireless Power Transmitter */
 	int enable; /* enable/disable Wireless Power */
+	bool rest_on_charger; /* Is the device docked without power? */
+	bool wc_powered; /* Power transmission is active */
 };
 
 
@@ -78,6 +82,16 @@ static irqreturn_t bq51003_power_irq(int irq, void *devid)
 	return IRQ_HANDLED;
 }
 
+static void bq51003_motion_handler(void *wlc_power_supply) {
+	struct bq51003_power *wc_charger = container_of(wlc_power_supply, struct bq51003_power, psy);
+	pr_info("%s: undocking detected\n", __func__);
+
+	/* Disable motion detection */
+	wc_charger->rest_on_charger = false;
+	queue_work(system_nrt_wq, &wc_charger->detector_evt_work);
+	power_supply_changed(wlc_power_supply);
+}
+
 /*
  * bq51003_get_property() may be called in atomic
  * context, make sure you do not use locks
@@ -87,12 +101,43 @@ static int bq51003_get_property(struct power_supply *psy,
 					union power_supply_propval *val)
 {
 	int ret = 0;
+	unsigned long flags;
 	struct bq51003_power *wc_charger = container_of(psy, struct bq51003_power , psy);
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
-		wc_charger->online = !gpio_get_value(wc_charger->pdata->wc_chg_n);
+		/* That section should be kept atomic */
+		spin_lock_irqsave(&wc_charger->online_lock, flags);
+		wc_charger->online = false;
+
+		/* Is the device on the charger and power charging enabled? */
+		if (!gpio_get_value(wc_charger->pdata->wc_chg_n)) {
+			if (wc_charger->pdata->wc_docking_detection && wc_charger->rest_on_charger) {
+				wc_charger->rest_on_charger = false;
+				queue_work(system_nrt_wq, &wc_charger->detector_evt_work);
+			}
+			wc_charger->wc_powered = true;
+			wc_charger->online = true;
+		} else /* no power charging */
+		if (wc_charger->wc_powered) {
+            /* was the device on the charger last time ? */
+            /* and was power lost due to wireless charger disabling ?*/
+			/* Trig the docking detection mechanism */
+			pr_info("%s: trig docking detection\n", __func__);
+			wc_charger->wc_powered = false;
+
+			if (wc_charger->pdata->wc_docking_detection) {
+				wc_charger->rest_on_charger = true;
+				queue_work(system_nrt_wq, &wc_charger->detector_evt_work);
+			}
+		}
+
+		/* Is the device on a still turned-off charger ? */
+		if (wc_charger->rest_on_charger)
+			wc_charger->online = true;
+
 		val->intval = wc_charger->online;
+		spin_unlock_irqrestore(&wc_charger->online_lock, flags);
 
 		break;
 	case POWER_SUPPLY_PROP_ENABLE_CHARGER:
@@ -127,6 +172,17 @@ static int bq51003_property_is_writeable(struct power_supply *psy,
 		return 1;
 	else
 		return 0;
+}
+
+static void bq51003_detector_evt_worker(struct work_struct *work)
+{
+        struct bq51003_power *wc_charger =
+	                        container_of(work, struct bq51003_power, detector_evt_work);
+
+	pr_info("%s: rest_on_charger = %d\n", __func__, wc_charger->rest_on_charger);
+	if (wc_charger->pdata->wc_docking_detection)
+		wc_charger->pdata->wc_docking_detection(wc_charger->rest_on_charger,
+							bq51003_motion_handler, &wc_charger->psy);
 }
 
 static int bq51003_power_probe(struct platform_device *pdev)
@@ -197,6 +253,10 @@ static int bq51003_power_probe(struct platform_device *pdev)
 		goto err_gpio_free;
 	}
 
+	INIT_WORK(&wc_charger->detector_evt_work, bq51003_detector_evt_worker);
+	spin_lock_init(&wc_charger->online_lock);
+	wc_charger->pdata = pdata;
+
 	psy = &wc_charger->psy;
 	psy->name = DEV_NAME;
 	psy->type = POWER_SUPPLY_TYPE_WIRELESS,
@@ -205,7 +265,6 @@ static int bq51003_power_probe(struct platform_device *pdev)
 	psy->get_property = bq51003_get_property;
 	psy->set_property = bq51003_set_property;
 	psy->property_is_writeable = bq51003_property_is_writeable;
-	wc_charger->pdata = pdata;
 
 	ret = power_supply_register(&pdev->dev, psy);
 	if (ret < 0) {

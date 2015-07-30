@@ -47,6 +47,7 @@
 #include "assert_support.h"
 #include "print_support.h"
 #include "string_support.h"
+#include "ia_css_system_ctrl.h"
 
 #include "fifo_monitor.h"
 

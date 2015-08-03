@@ -24,6 +24,7 @@ struct wifi_platform_data {
 	void *(*get_country_code)(char *ccode);
 	char *nvram_id;
 	bool use_fast_irq;
+	int (*get_wake_irq)(void);
 };
 
 #endif

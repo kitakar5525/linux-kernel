@@ -405,16 +405,16 @@ static void lis3dsh_acc_set_init_statepr1_inst(struct lis3dsh_acc_data *acc)
 	acc->resume_stmach_program1[2] = SETP_CMD;
 	acc->resume_stmach_program1[3] = 0x50;
 	acc->resume_stmach_program1[4] = 0x01;
-	acc->resume_stmach_program1[5] = SRP_CMD;
-	acc->resume_stmach_program1[6] = GNTH1_OPCODE;
-	acc->resume_stmach_program1[7] = (LNTH1_OPCODE < 4) | TI1_OPCODE;
-	acc->resume_stmach_program1[8] = SETP_CMD;
-	acc->resume_stmach_program1[9] = 0x50;
-	acc->resume_stmach_program1[10] = 0x02;
-	acc->resume_stmach_program1[11] = OUTC_CMD;
-	acc->resume_stmach_program1[12] = CRP_CMD;
-	acc->resume_stmach_program1[13] = CONT_CMD;
-	acc->resume_stmach_program1[14] = 0x00;
+	acc->resume_stmach_program1[5] = OUTC_CMD;
+	acc->resume_stmach_program1[6] = SRP_CMD;
+	acc->resume_stmach_program1[7] = GNTH1_OPCODE;
+	acc->resume_stmach_program1[8] = (LNTH1_OPCODE < 4) | TI1_OPCODE;
+	acc->resume_stmach_program1[9] = SETP_CMD;
+	acc->resume_stmach_program1[10] = 0x50;
+	acc->resume_stmach_program1[11] = 0x02;
+	acc->resume_stmach_program1[12] = OUTC_CMD;
+	acc->resume_stmach_program1[13] = CRP_CMD;
+	acc->resume_stmach_program1[14] = CONT_CMD;
 	acc->resume_stmach_program1[15] = 0x00;
 #endif
 }

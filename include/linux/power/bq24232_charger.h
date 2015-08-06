@@ -76,6 +76,8 @@ struct bq24232_plat_data {
 	int (*enable_charging) (bool val);
 	int (*enable_vbus) (bool val);
 	int (*get_charging_status) (bool *charging_status);
+
+	bool wc_direct_support;
 };
 
 #endif

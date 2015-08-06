@@ -383,6 +383,18 @@ static void bq24232_update_charging_status(struct bq24232_charger *chip)
 		chip->status = POWER_SUPPLY_STATUS_DISCHARGING;
 	else
 		chip->status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+
+	if (chip->pdata->wc_direct_support) {
+		int w_online = 0;
+		ret = get_psy_property_val(chip->wirless_psy, POWER_SUPPLY_TYPE_WIRELESS,
+						POWER_SUPPLY_PROP_ONLINE, &w_online);
+		if (ret < 0)
+			dev_err(chip->dev, "%s: cannot get power_supply property from wireless (%d)\n", ret);
+		else {
+			if (w_online)
+				chip->status = POWER_SUPPLY_STATUS_CHARGING;
+		}
+	}
 	mutex_unlock(&chip->stat_lock);
 }
 
@@ -570,7 +582,7 @@ static int otg_handle_notification(struct notifier_block *nb,
 		unsigned long event, void *param) {
 	struct bq24232_charger *chip = container_of(nb, struct bq24232_charger, otg_nb);
 	struct bq24232_otg_event *evt;
-	int vbus_detected, w_online = 0, ret;
+	int vbus_detected, ret;
 	unsigned long flags;
 
 	dev_dbg(chip->dev, "OTG notification: event %lu\n", event);
@@ -598,18 +610,22 @@ static int otg_handle_notification(struct notifier_block *nb,
 			evt->cap.chrg_evt = POWER_SUPPLY_CHARGER_EVENT_DISCONNECT;
 		evt->cap.ma = BQ24232_CHARGE_CURRENT_LOW;
 
-		ret = get_psy_property_val(chip->wirless_psy, POWER_SUPPLY_TYPE_WIRELESS,
-						POWER_SUPPLY_PROP_ONLINE, &w_online);
-		if (ret < 0) {
-			dev_dbg(chip->dev, "OTG notification: cannot get power_supply property, error(%d)\n",
-					ret);
+		if (chip->pdata->wc_direct_support) {
+			int w_online = 0;
+			ret = get_psy_property_val(chip->wirless_psy, POWER_SUPPLY_TYPE_WIRELESS,
+							POWER_SUPPLY_PROP_ONLINE, &w_online);
+			if (ret < 0) {
+				dev_dbg(chip->dev, "OTG notification: cannot get power_supply property, error(%d)\n",
+						ret);
+				ret = NOTIFY_OK;
+			} else {
+				dev_dbg(chip->dev, "OTG notification: Wireless charger ONLINE = %d\n",
+						w_online);
+				if (w_online)
+					ret = NOTIFY_STOP;
+			}
+		} else
 			ret = NOTIFY_OK;
-		} else {
-			dev_dbg(chip->dev, "OTG notification: Wireless charger ONLINE = %d\n",
-					w_online);
-			if (w_online)
-				ret = NOTIFY_STOP;
-		}
 		break;
 	default:
 		return NOTIFY_DONE;

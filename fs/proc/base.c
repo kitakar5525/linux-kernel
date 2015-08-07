@@ -1017,43 +1017,6 @@ out:
 	return err < 0 ? err : count;
 }
 
-static int oom_adjust_permission(struct inode *inode, int mask)
-{
-#ifdef CONFIG_UIDGID_STRICT_TYPE_CHECKS
-	kuid_t uid;
-#else
-	uid_t uid;
-#endif
-	struct task_struct *p;
-
-	p = get_proc_task(inode);
-	if(p) {
-		uid = task_uid(p);
-		put_task_struct(p);
-	}
-
-	/*
-	 * System Server (uid == 1000) is granted access to oom_adj of all 
-	 * android applications (uid > 10000) as and services (uid >= 1000)
-	 */
-#ifdef CONFIG_UIDGID_STRICT_TYPE_CHECKS
-	if (p && (current_fsuid().val == 1000) && (uid.val >= 1000)) {
-#else
-	if (p && (current_fsuid() == 1000) && (uid >= 1000)) {
-#endif
-		if (inode->i_mode >> 6 & mask) {
-			return 0;
-		}
-	}
-
-	/* Fall back to default. */
-	return generic_permission(inode, mask);
-}
-
-static const struct inode_operations proc_oom_adj_inode_operations = {
-	.permission	= oom_adjust_permission,
-};
-
 static const struct file_operations proc_oom_adj_operations = {
 	.read		= oom_adj_read,
 	.write		= oom_adj_write,

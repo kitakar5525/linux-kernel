@@ -127,7 +127,6 @@ struct cpufreq_interactive_tunables {
 	int touchboostpulse_duration_val;
 	/* End time of touchboost pulse in ktime converted to usecs */
 	u64 touchboostpulse_endtime;
-	bool boosted;
 	/*
 	 * Max additional time to wait in idle, beyond timer_rate, at speeds
 	 * above minimum before wakeup to reduce speed, or -1 if unnecessary.
@@ -577,7 +576,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 	 * (or the indefinite boost is turned off).
 	 */
 
-	if (!tunables->boosted || new_freq > tunables->hispeed_freq) {
+	if (!boosted || new_freq > tunables->hispeed_freq) {
 		pcpu->floor_freq = new_freq;
 		pcpu->floor_validate_time = now;
 	}
@@ -732,14 +731,13 @@ static int cpufreq_interactive_speedchange_task(void *data)
 	return 0;
 }
 
-static void cpufreq_interactive_boost(struct cpufreq_interactive_tunables *tunables)
+static void cpufreq_interactive_boost(void)
 {
 	int i;
 	int anyboost = 0;
 	unsigned long flags;
 	struct cpufreq_interactive_cpuinfo *pcpu;
-
-	tunables->boosted = true;
+	struct cpufreq_interactive_tunables *tunables;
 
 	for_each_online_cpu(i) {
 		pcpu = &per_cpu(cpuinfo, i);
@@ -1125,8 +1123,7 @@ static ssize_t store_boost(struct cpufreq_interactive_tunables *tunables,
 
 	if (tunables->boost_val) {
 		trace_cpufreq_interactive_boost("on");
-		if (!tunables->boosted)
-			cpufreq_interactive_boost(tunables);
+		cpufreq_interactive_boost();
 	} else {
 		trace_cpufreq_interactive_unboost("off");
 	}
@@ -1147,8 +1144,7 @@ static ssize_t store_boostpulse(struct cpufreq_interactive_tunables *tunables,
 	tunables->boostpulse_endtime = ktime_to_us(ktime_get()) +
 		tunables->boostpulse_duration_val;
 	trace_cpufreq_interactive_boost("pulse");
-	if (!tunables->boosted)
-		cpufreq_interactive_boost(tunables);
+	cpufreq_interactive_boost();
 	return count;
 }
 

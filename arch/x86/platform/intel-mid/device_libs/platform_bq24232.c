@@ -50,7 +50,7 @@ void *bq24232_charger_platform_data(void *info)
 	bq24232_pdata.bat_temp_profile = bq24232_bat_temp_profile;
 	bq24232_pdata.supplied_to = bq24232_supplied_to;
 	bq24232_pdata.num_supplicants = ARRAY_SIZE(bq24232_supplied_to);
-	bq24232_pdata.wc_direct_support = false;
+	bq24232_pdata.wc_direct_support = true;
 
 	return &bq24232_pdata;
 }

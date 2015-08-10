@@ -1080,6 +1080,8 @@ typedef struct tagHDMITESTREGREADWRITE {
 /* Update cursor position, input is intel_dc_cursor_ctx */
 #define DRM_PSB_UPDATE_CURSOR_POS       0x3C
 
+#define DRM_PSB_PM_SET                  0x3D
+
 /* Do not use IOCTL between 0x40 and 0x4F */
 /* These will be reserved for OEM to use */
 /* OEM IOCTLs */

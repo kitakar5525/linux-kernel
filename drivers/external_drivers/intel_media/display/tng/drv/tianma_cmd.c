@@ -331,9 +331,34 @@ static int tianma_cmd_power_off(
 		return -EINVAL;
 	}
 
+	usleep_range(1000, 1100);
+
+	/* set display off */
+	err = mdfld_dsi_send_mcs_short_lp(sender,
+			set_display_off, 0x00, 1,
+			MDFLD_DSI_SEND_PACKAGE);
+	if (err) {
+		DRM_ERROR("%s: %d: Set Display Off\n",
+		__func__, __LINE__);
+		goto power_off_err;
+	}
+
+	/* set sleep in */
+	err = mdfld_dsi_send_mcs_short_lp(sender,
+			enter_sleep_mode, 0x00, 1,
+			MDFLD_DSI_SEND_PACKAGE);
+	if (err) {
+		DRM_ERROR("%s: %d: Set Sleep-in\n",
+		__func__, __LINE__);
+		goto power_off_err;
+	}
+
 	/* assert panel reset : delay > 85 ms */
 	usleep_range(85000, 85100);
 	gpio_set_value(mipi_reset_gpio, 0);
+
+	if (bias_en_gpio)
+		gpio_set_value(bias_en_gpio, 0);
 
 	return 0;
 
@@ -381,12 +406,188 @@ int tianma_cmd_panel_reset(
 }
 
 static
+int tianma_cmd_enter_deep_standby(
+		struct mdfld_dsi_config *dsi_config)
+{
+	struct mdfld_dsi_pkg_sender *sender
+		= mdfld_dsi_get_pkg_sender(dsi_config);
+
+	int err = 0;
+
+	PSB_DEBUG_ENTRY("\n");
+
+	if (!sender) {
+		DRM_ERROR("Cannot get sender\n");
+		return -EINVAL;
+	}
+
+	/* Display Off */
+	err = mdfld_dsi_send_mcs_short_lp(sender,
+			0x28, 0x00, 1,
+			MDFLD_DSI_SEND_PACKAGE);
+	if (err) {
+		DRM_ERROR("%s: %d: 0x28 cmd\n",
+		__func__, __LINE__);
+		goto enter_deep_standby_err;
+	}
+
+	/* Sleep-In */
+	err = mdfld_dsi_send_mcs_short_lp(sender,
+			0x10, 0x00, 1,
+			MDFLD_DSI_SEND_PACKAGE);
+	if (err) {
+		DRM_ERROR("%s: %d: 0x10 cmd\n",
+		__func__, __LINE__);
+		goto enter_deep_standby_err;
+	}
+
+	/* Delay > 5 Frames */
+	msleep(100);
+
+	/* Enter Deep Standby */
+	err = mdfld_dsi_send_mcs_short_lp(sender,
+			0x4f, 0x01, 1,
+			MDFLD_DSI_SEND_PACKAGE);
+	if (err) {
+		DRM_ERROR("%s: %d: 0x4f cmd\n",
+		__func__, __LINE__);
+		goto enter_deep_standby_err;
+	}
+
+	return 0;
+
+enter_deep_standby_err:
+	err = -EIO;
+	return err;
+}
+
+static
 int tianma_cmd_exit_deep_standby(
 		struct mdfld_dsi_config *dsi_config)
 {
 	PSB_DEBUG_ENTRY("\n");
 
+	gpio_direction_output(mipi_reset_gpio, 0);
+
+	gpio_set_value(mipi_reset_gpio, 0);
+	usleep_range(3000, 3100);
+
+	gpio_set_value(mipi_reset_gpio, 1);
+	usleep_range(10000, 12000);
+
+	if (bias_en_gpio)
+		gpio_set_value(bias_en_gpio, 1);
+
 	return 0;
+}
+
+static
+int tianma_cmd_exit_low_power(
+		struct mdfld_dsi_config *dsi_config)
+{
+	struct mdfld_dsi_pkg_sender *sender
+		= mdfld_dsi_get_pkg_sender(dsi_config);
+
+	int err = 0;
+
+	PSB_DEBUG_ENTRY("\n");
+
+	if (!sender) {
+		DRM_ERROR("Cannot get sender\n");
+		return -EINVAL;
+	}
+
+	/* Exit Low Power */
+	err = mdfld_dsi_send_mcs_short_lp(sender,
+			0x38, 0x00, 1,
+			MDFLD_DSI_SEND_PACKAGE);
+	if (err) {
+		DRM_ERROR("%s: %d: 0x38 cmd\n",
+		__func__, __LINE__);
+		goto exit_low_power_err;
+	}
+
+	return 0;
+
+exit_low_power_err:
+	err = -EIO;
+	return err;
+}
+
+static
+int tianma_cmd_enter_low_power(
+		struct mdfld_dsi_config *dsi_config)
+{
+	struct mdfld_dsi_pkg_sender *sender
+		= mdfld_dsi_get_pkg_sender(dsi_config);
+
+	int err = 0;
+
+	PSB_DEBUG_ENTRY("\n");
+
+	if (!sender) {
+		DRM_ERROR("Cannot get sender\n");
+		return -EINVAL;
+	}
+
+	/* Enter Low Power */
+	err = mdfld_dsi_send_mcs_short_lp(sender,
+			0x39, 0x00, 1,
+			MDFLD_DSI_SEND_PACKAGE);
+	if (err) {
+		DRM_ERROR("%s: %d: 0x39 cmd\n",
+		__func__, __LINE__);
+		goto enter_low_power_err;
+	}
+
+	return 0;
+
+enter_low_power_err:
+	err = -EIO;
+	return err;
+}
+
+static
+int tianma_cmd_sleep_in(
+		struct mdfld_dsi_config *dsi_config)
+{
+	struct mdfld_dsi_pkg_sender *sender
+		= mdfld_dsi_get_pkg_sender(dsi_config);
+
+	int err = 0;
+
+	PSB_DEBUG_ENTRY("\n");
+
+	if (!sender) {
+		DRM_ERROR("Cannot get sender\n");
+		return -EINVAL;
+	}
+
+	/* Display Off */
+	err = mdfld_dsi_send_mcs_short_lp(sender,
+			0x28, 0x00, 1,
+			MDFLD_DSI_SEND_PACKAGE);
+	if (err) {
+		DRM_ERROR("%s: %d: 0x28 cmd\n",
+		__func__, __LINE__);
+		goto sleep_in_err;
+	}
+
+	/* Sleep In */
+	err = mdfld_dsi_send_mcs_short_lp(sender,
+			0x10, 0x00, 1,
+			MDFLD_DSI_SEND_PACKAGE);
+	if (err) {
+		DRM_ERROR("%s: %d: 0x10 cmd\n",
+		__func__, __LINE__);
+		goto sleep_in_err;
+	}
+
+	return 0;
+
+sleep_in_err:
+	err = -EIO;
+	return err;
 }
 
 static
@@ -505,6 +706,10 @@ void tianma_cmd_init(struct drm_device *dev,
 	p_funcs->detect = tianma_cmd_panel_connection_detect;
 	p_funcs->set_brightness = tianma_cmd_set_brightness;
 	p_funcs->exit_deep_standby = tianma_cmd_exit_deep_standby;
+	p_funcs->enter_deep_standby = tianma_cmd_enter_deep_standby;
+	p_funcs->exit_low_power = tianma_cmd_exit_low_power;
+	p_funcs->enter_low_power = tianma_cmd_enter_low_power;
+	p_funcs->sleep_in = tianma_cmd_sleep_in;
 
 	/* debugfs */
 	dbgfs_dsi_config = NULL;

@@ -1204,6 +1204,42 @@ void intel_drm_kms_helper_poll_init(struct drm_device *dev)
 	drm_kms_helper_poll_enable(dev);
 }
 
+int psb_power_mode_set_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
+{
+	struct drm_connector *connector;
+	const struct drm_connector_funcs *funcs;
+	int hwc_mode = *(int *)data;
+	int ret = 0;
+
+	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
+		struct psb_intel_output *psb_intel_output =
+				to_psb_intel_output(connector);
+		if (psb_intel_output->type == INTEL_OUTPUT_MIPI) {/* pipeA */
+			funcs = connector->funcs;
+			break;
+		}
+	}
+
+	if (!funcs) {
+		DRM_ERROR("Drm connector funcs Null");
+		ret = -EINVAL;
+	}
+
+	switch (hwc_mode) {
+	case POWER_MODE_OFF:
+		funcs->dpms(connector, DRM_MODE_DPMS_OFF);
+		break;
+	case POWER_MODE_NORMAL:
+		funcs->dpms(connector, DRM_MODE_DPMS_ON);
+		break;
+	default:
+		DRM_INFO("Not support display standby mode yet!\n");
+		break;
+	}
+	return ret;
+}
+
 /* MRST_PLATFORM end */
 
 #include "psb_intel_display2.c"

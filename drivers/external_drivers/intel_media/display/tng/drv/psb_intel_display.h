@@ -24,5 +24,6 @@ int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 			       struct drm_framebuffer *old_fb);
 bool psb_intel_pipe_has_type(struct drm_crtc *crtc, int type);
 void intel_drm_kms_helper_poll_init(struct drm_device *dev);
-
+int psb_power_mode_set_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *file_priv);
 #endif

@@ -356,6 +356,9 @@ MODULE_DEVICE_TABLE(pci, pciidlist);
 #define DRM_IOCTL_PSB_GETPAGEADDRS	\
 		DRM_IOWR(DRM_COMMAND_BASE + DRM_PSB_GETPAGEADDRS,\
 			 struct drm_psb_getpageaddrs_arg)
+#define DRM_IOCTL_PSB_PM_SET	\
+		DRM_IOW(DRM_COMMAND_BASE + DRM_PSB_PM_SET,\
+			 uint32_t)
 #define DRM_IOCTL_PSB_HIST_ENABLE	\
 		DRM_IOWR(DRM_PSB_HIST_ENABLE + DRM_COMMAND_BASE, \
 			 uint32_t)
@@ -716,6 +719,9 @@ static struct drm_ioctl_desc psb_ioctls[] = {
 		      DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_GETPAGEADDRS,
 		      psb_getpageaddrs_ioctl,
+		      DRM_AUTH),
+	PSB_IOCTL_DEF(DRM_IOCTL_PSB_PM_SET,
+		      psb_power_mode_set_ioctl,
 		      DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_HIST_ENABLE,
 		      psb_hist_enable_ioctl,

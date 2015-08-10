@@ -190,6 +190,11 @@ enum {
 #define DSI_DPI_COMPLETE_LAST_LINE			BIT2
 #define DSI_DPI_DISABLE_BTA					BIT3
 
+#define POWER_MODE_OFF            0
+#define POWER_MODE_DOZE           1
+#define POWER_MODE_NORMAL         2
+#define POWER_MODE_DOZE_SUSPEND   3
+
 struct mdfld_dsi_connector_state {
 	u32 mipi_ctrl_reg;
 };

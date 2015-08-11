@@ -103,9 +103,11 @@
 #define FG_MODEL_LOCK1		0X0000
 #define FG_MODEL_LOCK2		0X0000
 
-#define dQ_ACC_DIV	0x4
+#define dQ_ACC_DIV_MAX17042	0x4
+#define dQ_ACC_DIV_MAX17050	0x16
 #define dP_ACC_100	0x1900
 #define dP_ACC_200	0x3200
+#define dP_ACC_MAX17050		0x0c80
 
 #define	NTC_47K_TGAIN	0xE4E4
 #define	NTC_47K_TOFF	0x2F1D
@@ -1392,7 +1394,7 @@ static void reset_vfsoc0_reg(struct max17042_chip *chip)
 
 static void load_new_capacity_params(struct max17042_chip *chip, bool is_por)
 {
-	u16 rem_cap, rep_cap, dq_acc;
+	u16 rem_cap, rep_cap, dq_acc, dq_acc_div, dp_acc;
 
 	if (is_por) {
 		/* fg_vfSoc needs to shifted by 8 bits to get the
@@ -1414,11 +1416,23 @@ static void load_new_capacity_params(struct max17042_chip *chip, bool is_por)
 					MAX17042_RepCap, rep_cap);
 	}
 
-	/* Write dQ_acc to 200% of Capacity and dP_acc to 200% */
+	if (chip->chip_type == MAX17050)
+	{
+		/* Write dQ_acc to Capacity / 0x16 and dP_acc to 0xc80 */
+		dq_acc_div = dQ_ACC_DIV_MAX17050;
+		dp_acc = dP_ACC_MAX17050;
+	}
+	else
+	{
+		/* Write dQ_acc to 200% of Capacity and dP_acc to 200% */
+		dq_acc_div = dQ_ACC_DIV_MAX17042;
+		dp_acc = dP_ACC_200;
+	}
+
 	dq_acc = MAX17042_MODEL_MUL_FACTOR(fg_conf_data->full_cap,
-			chip->model_algo_factor) / dQ_ACC_DIV;
+			chip->model_algo_factor) / dq_acc_div;
 	max17042_write_verify_reg(chip->client, MAX17042_dQacc, dq_acc);
-	max17042_write_verify_reg(chip->client, MAX17042_dPacc, dP_ACC_200);
+	max17042_write_verify_reg(chip->client, MAX17042_dPacc, dp_acc);
 
 	max17042_write_verify_reg(chip->client, MAX17042_FullCAP,
 			fg_conf_data->full_cap

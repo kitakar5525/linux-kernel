@@ -129,9 +129,15 @@
 #define CYCLES_ROLLOVER_CUTOFF		0x00FF
 #define MAX17042_DEF_RO_LRNCFG		0x0076
 
+#define MAX17042_CGAIN_DEFAULT		0x4000
 #define MAX17042_CGAIN_DISABLE		0x0000
+#define MAX17042_COFF_DEFAULT		0x0000
 #define MAX17042_EN_VOLT_FG		0x0007
 #define MAX17042_CFG_INTR_SOCVF		0x0003
+#define MAX17042_AtRate_DEFAULT		0x0
+#define MAX17042_MinMaxTemp_DEFAULT 0x807F
+#define MAX17042_MinMaxVolt_DEFAULT 0x00FF
+#define MAX17042_MinMaxCurr_DEFAULT 0x807F
 
 /* Vempty value set to 2500mV */
 #define MAX17042_DEF_VEMPTY_VAL		0x7D5A
@@ -1376,9 +1382,12 @@ static void update_capacity_regs(struct max17042_chip *chip)
 static void reset_vfsoc0_reg(struct max17042_chip *chip)
 {
 	fg_vfSoc = max17042_read_reg(chip->client, MAX17042_VFSOC);
-	max17042_write_reg(chip->client, MAX17042_VFSOC0Enable, VFSOC0_UNLOCK);
-	max17042_write_verify_reg(chip->client, MAX17042_VFSOC0, fg_vfSoc);
-	max17042_write_reg(chip->client, MAX17042_VFSOC0Enable, VFSOC0_LOCK);
+	if (chip->chip_type == MAX17042)
+	{
+		max17042_write_reg(chip->client, MAX17042_VFSOC0Enable, VFSOC0_UNLOCK);
+		max17042_write_verify_reg(chip->client, MAX17042_VFSOC0, fg_vfSoc);
+		max17042_write_reg(chip->client, MAX17042_VFSOC0Enable, VFSOC0_LOCK);
+	}
 }
 
 static void load_new_capacity_params(struct max17042_chip *chip, bool is_por)
@@ -1558,6 +1567,27 @@ static void reset_max17042(struct max17042_chip *chip)
 	/* adjust Temperature gain and offset */
 	max17042_write_reg(chip->client, MAX17042_TGAIN, NTC_47K_TGAIN);
 	max17042_write_reg(chip->client, MAx17042_TOFF, NTC_47K_TOFF);
+	/* Reset Gain of Coulomb counter */
+	max17042_write_reg(chip->client, MAX17042_CGAIN,
+					MAX17042_CGAIN_DEFAULT);
+	/* Reset Offset of Coulomb counter */
+	max17042_write_reg(chip->client, MAX17042_COFF,
+					MAX17042_COFF_DEFAULT);
+	/* Reset Offset of Coulomb counter */
+	max17042_write_reg(chip->client, MAX17042_AtRate,
+					MAX17042_AtRate_DEFAULT);
+	/* Reset AtRate register */
+	max17042_write_reg(chip->client, MAX17042_AtRate,
+					MAX17042_AtRate_DEFAULT);
+	/* Reset MinMaxTemp register */
+	max17042_write_reg(chip->client, MAX17042_MinMaxTemp,
+			MAX17042_MinMaxTemp_DEFAULT);
+	/* Reset MinMaxVolt register */
+	max17042_write_reg(chip->client, MAX17042_MinMaxVolt,
+			MAX17042_MinMaxVolt_DEFAULT);
+	/* Reset MinMaxTemp register */
+	max17042_write_reg(chip->client, MAX17042_MinMaxCurr,
+			MAX17042_MinMaxCurr_DEFAULT);
 }
 
 static void max17042_restore_conf_data(struct max17042_chip *chip)

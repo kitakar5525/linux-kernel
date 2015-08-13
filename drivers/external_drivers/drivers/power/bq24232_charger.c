@@ -47,6 +47,7 @@ struct bq24232_charger {
 	struct work_struct evt_work;
 	struct delayed_work bat_temp_mon_work;
 	struct notifier_block otg_nb;
+	struct notifier_block psly_nb;
 	struct list_head queue;
 	spinlock_t queue_lock;
 	spinlock_t pgood_lock;
@@ -115,7 +116,8 @@ static enum {
 	OTG_EVENT,
 	SYSFS_EVENT,
 	PMIC_EVENT,
-	TEMP_EVENT
+	TEMP_EVENT,
+	UPDATE_EVENT
 };
 
 struct bq24232_event {
@@ -524,6 +526,31 @@ static void bq24232_exception_mon_wrk(struct work_struct *work)
 	bq24232_add_event(chip, evt);
 }
 
+static int psly_handle_notification(struct notifier_block *nb,
+		unsigned long event, void *param) {
+	struct bq24232_charger *chip = container_of(nb, struct bq24232_charger, psly_nb);
+	struct power_supply *psly;
+	struct bq24232_event *evt;
+	if (!param)
+		return NOTIFY_DONE;
+
+	if (event == POWER_SUPPLY_PROP_CHANGED) {
+		psly = param;
+		if (chip->pdata->wc_direct_support &&
+				psly->type == POWER_SUPPLY_TYPE_WIRELESS) {
+			evt = kzalloc(sizeof(*evt), GFP_ATOMIC);
+			if (!evt) {
+				dev_err(chip->dev,"%s: failed to allocate memory for exceptin_mon_wrk event\n",
+							__func__);
+				return NOTIFY_DONE;
+			}
+			evt->type = UPDATE_EVENT;
+			bq24232_add_event(chip, evt);
+			return NOTIFY_OK;
+		}
+	}
+}
+
 static int otg_handle_notification(struct notifier_block *nb,
 		unsigned long event, void *param) {
 	struct bq24232_charger *chip = container_of(nb, struct bq24232_charger, otg_nb);
@@ -656,6 +683,8 @@ static void bq24232_evt_worker(struct work_struct *work)
 			break;
 		case PMIC_EVENT:
 			chip->charging_status_n = evt->chg_stat;
+			break;
+		case UPDATE_EVENT:
 			break;
 		}
 
@@ -805,6 +834,10 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 			ret);
 		goto io_error5;
 	}
+	if (pdata->wc_direct_support) {
+		bq24232_charger->psly_nb.notifier_call = psly_handle_notification;
+		power_supply_reg_notifier(&bq24232_charger->psly_nb);
+	}
 
 	power_supply_query_charger_caps(&chgr_cap);
 	evt->type = OTG_EVENT;
@@ -834,6 +867,9 @@ io_error1:
 static int bq24232_charger_remove(struct platform_device *pdev)
 {
 	struct bq24232_charger *bq24232_charger = platform_get_drvdata(pdev);
+
+	if (bq24232_charger->pdata->wc_direct_support)
+		power_supply_unreg_notifier(&bq24232_charger->psly_nb);
 
 	cancel_delayed_work_sync(&bq24232_charger->bat_temp_mon_work);
 

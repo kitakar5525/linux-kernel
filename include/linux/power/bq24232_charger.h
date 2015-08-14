@@ -58,6 +58,7 @@ enum bq24232_chrgrate_temp_limit {
  * @supplied_to:	Devices supplied by this charger
  * @num_supplicants:	Number of devices supplied by this charger
  * @bat_temp_profile:	Temperature ranges in wich normal/boost charge is allowed
+ * @bat_hv_temp_profile:	Charge rates temperature ranges for higher battery voltage
  * @pgood_gpio:	GPIO which is used to indicate the chargers status
  * @chg_rate_temp_gpio:	GPIO which is used to select the charge rate
  * @charger_ce_n_gpio:	GPIO to assert low to charge enable, high to disable it
@@ -69,6 +70,8 @@ struct bq24232_plat_data {
 	char **supplied_to;
 	size_t num_supplicants;
 	int *bat_temp_profile;
+	int *bat_hv_temp_profile;
+	int bat_hv_threshold;
 	int pgood_gpio;
 	int chg_rate_temp_gpio;
 	int charger_ce_n_gpio;

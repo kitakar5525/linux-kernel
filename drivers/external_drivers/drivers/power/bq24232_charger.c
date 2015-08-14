@@ -208,7 +208,7 @@ static int get_psy_property_val(struct power_supply *psy,
 static bool is_bat_temp_allowed(struct bq24232_charger *chip,
 		enum bq24232_chrgrate_type chgrt)
 {
-	int *bat_profile, ret, bat_temp = 0;
+	int *bat_profile, ret, bat_temp = 0, vbat = 0;
 
 	ret = get_psy_property_val(chip->bat_psy, POWER_SUPPLY_TYPE_BATTERY,
 			POWER_SUPPLY_PROP_TEMP, &bat_temp);
@@ -216,11 +216,26 @@ static bool is_bat_temp_allowed(struct bq24232_charger *chip,
 		dev_warn(chip->dev, "cannot retrieve battery temperature\n");
 		goto bat_temp_err;
 	}
-	if (!chip->pdata->bat_temp_profile) {
-		dev_warn(chip->dev, "no battery temperature profile found\n");
+	ret = get_psy_property_val(chip->bat_psy, POWER_SUPPLY_TYPE_BATTERY,
+			POWER_SUPPLY_PROP_VOLTAGE_NOW, &vbat);
+	if (ret) {
+		dev_warn(chip->dev, "cannot retrieve battery voltage\n");
 		goto bat_temp_err;
 	}
-	bat_profile = chip->pdata->bat_temp_profile;
+
+	if (vbat < chip->pdata->bat_hv_threshold) {
+		if (!chip->pdata->bat_temp_profile) {
+			dev_warn(chip->dev, "no battery temperature profile found\n");
+			goto bat_temp_err;
+		}
+		bat_profile = chip->pdata->bat_temp_profile;
+	} else {
+		if (!chip->pdata->bat_hv_temp_profile) {
+			dev_warn(chip->dev, "no battery temperature profile found for high voltage\n");
+			goto bat_temp_err;
+		}
+		bat_profile = chip->pdata->bat_hv_temp_profile;
+	}
 	switch (chgrt) {
 	case (BQ24232_NORM_CHARGE):
 		return (bat_temp >= bat_profile[BQ24232_NORM_CHARGE_TEMP_LOW] &&

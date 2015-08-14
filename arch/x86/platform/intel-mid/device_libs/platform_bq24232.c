@@ -25,13 +25,33 @@ static struct bq24232_plat_data bq24232_pdata;
 
 /*
  * Battery temperature limits in 0.1 °C
+ * BQ24232_NORM_CHARGE_TEMP_LOW, BQ24232_NORM_CHARGE_TEMP_HIGH and
+ * BQ24232_BOOST_CHARGE_TEMP_HIHG set to be outside the range allowed
+ * by charger hw component [0°C, 50°C]. Relying on hw to stop charging
+ * in case of over/underheat
  */
 static int bq24232_bat_temp_profile[] = {
-		0,	/* BQ24232_NORM_CHARGE_TEMP_LOW */
-		100,	/* BQ24232_BOOST_CHARGE_TEMP_LOW */
-		450,	/* BQ24232_BOOST_CHARGE_TEMP_HIHG */
-		450	/* BQ24232_NORM_CHARGE_TEMP_HIGH */
+		-200,	/* BQ24232_NORM_CHARGE_TEMP_LOW */
+		110,	/* BQ24232_BOOST_CHARGE_TEMP_LOW */
+		700,	/* BQ24232_BOOST_CHARGE_TEMP_HIHG */
+		700	/* BQ24232_NORM_CHARGE_TEMP_HIGH */
 };
+
+/*
+ * Battery temperature limits in 0.1 °C
+ * for higher battery voltage
+ * BQ24232_NORM_CHARGE_TEMP_LOW and BQ24232_NORM_CHARGE_TEMP_HIGH
+ * set to be outside the range allowed by charger hw component [0°C, 50°C].
+ * Relying on hw to stop charging in case of over/underheat
+ */
+static int bq24232_bat_highvolt_temp_profile[] = {
+		-200,	/* BQ24232_NORM_CHARGE_TEMP_LOW */
+		110,	/* BQ24232_BOOST_CHARGE_TEMP_LOW */
+		440,	/* BQ24232_BOOST_CHARGE_TEMP_HIHG */
+		700	/* BQ24232_NORM_CHARGE_TEMP_HIGH */
+};
+
+#define BQ24232_BAT_HIGH_VOLT_THRESHOLD		4100000	/* in uV */
 
 void *bq24232_charger_platform_data(void *info)
 {
@@ -48,6 +68,8 @@ void *bq24232_charger_platform_data(void *info)
 	bq24232_pdata.enable_vbus = pmic_enable_vbus;
 #endif
 	bq24232_pdata.bat_temp_profile = bq24232_bat_temp_profile;
+	bq24232_pdata.bat_hv_temp_profile = bq24232_bat_highvolt_temp_profile;
+	bq24232_pdata.bat_hv_threshold = BQ24232_BAT_HIGH_VOLT_THRESHOLD;
 	bq24232_pdata.supplied_to = bq24232_supplied_to;
 	bq24232_pdata.num_supplicants = ARRAY_SIZE(bq24232_supplied_to);
 	bq24232_pdata.wc_direct_support = true;

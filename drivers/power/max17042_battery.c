@@ -90,6 +90,7 @@
 #define CONFIG_BER_BIT_ENBL	(1 << 0)
 #define CONFIG_BEI_BIT_ENBL	(1 << 1)
 #define CONFIG_ALRT_BIT_ENBL	(1 << 2)
+#define CONFIG_I2CSH_BIT_ENBL	(1 << 6)
 #define CONFIG_VSTICKY_BIT_SET	(1 << 12)
 #define CONFIG_TSTICKY_BIT_SET	(1 << 13)
 #define CONFIG_SSTICKY_BIT_SET	(1 << 14)
@@ -123,6 +124,9 @@
 
 #define MAX17042_MODEL_MUL_FACTOR(a, b)	((a * 100) / b)
 #define MAX17042_MODEL_DIV_FACTOR(a, b)	((a * b) / 100)
+
+#define MAX17042_SHUTDOWN_TIMEOUT_45S	0x0
+#define MAX17042_SHUTDOWN_TIMEOUT_DEF	0xE000
 
 #define CONSTANT_TEMP_IN_POWER_SUPPLY	350
 #define POWER_SUPPLY_VOLT_MIN_THRESHOLD	3500000
@@ -342,6 +346,16 @@ static ssize_t get_shutdown_voltage_set_by_user(struct device *device,
 static DEVICE_ATTR(shutdown_voltage, S_IRUGO | S_IWUSR,
 	get_shutdown_voltage_set_by_user, set_shutdown_voltage);
 
+/* Sysfs entry to enable  from user space */
+static bool shutdown_mode_status = false;
+static ssize_t get_shutdown_mode_status(struct device *dev,
+				struct device_attribute *attr, char *buf);
+static ssize_t set_shutdown_mode_status(struct device *dev,
+				struct device_attribute *attr, const char *buf,
+				size_t count);
+static DEVICE_ATTR(shutdown_mode, S_IRUGO | S_IWUSR,
+	get_shutdown_mode_status, set_shutdown_mode_status);
+
 /*
  * Sysfs entry to report fake battery temperature. This
  * interface is needed to support conformence testing
@@ -361,6 +375,7 @@ static char max17042_dbg_regs[MAX17042_MAX_MEM][4];
 
 static int max17042_reboot_callback(struct notifier_block *nfb,
 					unsigned long event, void *data);
+static void enable_shutdown_mode(void);
 
 static struct notifier_block max17042_reboot_notifier_block = {
 	.notifier_call = max17042_reboot_callback,
@@ -452,7 +467,13 @@ static ssize_t dev_file_read(struct file *f, char __user *buf,
 	update_runtime_params(chip);
 
 	if (sizeof(*fg_conf_data) > len)
+	{
+		dev_err(&max17042_client->dev,
+			"MAX17042 FG Config data file: %d is bigger than expected length: %d.\n",
+			sizeof(*fg_conf_data),
+			len);
 		return -EINVAL;
+	}
 
 	ret = copy_to_user(buf, fg_conf_data, sizeof(*fg_conf_data));
 	if (!ret)
@@ -1340,6 +1361,12 @@ static void write_custom_regs(struct max17042_chip *chip)
 			MAX17042_TGAIN, chip->pdata->tgain);
 	max17042_write_reg(chip->client,
 			MAx17042_TOFF, chip->pdata->toff);
+	/* Disable I2C shutdown mode */
+	max17042_reg_read_modify(chip->client, MAX17042_CONFIG,
+			CONFIG_I2CSH_BIT_ENBL, 0);
+	/* Reset SHDNTIMER Threshold to default value */
+	max17042_write_reg(chip->client, MAX17042_SHDNTIMER,
+			MAX17042_SHUTDOWN_TIMEOUT_DEF);
 
 	if (chip->chip_type == MAX17042) {
 		max17042_write_reg(chip->client, MAX17042_ETC,
@@ -1508,6 +1535,35 @@ static void save_runtime_params(struct max17042_chip *chip)
 		return ;
 	}
 
+}
+
+static void enable_shutdown_mode(void)
+{
+	int val, retval;
+	struct max17042_chip *chip = i2c_get_clientdata(max17042_client);
+
+	/* Set shutdown timeout reg to minimum value of 45s */
+	retval = max17042_write_reg(max17042_client, MAX17042_SHDNTIMER, MAX17042_SHUTDOWN_TIMEOUT_45S);
+	if (retval < 0)
+	{
+		dev_err(&chip->client->dev,
+			"shutdown timeout write to maxim failed: %d", retval);
+		return;
+	}
+
+	/* Enable I2C Shutdown */
+	max17042_reg_read_modify(chip->client, MAX17042_CONFIG,
+			CONFIG_I2CSH_BIT_ENBL, 1);
+	if (retval < 0)
+	{
+		dev_err(&chip->client->dev,
+			"I2C shutdown write to maxim failed: %d", retval);
+		return;
+	}
+
+	dev_info(&chip->client->dev, "Shutdown mode enabled.");
+
+	return;
 }
 
 static int init_max17042_chip(struct max17042_chip *chip)
@@ -2053,6 +2109,44 @@ static ssize_t set_shutdown_voltage(struct device *dev,
 }
 
 /**
+ * get_shutdown_mode_status - get function for sysfs shutdown_voltage
+ * Parameters as defined by sysfs interface
+ */
+static ssize_t get_shutdown_mode_status(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", shutdown_mode_status);
+}
+
+/**
+ * set_shutdown_mode_status - set function for sysfs shutdown_voltage
+ * Parameters as defined by sysfs interface
+ * shutdown_mode_status can take the values 0 and 1
+ */
+static ssize_t set_shutdown_mode_status(struct device *dev,
+				struct device_attribute *attr, const char *buf,
+				size_t count)
+{
+	unsigned long value;
+	if (kstrtoul(buf, 10, &value))
+		return -EINVAL;
+
+	/* allow only 0 or 1 */
+	if (value != 1 && value !=0)
+		return -EINVAL;
+
+	if (value)
+	{
+		shutdown_mode_status = true;
+		enable_shutdown_mode();
+	}
+	else
+		shutdown_mode_status = false;
+
+	return count;
+}
+
+/**
  * set_fake_temp_enable - sysfs to set enable_fake_temp
  * Parameter as define by sysfs interface
  */
@@ -2367,6 +2461,12 @@ static int max17042_probe(struct i2c_client *client,
 	if (ret)
 		dev_warn(&client->dev, "cannot create sysfs entry\n");
 
+	/* create sysfs file to enable shutdown mode */
+	ret = device_create_file(&client->dev,
+			&dev_attr_shutdown_mode);
+	if (ret)
+		dev_warn(&client->dev, "cannot create sysfs entry\n");
+
 	/* Register reboot notifier callback */
 	if (!chip->pdata->file_sys_storage_enabled)
 		register_reboot_notifier(&max17042_reboot_notifier_block);
@@ -2383,14 +2483,17 @@ static int max17042_remove(struct i2c_client *client)
 		misc_deregister(&fg_helper);
 	else
 		unregister_reboot_notifier(&max17042_reboot_notifier_block);
+
 	device_remove_file(&client->dev, &dev_attr_disable_shutdown_methods);
 	device_remove_file(&client->dev, &dev_attr_shutdown_voltage);
+	device_remove_file(&client->dev, &dev_attr_shutdown_mode);
 	device_remove_file(&client->dev, &dev_attr_enable_fake_temp);
 	max17042_remove_debugfs(chip);
 	if (client->irq > 0)
 		free_irq(client->irq, chip);
 	power_supply_unregister(&chip->battery);
 	pm_runtime_get_noresume(&chip->client->dev);
+
 	kfree(chip);
 	kfree(fg_conf_data);
 	return 0;

@@ -28,6 +28,57 @@
 #define ST_LSM6DS3_FIFO_DATA_OUT_L		0x3e
 #define ST_LSM6DS3_FIFO_DATA_OVR_2REGS		0x4000
 
+#define	MIN_DELTA_TS		10000000000
+#define	MAX_DELTA_TS		30000000000
+#define	MIN_RATE_COUNTER	10
+#define	MAX_RATE_COUNTER	30
+static bool need_to_report = true;
+static u16 counter_need_to_compensate;
+static u16 counter_last_compensate;
+static u16 before_last_counter;
+static u16 last_counter;
+/*static int64_t before_last_timestamp;*/
+static int64_t last_timestamp;
+
+void step_counter_compensate(u16 counter, int64_t timestamp)
+{
+	int delta_counter;
+
+	pr_info("step_counter_compensate1:[%d] %d, %d, %d\n",
+		counter_need_to_compensate,
+		before_last_counter, last_counter, counter);
+
+	delta_counter = counter - last_counter;
+	if (!delta_counter) {
+		if (counter)
+			need_to_report = false;
+		goto out;
+	}
+
+	need_to_report = true;
+	if (((timestamp > last_timestamp + MAX_DELTA_TS) &&
+		(counter < last_counter + MAX_RATE_COUNTER)) ||
+		((timestamp > last_timestamp + MIN_DELTA_TS) &&
+		(counter < last_counter + MIN_RATE_COUNTER))) {
+		counter_need_to_compensate += delta_counter;
+		counter_last_compensate = delta_counter;
+	} else {
+		if (counter_last_compensate)
+			counter_need_to_compensate -= counter_last_compensate;
+		counter_last_compensate = 0;
+	}
+
+	before_last_counter = last_counter;
+
+	last_counter = counter;
+	last_timestamp = timestamp;
+
+out:
+	pr_info("step_counter_compensate2:[%d] %d, %d\n",
+		counter_need_to_compensate,
+		before_last_counter, last_counter);
+}
+
 static void st_lsm6ds3_push_data_with_timestamp(struct lsm6ds3_data *cdata,
 					u8 index, u8 *data, int64_t timestamp)
 {
@@ -240,13 +291,17 @@ static irqreturn_t st_lsm6ds3_step_counter_trigger_handler(int irq, void *p)
 		sdata->cdata->reset_steps = false;
 	}
 
-	dev_dbg(sdata->cdata->dev, "step_counter=%d, tm=%ld\n", *(u16 *)sdata->buffer_data, timestamp);
+	pr_info("1step_counter=%d, tm=%lld\n", *(u16 *)sdata->buffer_data, timestamp);
+	step_counter_compensate(*(u16 *)sdata->buffer_data, timestamp);
 	if (indio_dev->scan_timestamp)
 		*(s64 *)((u8 *)sdata->buffer_data +
 				ALIGN(ST_LSM6DS3_BYTE_FOR_CHANNEL,
 						sizeof(s64))) = timestamp;
 
-	iio_push_to_buffers(indio_dev, sdata->buffer_data);
+	*(u16 *)sdata->buffer_data -= counter_need_to_compensate;
+	pr_info("2step_counter=%d, tm=%lld\n", *(u16 *)sdata->buffer_data, timestamp);
+	if (need_to_report)
+		iio_push_to_buffers(indio_dev, sdata->buffer_data);
 
 st_lsm6ds3_step_counter_done:
 	iio_trigger_notify_done(indio_dev->trig);

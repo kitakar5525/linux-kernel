@@ -3665,6 +3665,9 @@ void ia_css_debug_ext_command_handler(void)
 	unsigned int curr_stream_num = 0;
 	unsigned int curr_pipe_num = 0;
 
+	if (!sh_css_sp_is_running())
+		return;	/* SP is not running yet */
+
 	ext_cmd = ia_css_device_load_uint32(ext_cmd_add);
 	ia_css_debug_dtrace(IA_CSS_DEBUG_PARAM, "ia_css_debug_ext_command_handler()\n");
 	if (((ext_cmd & DBG_EXT_CMD_MASK) != DBG_EXT_CMD_MASK) ||

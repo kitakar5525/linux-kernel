@@ -775,7 +775,6 @@ struct sh_css_config_on_frame_enqueue {
 
 #define  IA_CSS_NUM_ELEMS_HOST2SP_PARAM_QUEUE    3
 
-#define  IA_CSS_NUM_ELEMS_HOST2SP_TAG_CMD_QUEUE  6
 
 #if !defined(HAS_NO_INPUT_SYSTEM)
 /* sp-to-host queue is expected to be emptied in ISR since
@@ -786,9 +785,13 @@ struct sh_css_config_on_frame_enqueue {
  * in the emptying of this queue in the SP since there is no
  * separate SP thread for this. */
 #define  IA_CSS_NUM_ELEMS_HOST2SP_ISYS_EVENT_QUEUE (2 * N_CSI_PORTS)
+
+#define  IA_CSS_NUM_ELEMS_HOST2SP_TAG_CMD_QUEUE  6
 #else
 #define  IA_CSS_NUM_ELEMS_SP2HOST_ISYS_EVENT_QUEUE 0
 #define  IA_CSS_NUM_ELEMS_HOST2SP_ISYS_EVENT_QUEUE 0
+
+#define  IA_CSS_NUM_ELEMS_HOST2SP_TAG_CMD_QUEUE  0
 #endif
 
 #if defined(HAS_SP_2400)
@@ -885,8 +888,8 @@ enum sh_css_queue_type {
 #if !defined(HAS_NO_INPUT_SYSTEM)
 	sh_css_sp2host_isys_event_queue,
 	sh_css_host2sp_isys_event_queue,
-#endif
 	sh_css_host2sp_tag_cmd_queue,
+#endif
 };
 
 struct sh_css_event_irq_mask {
@@ -979,14 +982,13 @@ struct host_sp_queues {
 	ia_css_circbuf_desc_t sp2host_isys_event_queue_desc;
 	ia_css_circbuf_elem_t sp2host_isys_event_queue_elems
 		[IA_CSS_NUM_ELEMS_SP2HOST_ISYS_EVENT_QUEUE];
-#endif
-
 	/*
 	 * The queue for the tagger commands.
 	 */
 	ia_css_circbuf_desc_t host2sp_tag_cmd_queue_desc;
 	ia_css_circbuf_elem_t host2sp_tag_cmd_queue_elems
 		[IA_CSS_NUM_ELEMS_HOST2SP_TAG_CMD_QUEUE];
+#endif
 };
 
 #define SIZE_OF_QUEUES_ELEMS							\
@@ -1002,7 +1004,7 @@ struct host_sp_queues {
 #if !defined(HAS_NO_INPUT_SYSTEM)
 #define IA_CSS_NUM_CIRCBUF_DESCS 5
 #else
-#define IA_CSS_NUM_CIRCBUF_DESCS 3
+#define IA_CSS_NUM_CIRCBUF_DESCS 2
 #endif
 
 #define SIZE_OF_QUEUES_DESC \

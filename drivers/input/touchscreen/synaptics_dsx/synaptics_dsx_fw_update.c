@@ -2147,14 +2147,8 @@ static enum flash_area fwu_go_nogo(void)
 			"%s: Image firmware ID = %d\n",
 			__func__, image_fw_id);
 
-	if (image_fw_id > device_fw_id) {
+	if (image_fw_id != device_fw_id) {
 		flash_area = UI_FIRMWARE;
-		goto exit;
-	} else if (image_fw_id < device_fw_id) {
-		dev_info(rmi4_data->pdev->dev.parent,
-				"%s: Image firmware ID older than device firmware ID\n",
-				__func__);
-		flash_area = NONE;
 		goto exit;
 	}
 
@@ -2189,7 +2183,7 @@ static enum flash_area fwu_go_nogo(void)
 			fwu->img.ui_config.data[2],
 			fwu->img.ui_config.data[3]);
 
-	if (image_config_id > device_config_id) {
+	if (image_config_id != device_config_id) {
 		flash_area = UI_CONFIG;
 		goto exit;
 	}

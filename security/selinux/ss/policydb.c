@@ -1272,18 +1272,18 @@ static int read_cons_helper(struct policydb *p,
 				rc = ebitmap_read(&e->names, fp);
 				if (rc)
 					return rc;
-                                if (p->policyvers >=
-                                        POLICYDB_VERSION_CONSTRAINT_NAMES) {
-                                                e->type_names = kzalloc(sizeof
-                                                (*e->type_names),
-                                                GFP_KERNEL);
-                                        if (!e->type_names)
-                                                return -ENOMEM;
-                                        type_set_init(e->type_names);
-                                        rc = type_set_read(e->type_names, fp);
-                                        if (rc)
-                                                return rc;
-                                }
+				if (p->policyvers >=
+					POLICYDB_VERSION_CONSTRAINT_NAMES) {
+						e->type_names = kzalloc(sizeof
+						(*e->type_names),
+						GFP_KERNEL);
+					if (!e->type_names)
+						return -ENOMEM;
+					type_set_init(e->type_names);
+					rc = type_set_read(e->type_names, fp);
+					if (rc)
+						return rc;
+				}
 				break;
 			default:
 				return -EINVAL;

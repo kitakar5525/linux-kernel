@@ -403,6 +403,8 @@ static void bq24232_update_charger_enabled(struct bq24232_charger *chip,
 		enum power_supply_charger_cable_type cable_type)
 {
 	unsigned long flags;
+
+	cancel_delayed_work_sync(&chip->bat_temp_mon_work);
 	mutex_lock(&chip->stat_lock);
 
 	spin_lock_irqsave(&chip->pow_sply.changed_lock, flags);
@@ -410,7 +412,6 @@ static void bq24232_update_charger_enabled(struct bq24232_charger *chip,
 	chip->cable_type = cable_type;
 	spin_unlock_irqrestore(&chip->pow_sply.changed_lock, flags);
 
-	cancel_delayed_work_sync(&chip->bat_temp_mon_work);
 	if (evt == POWER_SUPPLY_CHARGER_EVENT_CONNECT ||
 			evt == POWER_SUPPLY_CHARGER_EVENT_UPDATE ||
 			evt == POWER_SUPPLY_CHARGER_EVENT_RESUME) {

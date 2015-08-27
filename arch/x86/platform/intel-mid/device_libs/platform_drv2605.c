@@ -41,7 +41,7 @@ static const unsigned char ERM_autocal_sequence_prod2[] = {
 };
 
 static const unsigned char ERM_sequence_prod2[] = {
-	REAL_TIME_PLAYBACK_REG,		0x38,
+	REAL_TIME_PLAYBACK_REG,		0x7F,
 	LIBRARY_SELECTION_REG,		LIBRARY_A,
 	WAVEFORM_SEQUENCER_REG,		WAVEFORM_SEQUENCER_DEFAULT,
 	WAVEFORM_SEQUENCER_REG2,	WAVEFORM_SEQUENCER_DEFAULT,
@@ -88,7 +88,7 @@ if (INTEL_MID_BOARD(2, PHONE, MRFL, RBY, PRO) ||
 	INTEL_MID_BOARD(2, PHONE, MRFL, GLC, PRO) ||
 	INTEL_MID_BOARD(2, PHONE, MRFL, GLC, ENG)) {
 	pdata->effect_library = LIBRARY_A; /* ERM open loop */
-	pdata->real_time_playback = 0x38; /* ~44% of overdrive voltage (open loop)*/
+	pdata->real_time_playback = 0x7F; /* ~100% of overdrive voltage (open loop)*/
 	pdata->repeat_autocal_sequence = true;
 	pdata->size_autocal_sequence = ARRAY_SIZE(ERM_autocal_sequence_prod2);
 	pdata->parameter_autocal_sequence = ERM_autocal_sequence_prod2;

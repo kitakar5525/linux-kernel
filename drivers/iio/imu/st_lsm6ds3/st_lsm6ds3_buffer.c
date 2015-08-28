@@ -330,6 +330,8 @@ static int st_lsm6ds3_buffer_preenable(struct iio_dev *indio_dev)
 	int err;
 	struct lsm6ds3_sensor_data *sdata = iio_priv(indio_dev);
 
+	dev_dbg(sdata->cdata->dev, "st_lsm6ds3_buffer_preenable: index=%d\n", sdata->sindex);
+
 	err = st_lsm6ds3_set_enable(sdata, true);
 	if (err < 0)
 		return err;

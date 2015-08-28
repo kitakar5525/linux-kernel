@@ -179,6 +179,14 @@
 #define ST_LSM6DS3_STEP_COUNTER_RES_FUNC_EN	0x02
 #define ST_LSM6DS3_STEP_COUNTER_DURATION_ADDR	0x15
 
+#define	ST_LSM6DS3_STEP_COUNTER_THS_MIN_MASK		0x1f
+#define	ST_LSM6DS3_STEP_COUNTER_THS_MIN_DEF_VAL		0x1f
+#define	ST_LSM6DS3_STEP_COUNTER_PEDO_THS_ADDR		0x0f
+#define	ST_LSM6DS3_STEP_COUNTER_DEB_STEP_MASK		0x07
+#define	ST_LSM6DS3_STEP_COUNTER_DEB_STEP_DEF_VAL	0x07
+#define	ST_LSM6DS3_STEP_COUNTER_PEDO_DEB_ADDR		0x14
+
+
 /* CUSTOM VALUES FOR TILT SENSOR */
 #define ST_LSM6DS3_TILT_EN_ADDR			0x58
 #define ST_LSM6DS3_TILT_EN_MASK			0x20
@@ -648,6 +656,9 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 	struct lsm6ds3_sensor_data *sdata_ext0 = NULL, *sdata_ext1 = NULL;
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 
+	dev_dbg(cdata->dev, "st_lsm6ds3_set_fifo_decimators_and_threshold: sensors_enabled=0x%2x\n",
+				cdata->sensors_enabled);
+
 	indio_dev = cdata->indio_dev[ST_INDIO_DEV_ACCEL];
 	sdata_accel = iio_priv(indio_dev);
 	if (((1 << ST_INDIO_DEV_ACCEL) | (1 << ST_INDIO_DEV_ACCEL_WK)) & cdata->sensors_enabled) {
@@ -872,6 +883,12 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 			cdata->ext0_samples_in_pattern +
 			cdata->ext1_samples_in_pattern) *
 			min_num_pattern * ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
+	dev_dbg(cdata->dev, "st_lsm6ds3_set_fifo_decimators_and_threshold: %d-%d-%d-%d-%d-%d\n",
+					cdata->accel_samples_in_pattern,
+					cdata->gyro_samples_in_pattern,
+					cdata->ext0_samples_in_pattern,
+					cdata->ext1_samples_in_pattern,
+					min_num_pattern, fifo_len);
 #else /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 	if ((cdata->accel_samples_in_pattern +
 					cdata->gyro_samples_in_pattern) > 0) {
@@ -887,6 +904,10 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 	fifo_len = (cdata->accel_samples_in_pattern +
 			cdata->gyro_samples_in_pattern) *
 			min_num_pattern * ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
+	dev_dbg(cdata->dev, "st_lsm6ds3_set_fifo_decimators_and_threshold: %d-%d-%d-%d\n",
+					cdata->accel_samples_in_pattern,
+					cdata->gyro_samples_in_pattern,
+					min_num_pattern, fifo_len);
 
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 
@@ -944,6 +965,7 @@ int st_lsm6ds3_reconfigure_fifo(struct lsm6ds3_data *cdata,
 		goto reconfigure_fifo_irq_restore;
 	}
 
+	dev_dbg(cdata->dev, "st_lsm6ds3_reconfigure_fifo: fifo_len=%d\n", fifo_len);
 	if (fifo_len > 0) {
 		err = st_lsm6ds3_set_fifo_mode(cdata, CONTINUOS);
 		if (err < 0)
@@ -1921,6 +1943,20 @@ static int st_lsm6ds3_init_sensor(struct lsm6ds3_data *cdata)
 					ST_LSM6DS3_FUNC_CFG_ACCESS_ADDR,
 					ST_LSM6DS3_FUNC_CFG_REG2_MASK,
 					ST_LSM6DS3_EN_BIT, false);
+	if (err < 0)
+		goto st_lsm6ds3_init_sensor_mutex_unlock;
+
+	err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
+					ST_LSM6DS3_STEP_COUNTER_PEDO_THS_ADDR,
+					ST_LSM6DS3_STEP_COUNTER_THS_MIN_MASK,
+					ST_LSM6DS3_STEP_COUNTER_THS_MIN_DEF_VAL, false);
+	if (err < 0)
+		goto st_lsm6ds3_init_sensor_mutex_unlock;
+
+	err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
+					ST_LSM6DS3_STEP_COUNTER_PEDO_DEB_ADDR,
+					ST_LSM6DS3_STEP_COUNTER_DEB_STEP_MASK,
+					ST_LSM6DS3_STEP_COUNTER_DEB_STEP_DEF_VAL, false);
 	if (err < 0)
 		goto st_lsm6ds3_init_sensor_mutex_unlock;
 

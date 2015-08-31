@@ -44,13 +44,12 @@ struct bq24232_charger {
 
 	struct power_supply *wirless_psy;
 
-	struct work_struct otg_evt_work;
+	struct work_struct evt_work;
 	struct delayed_work bat_temp_mon_work;
 	struct notifier_block otg_nb;
-	struct list_head otg_queue;
-	spinlock_t otg_queue_lock;
+	struct list_head queue;
+	spinlock_t queue_lock;
 	spinlock_t pgood_lock;
-	struct mutex stat_lock;
 
 	struct usb_phy *transceiver;
 
@@ -112,8 +111,19 @@ enum bq24232_chrgrate_type {
 	BQ24232_BOOST_CHARGE,
 };
 
-struct bq24232_otg_event {
+static enum {
+	OTG_EVENT,
+	SYSFS_EVENT,
+	PMIC_EVENT,
+	TEMP_EVENT
+};
+
+struct bq24232_event {
 	struct list_head node;
+	int type;
+	enum power_supply_property psp;
+	int intval;
+	bool chg_stat;
 	struct power_supply_cable_props cap;
 };
 
@@ -248,15 +258,6 @@ bat_temp_err:
 	return false;
 }
 
-static void bq24232_update_online_status(struct bq24232_charger *chip)
-{
-	if (chip->is_charger_enabled &&
-			(chip->pow_sply.type != POWER_SUPPLY_TYPE_UNKNOWN))
-		chip->online = 1;
-	else
-		chip->online = 0;
-}
-
 static void bq24232_update_pgood_status(struct bq24232_charger *chip)
 {
 	int pgood_val;
@@ -318,7 +319,6 @@ int bq24232_assert_ce_n(bool val)
 
 static void bq24232_update_chrg_current_status(struct bq24232_charger *chip)
 {
-	mutex_lock(&chip->stat_lock);
 	if (chip->is_charging_enabled) {
 		if (chip->boost_mode)
 			chip->cc = BQ24232_CHARGE_CURRENT_HIGH;
@@ -327,7 +327,6 @@ static void bq24232_update_chrg_current_status(struct bq24232_charger *chip)
 	} else {
 		chip->cc = 0;
 	}
-	mutex_unlock(&chip->stat_lock);
 }
 
 static bool bq24232_charger_can_enable_boost(struct bq24232_charger *chip)
@@ -349,15 +348,12 @@ static void bq24232_update_boost_status(struct bq24232_charger *chip)
 	int ret;
 	bool chgr_can_boost = bq24232_charger_can_enable_boost(chip);
 	ret = bq24232_enable_boost(chip, chgr_can_boost);
-	mutex_lock(&chip->stat_lock);
 	chip->boost_mode = ret ? 0 : chgr_can_boost;
-	mutex_unlock(&chip->stat_lock);
 }
 
 static void bq24232_update_charging_status(struct bq24232_charger *chip)
 {
 	int ret;
-	mutex_lock(&chip->stat_lock);
 
 	if (chip->pdata->get_charging_status)
 		chip->pdata->get_charging_status(&chip->charging_status_n);
@@ -371,7 +367,6 @@ static void bq24232_update_charging_status(struct bq24232_charger *chip)
 			chip->status = POWER_SUPPLY_STATUS_CHARGING;
 
 		if (chip->is_charging_enabled) {
-			mutex_unlock(&chip->stat_lock);
 			return;
 		}
 		/*
@@ -385,7 +380,6 @@ static void bq24232_update_charging_status(struct bq24232_charger *chip)
 		ret = bq24232_enable_charging(chip, true);
 		if (!ret) {
 			chip->is_charging_enabled = true;
-			mutex_unlock(&chip->stat_lock);
 			return;
 		}
 	}
@@ -404,45 +398,12 @@ static void bq24232_update_charging_status(struct bq24232_charger *chip)
 		ret = get_psy_property_val(chip->wirless_psy, POWER_SUPPLY_TYPE_WIRELESS,
 						POWER_SUPPLY_PROP_ONLINE, &w_online);
 		if (ret < 0)
-			dev_err(chip->dev, "%s: cannot get power_supply property from wireless (%d)\n", ret);
+			dev_err(chip->dev, "%s: cannot get power_supply property from wireless (%d)\n", __func__, ret);
 		else {
 			if (w_online)
 				chip->status = POWER_SUPPLY_STATUS_CHARGING;
 		}
 	}
-	mutex_unlock(&chip->stat_lock);
-}
-
-static void bq24232_update_charger_enabled(struct bq24232_charger *chip,
-		enum power_supply_charger_event evt,
-		enum power_supply_charger_cable_type cable_type)
-{
-	unsigned long flags;
-
-	cancel_delayed_work_sync(&chip->bat_temp_mon_work);
-	mutex_lock(&chip->stat_lock);
-
-	spin_lock_irqsave(&chip->pow_sply.changed_lock, flags);
-	chip->pow_sply.type = get_power_supply_type(cable_type);
-	chip->cable_type = cable_type;
-	spin_unlock_irqrestore(&chip->pow_sply.changed_lock, flags);
-
-	if (evt == POWER_SUPPLY_CHARGER_EVENT_CONNECT ||
-			evt == POWER_SUPPLY_CHARGER_EVENT_UPDATE ||
-			evt == POWER_SUPPLY_CHARGER_EVENT_RESUME) {
-		chip->is_charger_enabled = true;
-		schedule_delayed_work(&chip->bat_temp_mon_work, 0);
-
-	} else {
-		/* POWER_SUPPLY_CHARGER_EVENT_SUSPEND POWER_SUPPLY_CHARGER_EVENT_DISCONNECT */
-		chip->is_charger_enabled = false;
-	}
-
-	dev_info(chip->dev, "%s: is_charger_enabled %d",
-			__func__,
-			chip->is_charger_enabled);
-
-	mutex_unlock(&chip->stat_lock);
 }
 
 static int bq24232_charger_get_property(struct power_supply *psy,
@@ -451,7 +412,6 @@ static int bq24232_charger_get_property(struct power_supply *psy,
 	struct bq24232_charger *bq24232_charger = container_of(psy, struct bq24232_charger, pow_sply);
 	int ret = 0;
 
-	mutex_lock(&bq24232_charger->stat_lock);
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
@@ -472,7 +432,6 @@ static int bq24232_charger_get_property(struct power_supply *psy,
 	default:
 		ret = -EINVAL;
 	}
-	mutex_unlock(&bq24232_charger->stat_lock);
 
 	dev_dbg(bq24232_charger->dev, "bq24232_charger_get_property: property = %d, value = %d\n",
 			psp,
@@ -480,50 +439,33 @@ static int bq24232_charger_get_property(struct power_supply *psy,
 	return ret;
 }
 
+static void bq24232_add_event(struct bq24232_charger *chip, struct bq24232_event *evt)
+{
+	unsigned long flags;
+
+	INIT_LIST_HEAD(&evt->node);
+
+	spin_lock_irqsave(&chip->queue_lock, flags);
+	list_add_tail(&evt->node, &chip->queue);
+	spin_unlock_irqrestore(&chip->queue_lock, flags);
+
+	queue_work(system_nrt_wq, &chip->evt_work);
+}
+
 static int bq24232_charger_set_property(struct power_supply *psy,
 				    enum power_supply_property psp,
 				    const union power_supply_propval *val)
 {
-#ifdef BQ24232_DBG
-	struct bq24232_charger *chip = container_of(psy, struct bq24232_charger, pow_sply);
-	int ret = 0;
-	bool notify = true;
-
-	mutex_lock(&chip->stat_lock);
-
-	switch (psp) {
-	case POWER_SUPPLY_PROP_ONLINE:
-		chip->online = val->intval;
-		break;
-	case POWER_SUPPLY_PROP_CABLE_TYPE:
-		chip->cable_type = val->intval;
-		chip->pow_sply.type = get_power_supply_type(chip->cable_type);
-		break;
-	case POWER_SUPPLY_PROP_ENABLE_CHARGING:
-		chip->force_disable_charging = !val->intval;
-		cancel_delayed_work_sync(&chip->bat_temp_mon_work);
-		if (!val->intval) {
-			ret = bq24232_enable_charging(chip, false);
-			if (!ret)
-				chip->is_charging_enabled = 0;
-		}
-		schedule_delayed_work(&chip->bat_temp_mon_work, 0);
-		notify = false;
-		break;
-	default:
-		ret = -ENODATA;
+	struct bq24232_event *evt = kzalloc(sizeof(*evt), GFP_ATOMIC);
+	if (!evt) {
+		dev_err(bq24232_charger->dev,"failed to allocate memory for charger_set_property event\n");
+		return -ENOMEM;
 	}
-	mutex_unlock(&chip->stat_lock);
-
-	dev_dbg(chip->dev, "bq24232_charger_set_property: property = %d, value = %d\n", psp, val->intval);
-
-	if (notify)
-		power_supply_changed(&chip->pow_sply);
-
-	return ret;
-#else
-	return -EPERM;
-#endif
+	evt->type = SYSFS_EVENT;
+	evt->intval = val->intval;
+	evt->psp = psp;
+	bq24232_add_event(bq24232_charger, evt);
+	return 0;
 }
 
 static int bq24232_charger_property_is_writeable(struct power_supply *psy,
@@ -546,9 +488,7 @@ int bq24232_get_charger_status(void)
 	if (!bq24232_charger)
 		return -ENODEV;
 
-	mutex_lock(&bq24232_charger->stat_lock);
 	status = bq24232_charger->status;
-	mutex_unlock(&bq24232_charger->stat_lock);
 	dev_info(bq24232_charger->dev, "%s: status %d\n",
 			__func__,
 			status);
@@ -560,17 +500,14 @@ void bq24232_set_charging_status(bool chg_stat)
 	if (!bq24232_charger)
 		return;
 
-	mutex_lock(&bq24232_charger->stat_lock);
-	bq24232_charger->charging_status_n = chg_stat;
-	mutex_unlock(&bq24232_charger->stat_lock);
-	dev_info(bq24232_charger->dev, "%s: status %d\n",
-			__func__,
-			bq24232_charger->charging_status_n);
-	bq24232_update_charging_status(bq24232_charger);
-	bq24232_update_boost_status(bq24232_charger);
-	bq24232_update_chrg_current_status(bq24232_charger);
-
-	power_supply_changed(&bq24232_charger->pow_sply);
+	struct bq24232_event *evt = kzalloc(sizeof(*evt), GFP_ATOMIC);
+	if (!evt) {
+		dev_err(bq24232_charger->dev,"failed to allocate memory for charger_set_charging_status_event\n");
+		return;
+	}
+	evt->type = PMIC_EVENT;
+	evt->chg_stat = chg_stat;
+	bq24232_add_event(bq24232_charger, evt);
 }
 
 static void bq24232_exception_mon_wrk(struct work_struct *work)
@@ -578,28 +515,20 @@ static void bq24232_exception_mon_wrk(struct work_struct *work)
 	struct bq24232_charger *chip = container_of(work,
 			struct bq24232_charger,
 			bat_temp_mon_work.work);
-	schedule_delayed_work(&chip->bat_temp_mon_work,
-			BAT_TEMP_MONITOR_DELAY);
-
-	bq24232_update_charging_status(chip);
-	bq24232_update_boost_status(chip);
-	bq24232_update_chrg_current_status(chip);
-
-	dev_info(chip->dev, "%s: cc = %d, boost_mode = %d, is_charging_enabled = %d\n",
-					__func__,
-					chip->cc,
-					chip->boost_mode,
-					chip->is_charging_enabled);
-
-	power_supply_changed(&chip->pow_sply);
+	struct bq24232_event *evt = kzalloc(sizeof(*evt), GFP_ATOMIC);
+	if (!evt) {
+		dev_err(chip->dev,"failed to allocate memory for exceptin_mon_wrk event\n");
+		return;
+	}
+	evt->type = TEMP_EVENT;
+	bq24232_add_event(chip, evt);
 }
 
 static int otg_handle_notification(struct notifier_block *nb,
 		unsigned long event, void *param) {
 	struct bq24232_charger *chip = container_of(nb, struct bq24232_charger, otg_nb);
-	struct bq24232_otg_event *evt;
+	struct bq24232_event *evt;
 	int vbus_detected, ret;
-	unsigned long flags;
 
 	dev_dbg(chip->dev, "OTG notification: event %lu\n", event);
 
@@ -652,13 +581,8 @@ static int otg_handle_notification(struct notifier_block *nb,
 					evt->cap.ma,
 					evt->cap.chrg_evt);
 
-	INIT_LIST_HEAD(&evt->node);
-
-	spin_lock_irqsave(&chip->otg_queue_lock, flags);
-	list_add_tail(&evt->node, &chip->otg_queue);
-	spin_unlock_irqrestore(&chip->otg_queue_lock, flags);
-
-	queue_work(system_nrt_wq, &chip->otg_evt_work);
+	evt->type = OTG_EVENT;
+	bq24232_add_event(chip, evt);
 
 	return ret;
 
@@ -668,35 +592,90 @@ evt_err:
 	return NOTIFY_DONE;
 }
 
-static void bq24232_otg_evt_worker(struct work_struct *work)
+static void bq24232_evt_worker(struct work_struct *work)
 {
 	struct bq24232_charger *chip =
-			container_of(work, struct bq24232_charger, otg_evt_work);
-	struct bq24232_otg_event *evt, *tmp;
+			container_of(work, struct bq24232_charger, evt_work);
+	struct bq24232_event *evt, *tmp;
 	unsigned long flags;
 
-	spin_lock_irqsave(&chip->otg_queue_lock, flags);
-	list_for_each_entry_safe(evt, tmp, &chip->otg_queue, node)
+	spin_lock_irqsave(&chip->queue_lock, flags);
+	list_for_each_entry_safe(evt, tmp, &chip->queue, node)
 	{
 		list_del(&evt->node);
-		spin_unlock_irqrestore(&chip->otg_queue_lock, flags);
+		spin_unlock_irqrestore(&chip->queue_lock, flags);
+		switch (evt->type) {
+		case OTG_EVENT:
+			cancel_delayed_work_sync(&chip->bat_temp_mon_work);
 
-		bq24232_update_charger_enabled(chip, evt->cap.chrg_evt, evt->cap.chrg_type);
-		bq24232_update_online_status(chip);
+			chip->pow_sply.type = get_power_supply_type(evt->cap.chrg_type);
+			chip->cable_type = evt->cap.chrg_type;
+
+			if (evt->cap.chrg_evt == POWER_SUPPLY_CHARGER_EVENT_CONNECT ||
+					evt->cap.chrg_evt == POWER_SUPPLY_CHARGER_EVENT_UPDATE ||
+					evt->cap.chrg_evt == POWER_SUPPLY_CHARGER_EVENT_RESUME) {
+				chip->is_charger_enabled = true;
+				if (chip->pow_sply.type != POWER_SUPPLY_TYPE_UNKNOWN)
+					chip->online = 1;
+				else
+					chip->online = 0;
+				schedule_delayed_work(&chip->bat_temp_mon_work,
+						BAT_TEMP_MONITOR_DELAY);
+			} else {
+				/* POWER_SUPPLY_CHARGER_EVENT_SUSPEND POWER_SUPPLY_CHARGER_EVENT_DISCONNECT */
+				chip->is_charger_enabled = false;
+				chip->online = 0;
+			}
+			break;
+		case TEMP_EVENT:
+			schedule_delayed_work(&chip->bat_temp_mon_work,
+					BAT_TEMP_MONITOR_DELAY);
+			break;
+		case SYSFS_EVENT:
+#ifdef BQ24232_DBG
+			switch (evt->psp) {
+			case POWER_SUPPLY_PROP_ONLINE:
+				chip->online = evt->intval;
+				goto exit;
+			case POWER_SUPPLY_PROP_CABLE_TYPE:
+				chip->cable_type = evt->intval;
+				chip->pow_sply.type = get_power_supply_type(chip->cable_type);
+				goto exit;
+			case POWER_SUPPLY_PROP_ENABLE_CHARGING:
+				chip->force_disable_charging = !evt->intval;
+				if (!evt->intval) {
+					if (!bq24232_enable_charging(chip, false)) {
+						cancel_delayed_work_sync(&chip->bat_temp_mon_work);
+						chip->is_charging_enabled = 0;
+					}
+				} else
+					schedule_delayed_work(&chip->bat_temp_mon_work,BAT_TEMP_MONITOR_DELAY);
+				break;
+			}
+#endif
+			break;
+		case PMIC_EVENT:
+			chip->charging_status_n = evt->chg_stat;
+			break;
+		}
+
 		bq24232_update_charging_status(chip);
+		bq24232_update_boost_status(chip);
 		bq24232_update_chrg_current_status(chip);
-
-		dev_info(chip->dev, "%s: online = %d, pgood = %d, is_charging_enabled = %d\n",
+exit:
+		dev_info(chip->dev, "%s: status %d, online = %d, pgood = %d, cc = %d, boost_mode = %d, is_charging_enabled = %d\n",
 				__func__,
+				chip->charging_status_n,
 				chip->online,
 				chip->pgood_valid,
+				chip->cc,
+				chip->boost_mode,
 				chip->is_charging_enabled);
 
-		spin_lock_irqsave(&chip->otg_queue_lock, flags);
+		spin_lock_irqsave(&chip->queue_lock, flags);
 		kfree(evt);
-
 	}
-	spin_unlock_irqrestore(&chip->otg_queue_lock, flags);
+	spin_unlock_irqrestore(&chip->queue_lock, flags);
 
 	power_supply_changed(&chip->pow_sply);
 }
@@ -704,9 +683,6 @@ static void bq24232_otg_evt_worker(struct work_struct *work)
 static inline int register_otg_notification(struct bq24232_charger *chip)
 {
 	int retval;
-	INIT_LIST_HEAD(&chip->otg_queue);
-	INIT_WORK(&chip->otg_evt_work, bq24232_otg_evt_worker);
-	spin_lock_init(&chip->otg_queue_lock);
 
 	chip->otg_nb.notifier_call = otg_handle_notification;
 	chip->otg_nb.priority = 1;
@@ -734,8 +710,13 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	const struct bq24232_plat_data *pdata = pdev->dev.platform_data;
 	struct power_supply *pow_sply;
 	struct power_supply_charger_cap chgr_cap;
-	enum power_supply_charger_cable_type cable_type;
 	int ret;
+	struct bq24232_event *evt = kzalloc(sizeof(*evt), GFP_ATOMIC);
+
+	if (!evt) {
+		dev_err(&pdev->dev,"failed to allocate memory for probe event\n");
+		return -ENOMEM;
+	}
 
 	if (!pdev) {
 		dev_err(&pdev->dev, "No platform device\n");
@@ -767,7 +748,6 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 			goto io_error3;
 	}
 
-	mutex_init(&bq24232_charger->stat_lock);
 	spin_lock_init(&bq24232_charger->pgood_lock);
 
 	pow_sply = &bq24232_charger->pow_sply;
@@ -806,6 +786,10 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&bq24232_charger->bat_temp_mon_work,
 				bq24232_exception_mon_wrk);
 
+	INIT_LIST_HEAD(&bq24232_charger->queue);
+	INIT_WORK(&bq24232_charger->evt_work, bq24232_evt_worker);
+	spin_lock_init(&bq24232_charger->queue_lock);
+
 	/*
 	 * Register to get USB transceiver events
 	 */
@@ -823,19 +807,12 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	}
 
 	power_supply_query_charger_caps(&chgr_cap);
-	cable_type = get_cable_type(chgr_cap.chrg_type);
-	bq24232_update_charger_enabled(bq24232_charger, chgr_cap.chrg_evt, cable_type);
-
-	dev_dbg(bq24232_charger->dev, "charger enabled: %d, charging enabled: %d, pgood_valid: %d, boost mode: %d charger type: %d\n",
-			bq24232_charger->is_charger_enabled,
-			bq24232_charger->is_charging_enabled,
-			bq24232_charger->pgood_valid,
-			bq24232_charger->boost_mode,
-			bq24232_charger->pow_sply.type);
+	evt->type = OTG_EVENT;
+	evt->cap.chrg_evt = chgr_cap.chrg_evt;
+	evt->cap.chrg_type = get_cable_type(chgr_cap.chrg_type);
+	bq24232_add_event(bq24232_charger, evt);
 
 	dev_info(bq24232_charger->dev, "device successfully initialized");
-
-	power_supply_changed(pow_sply);
 
 	return 0;
 

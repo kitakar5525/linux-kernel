@@ -606,10 +606,10 @@ struct drm_display_mode *tianma_cmd_get_config_mode(void)
 	mode->hsync_end = 393;
 	mode->htotal = 425;
 
-	mode->vdisplay = 360;
-	mode->vsync_start = 370;
-	mode->vsync_end = 371;
-	mode->vtotal = 376;
+	mode->vdisplay = 326;
+	mode->vsync_start = 336;
+	mode->vsync_end = 337;
+	mode->vtotal = 343;
 
 	mode->vrefresh = 60;
 	mode->clock =  mode->vrefresh * mode->vtotal * mode->htotal / 1000;
@@ -628,7 +628,7 @@ void tianma_cmd_get_panel_info(int pipe,
 	PSB_DEBUG_ENTRY("\n");
 
 	if (pipe == 0) {
-		pi->width_mm = 40.82;
+		pi->width_mm = 40;
 		pi->height_mm = 40;
 	}
 }

@@ -1132,6 +1132,13 @@ static int max17042_get_property(struct power_supply *psy,
 		/* If current sensing is not enabled then read the
 		 * voltage based fuel gauge register for SOC */
 		if (chip->pdata->enable_current_sense) {
+			/* If LOW Battery and not charging then
+			 * report 0% for immediate graceful shutdown */
+			if ((chip->health == POWER_SUPPLY_HEALTH_DEAD) &&
+				(chip->status != POWER_SUPPLY_STATUS_CHARGING)) {
+				val->intval = 0;
+				break;
+			}
 			ret = max17042_read_reg(chip->client, MAX17042_RepSOC);
 			if (ret < 0)
 				goto ps_prop_read_err;

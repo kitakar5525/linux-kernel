@@ -72,7 +72,13 @@ void *bq24232_charger_platform_data(void *info)
 	bq24232_pdata.bat_hv_threshold = BQ24232_BAT_HIGH_VOLT_THRESHOLD;
 	bq24232_pdata.supplied_to = bq24232_supplied_to;
 	bq24232_pdata.num_supplicants = ARRAY_SIZE(bq24232_supplied_to);
-	bq24232_pdata.wc_direct_support = true;
+	if  (INTEL_MID_BOARD(2, PHONE, MRFL, RBY, PRO) ||
+			INTEL_MID_BOARD(2, PHONE, MRFL, RBY, ENG) ||
+			INTEL_MID_BOARD(2, PHONE, MRFL, MVN, PRO) ||
+			INTEL_MID_BOARD(2, PHONE, MRFL, MVN, ENG))
+		bq24232_pdata.wc_direct_support = true;
+	else
+		bq24232_pdata.wc_direct_support = false;
 
 	return &bq24232_pdata;
 }

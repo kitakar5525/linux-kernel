@@ -385,8 +385,6 @@ static int dpm_run_callback(pm_callback_t cb, struct device *dev,
 	calltime = initcall_debug_start(dev);
 
 	pm_dev_dbg(dev, state, info);
-	if (dev->driver && dev->driver->name)
-		printk(KERN_INFO "SYSDEBUG : driver_name: %s\t%s l%d\n", dev->driver->name, __FUNCTION__, __LINE__);
 	error = cb(dev);
 	suspend_report_result(cb, error);
 
@@ -945,18 +943,14 @@ static int dpm_suspend_noirq(pm_message_t state)
 	int error = 0;
 
 	cpuidle_pause();
-	printk(KERN_INFO "SYSDEBUG : beginning of %s l%d\n", __FUNCTION__, __LINE__);
 	suspend_device_irqs();
 	mutex_lock(&dpm_list_mtx);
-	printk(KERN_INFO "SYSDEBUG : mutex is locked in %s l%d\n", __FUNCTION__, __LINE__);
 	while (!list_empty(&dpm_late_early_list)) {
 		struct device *dev = to_device(dpm_late_early_list.prev);
 
 		get_device(dev);
 		mutex_unlock(&dpm_list_mtx);
 
-		if (dev->driver && dev->driver->name)
-			printk(KERN_INFO "SYSDEBUG : driver_name: %s\n", dev->driver->name);
 		error = device_suspend_noirq(dev, state);
 
 		mutex_lock(&dpm_list_mtx);
@@ -966,7 +960,6 @@ static int dpm_suspend_noirq(pm_message_t state)
 			dpm_save_failed_step(SUSPEND_SUSPEND_NOIRQ);
 			dpm_save_failed_dev(dev_name(dev));
 			put_device(dev);
-			printk(KERN_INFO "SYSDEBUG : before break in %s l%d\n", __FUNCTION__, __LINE__);
 			break;
 		}
 		if (!list_empty(&dev->power.entry))
@@ -978,18 +971,14 @@ static int dpm_suspend_noirq(pm_message_t state)
 				MAX_SUSPEND_ABORT_LEN);
 			log_suspend_abort_reason(suspend_abort);
 			error = -EBUSY;
-			printk(KERN_INFO "SYSDEBUG : before break in %s l%d\n", __FUNCTION__, __LINE__);
 			break;
 		}
 	}
 	mutex_unlock(&dpm_list_mtx);
-	if (error) {
-		printk(KERN_INFO "SYSDEBUG : before resume event in %s, l%d\n", __FUNCTION__, __LINE__);
+	if (error)
 		dpm_resume_noirq(resume_event(state));
-		printk(KERN_INFO "SYSDEBUG : after resume event in %s, l%d\n", __FUNCTION__, __LINE__);
-	} else
+	else
 		dpm_show_time(starttime, state, "noirq");
-	printk(KERN_INFO "SYSDEBUG : error value is %d, %s l%d\n", error, __FUNCTION__, __LINE__);
 	return error;
 }
 

@@ -332,6 +332,10 @@ PVRSRV_ERROR RIWritePMREntryKM(PMR *hPMR,
 	{
 		g_pRIHashTable = HASH_Create_Extended(_RI_INITIAL_HASH_TABLE_SIZE, sizeof(PMR*), HASH_Func_Default, HASH_Key_Comp_Default);
 		g_pProcHashTable = HASH_Create_Extended(_RI_INITIAL_HASH_TABLE_SIZE, sizeof(IMG_PID), _ProcHashFunc, _ProcHashComp);
+		if (g_pRIHashTable)
+			spin_lock_init(&g_pRIHashTable->hash_spinlock);
+		if (g_pProcHashTable)
+			spin_lock_init(&g_pProcHashTable->hash_spinlock);
 	}
 	if (!g_pRIHashTable || !g_pProcHashTable)
 	{

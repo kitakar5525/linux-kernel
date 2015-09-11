@@ -1714,6 +1714,8 @@ PVRSRV_ERROR PVRSRVAllocHandleBase(PVRSRV_HANDLE_BASE **ppsBase)
 		goto ErrorDestroyHandleBase;
 	}
 
+	spin_lock_init(&psBase->psHashTab->hash_spinlock);
+
 	*ppsBase = psBase;
 
 	UnlockHandle();

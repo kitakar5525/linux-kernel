@@ -54,6 +54,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* services/shared/include/ */
 #include "hash.h"
+#include "lock.h"
 
 /* services/client/include/ or services/server/include/ */
 #include "osfunc.h"
@@ -71,47 +72,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define	KEY_COMPARE(pHash, pKey1, pKey2) \
 	((pHash)->pfnKeyComp((pHash)->uKeySize, (pKey1), (pKey2)))
 
-/* Each entry in a hash table is placed into a bucket */
-struct _BUCKET_
-{
-	/* the next bucket on the same chain */
-	struct _BUCKET_ *pNext;
-
-	/* entry value */
-	IMG_UINTPTR_T v;
-
-	/* entry key */
-#if defined (WIN32)
-	IMG_UINTPTR_T k[1];
-#else
-	IMG_UINTPTR_T k[];		/* PRQA S 0642 */ /* override dynamic array declaration warning */
-#endif
-};
-typedef struct _BUCKET_ BUCKET;
-
-struct _HASH_TABLE_
-{
-	/* current size of the hash table */
-	IMG_UINT32 uSize;
-
-	/* number of entries currently in the hash table */
-	IMG_UINT32 uCount;
-
-	/* the minimum size that the hash table should be re-sized to */
-	IMG_UINT32 uMinimumSize;
-
-	/* size of key in bytes */
-	IMG_UINT32 uKeySize;
-
-	/* hash function */
-	HASH_FUNC *pfnHashFunc;
-
-	/* key comparison function */
-	HASH_KEY_COMP *pfnKeyComp;
-
-	/* the hash table array */
-	BUCKET **ppBucketTable;
-};
 
 /*************************************************************************/ /*!
 @Function       HASH_Func_Default
@@ -261,6 +221,8 @@ _Rehash (HASH_TABLE *pHash,
 static IMG_BOOL
 _Resize (HASH_TABLE *pHash, IMG_UINT32 uNewSize)
 {
+	IMG_UINT32 flags = 0;
+
 	if (uNewSize != pHash->uSize)
     {
 		BUCKET **ppNewTable;
@@ -275,6 +237,9 @@ _Resize (HASH_TABLE *pHash, IMG_UINT32 uNewSize)
         for (uIndex=0; uIndex<uNewSize; uIndex++)
             ppNewTable[uIndex] = IMG_NULL;
 
+
+	/* spinlock kill performance, limit the scope */
+	spin_lock_irqsave(&pHash->hash_spinlock, flags);
         if (_Rehash (pHash, pHash->ppBucketTable, pHash->uSize, ppNewTable, uNewSize) != PVRSRV_OK)
 		{
 			/*
@@ -285,8 +250,10 @@ _Resize (HASH_TABLE *pHash, IMG_UINT32 uNewSize)
 				of the driver so in reality we should never hit this
 			*/
 			PVR_ASSERT(IMG_FALSE);
+			spin_unlock_irqrestore(&pHash->hash_spinlock, flags);
 			return IMG_FALSE;
 		}
+	spin_unlock_irqrestore(&pHash->hash_spinlock, flags);
 
         OSFreeMem(pHash->ppBucketTable);
         /*not nulling pointer, being reassigned just below*/
@@ -359,8 +326,14 @@ HASH_TABLE * HASH_Create_Extended (IMG_UINT32 uInitialLen, IMG_SIZE_T uKeySize, 
 IMG_INTERNAL 
 HASH_TABLE * HASH_Create (IMG_UINT32 uInitialLen)
 {
-	return HASH_Create_Extended(uInitialLen, sizeof(IMG_UINTPTR_T),
+	HASH_TABLE * htable = IMG_NULL;
+
+	htable = HASH_Create_Extended(uInitialLen, sizeof(IMG_UINTPTR_T),
 		&HASH_Func_Default, &HASH_Key_Comp_Default);
+
+	spin_lock_init(&htable->hash_spinlock);
+
+	return htable;
 }
 
 /*************************************************************************/ /*!

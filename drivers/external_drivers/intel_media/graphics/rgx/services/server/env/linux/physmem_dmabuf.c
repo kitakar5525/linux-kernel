@@ -522,6 +522,8 @@ PhysmemImportDmaBuf(CONNECTION_DATA *psConnection,
 		{
 			eError = PVRSRV_ERROR_OUT_OF_MEMORY;
 		}
+		if (g_psDmaBufHash)
+			spin_lock_init(&g_psDmaBufHash->hash_spinlock);
 	}
 	else
 	{

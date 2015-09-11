@@ -52,6 +52,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined(LINUX) && defined(__KERNEL__)
 
 #include <linux/mutex.h>
+#include <linux/spinlock.h>
 #include <linux/slab.h>
 
 #define OSLockCreate(phLock, eLockType) ({ \

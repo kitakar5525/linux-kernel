@@ -1027,6 +1027,8 @@ RA_Create (IMG_CHAR *name,
 		goto hash_fail;
 	}
 
+	spin_lock_init(&pArena->pSegmentHash->hash_spinlock);
+
 	pArena->name = name;
 	pArena->pImportAlloc = (imp_alloc!=IMG_NULL) ? imp_alloc : &_RequestAllocFail;
 	pArena->pImportFree = imp_free;

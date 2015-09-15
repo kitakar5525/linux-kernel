@@ -600,13 +600,17 @@ static void init_platform_thresholds(struct max17042_platform_data *pdata)
 		pdata->volt_min_lim = 3200;
 		pdata->volt_max_lim = 4350;
 	} else if (INTEL_MID_BOARD(2, PHONE, MRFL, RBY, PRO) ||
-				INTEL_MID_BOARD(2, PHONE, MRFL, RBY, ENG) ||
-				INTEL_MID_BOARD(2, PHONE, MRFL, MVN, PRO) ||
+				INTEL_MID_BOARD(2, PHONE, MRFL, RBY, ENG)) {
+		pdata->temp_min_lim = 0;
+		pdata->temp_max_lim = 45;
+		pdata->volt_min_lim = 3200;
+		pdata->volt_max_lim = 4350;
+	} else if (	INTEL_MID_BOARD(2, PHONE, MRFL, MVN, PRO) ||
 				INTEL_MID_BOARD(2, PHONE, MRFL, MVN, ENG) ||
 				INTEL_MID_BOARD(2, PHONE, MRFL, GLC, PRO) ||
 				INTEL_MID_BOARD(2, PHONE, MRFL, GLC, ENG)) {
-		pdata->temp_min_lim = 0;
-		pdata->temp_max_lim = 45;
+		pdata->temp_min_lim = -20;
+		pdata->temp_max_lim = 60;
 		pdata->volt_min_lim = 3200;
 		pdata->volt_max_lim = 4350;
 	} else if (INTEL_MID_BOARD(1, PHONE, MRFL) ||

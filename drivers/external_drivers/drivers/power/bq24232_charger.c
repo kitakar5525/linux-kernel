@@ -248,6 +248,7 @@ static bool is_bat_temp_allowed(struct bq24232_charger *chip,
 		}
 		bat_profile = chip->pdata->bat_hv_temp_profile;
 	}
+	bat_temp -= chip->pdata->bat_temp_offset;
 	switch (chgrt) {
 	case (BQ24232_NORM_CHARGE):
 		return (bat_temp >= bat_profile[BQ24232_NORM_CHARGE_TEMP_LOW] &&

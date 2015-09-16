@@ -80,6 +80,7 @@ struct bq24232_plat_data {
 	int (*enable_vbus) (bool val);
 	int (*get_charging_status) (bool *charging_status);
 
+	int bat_temp_offset;
 	bool wc_direct_support;
 };
 

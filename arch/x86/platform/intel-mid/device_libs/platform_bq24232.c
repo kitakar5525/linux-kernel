@@ -51,6 +51,12 @@ static int bq24232_bat_highvolt_temp_profile[] = {
 		700	/* BQ24232_NORM_CHARGE_TEMP_HIGH */
 };
 
+/*
+ * Battery temperature offset between sw measured value and
+ * battery NTC. Expressed in 0.1 °C
+ */
+#define BQ24232_BATTERY_TEMP_OFFSET		50
+
 #define BQ24232_BAT_HIGH_VOLT_THRESHOLD		4100000	/* in uV */
 
 void *bq24232_charger_platform_data(void *info)
@@ -79,6 +85,8 @@ void *bq24232_charger_platform_data(void *info)
 		bq24232_pdata.wc_direct_support = true;
 	else
 		bq24232_pdata.wc_direct_support = false;
+
+	bq24232_pdata.bat_temp_offset = BQ24232_BATTERY_TEMP_OFFSET;
 
 	return &bq24232_pdata;
 }

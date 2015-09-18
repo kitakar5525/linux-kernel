@@ -1174,7 +1174,8 @@ err_tsl_wq_failed:
 err_sysfs_failed:
 	input_unregister_device(chip->input);
 err_input_register_failed:
-	input_free_device(chip->input);
+	/* REVERTME: skip the free device call in case no als is detected */
+	// input_free_device(chip->input);
 err_input_alloc_failed:
 	kfree(chip);
 	return ret;

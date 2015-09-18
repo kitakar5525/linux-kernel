@@ -44,6 +44,7 @@
 #include "pwr_mgmt.h"
 #include "dispmgrnl.h"
 #include <linux/cpu.h>
+#include <linux/reboot.h>
 #include <linux/notifier.h>
 #include <linux/spinlock.h>
 
@@ -4365,6 +4366,26 @@ static struct pci_driver psb_pci_driver = {
 	.shutdown = psb_shutdown
 };
 
+static int psb_shutdown_notifier_call(struct notifier_block *unused1,
+					unsigned long unused2, void *unused3)
+{
+	struct pci_dev *pdev = NULL;
+
+	for_each_pci_dev(pdev) {
+		if (pci_match_id(pciidlist, pdev)) {
+			if (pdev != NULL)
+				psb_shutdown(pdev);
+		}
+	}
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block psb_shutdown_notifier = {
+	.notifier_call = psb_shutdown_notifier_call,
+	.priority = 1
+};
+
 static int psb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
 	pdev->d3_delay = 0;
@@ -4428,6 +4449,9 @@ static int __init psb_init(void)
 
 	BCVideoQueryIoctls(psb_ioctls);
 
+	if (register_reboot_notifier(&psb_shutdown_notifier))
+		DRM_ERROR("psb: unable to register shutdown notifier\n");
+
 	ret = drm_pci_init(&driver, &psb_pci_driver);
 	if (ret != 0) {
 		DRM_ERROR("drm_init fail!\n");
@@ -4453,6 +4477,8 @@ static int __init psb_init(void)
 static void __exit psb_exit(void)
 {
 	int ret;
+
+	unregister_reboot_notifier(&psb_shutdown_notifier);
 	/*cleanup for bc_video */
 	ret = BCVideoModCleanup();
 	if (ret != 0)

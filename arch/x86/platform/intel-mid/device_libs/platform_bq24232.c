@@ -97,7 +97,6 @@ void *bq24232_charger_platform_data(void *info)
 #if CONFIG_PMIC_CCSM
 	if (bq24232_pdata.charger_ce_n_gpio < 0)
 		bq24232_pdata.enable_charging = pmic_enable_charging;
-	bq24232_pdata.get_charging_status = pmic_get_ext_charging_status;
 	bq24232_pdata.enable_vbus = pmic_enable_vbus;
 #endif
 	if (chging_profile_tbl) {

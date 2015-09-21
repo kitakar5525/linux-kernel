@@ -359,10 +359,11 @@ static void bq24232_update_charging_status(struct bq24232_charger *chip)
 {
 	int ret;
 
-	if (chip->pdata->get_charging_status)
-		chip->pdata->get_charging_status(&chip->charging_status_n);
-	else
-		dev_warn(chip->dev, "%s: hw charging status unavailable\n", __func__);
+	if (chip->pdata->get_charging_status) {
+		ret = chip->pdata->get_charging_status(&chip->charging_status_n);
+		if (ret < 0)
+			dev_warn(chip->dev, "%s: hw charging status error %d\n", __func__, ret);
+	}
 
 	if (bq24232_can_enable_charging(chip)) {
 		if (chip->chging_started &&

@@ -17,6 +17,7 @@
  */
 struct st_lsm6ds3_platform_data {
 	int gpio_int1;
+	int (*gpio_conf)(void);
 };
 
 #endif /* ST_LSM6DS3_PDATA_H */

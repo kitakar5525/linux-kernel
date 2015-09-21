@@ -95,6 +95,9 @@ static int st_lsm6ds3_i2c_probe(struct i2c_client *client,
 	if (((struct st_lsm6ds3_platform_data *)client->dev.platform_data)->gpio_int1 > 0)
 		client->irq = gpio_to_irq(((struct st_lsm6ds3_platform_data *)client->dev.platform_data)->gpio_int1);
 
+	if(((struct st_lsm6ds3_platform_data *)client->dev.platform_data)->gpio_conf)
+		((struct st_lsm6ds3_platform_data *)client->dev.platform_data)->gpio_conf();
+
 	err = st_lsm6ds3_common_probe(cdata, client->irq);
 	if (err < 0)
 		goto free_data;

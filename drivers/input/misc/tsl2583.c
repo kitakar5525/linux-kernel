@@ -1120,6 +1120,9 @@ static int taos_probe(struct i2c_client *clientp,
 	mutex_init(&chip->als_mutex);
 	chip->als_status = TSL258X_CHIP_UNKNOWN;
 
+	if (((struct tsl258x_platform_data *)chip->pdata)->gpio_conf)
+		((struct tsl258x_platform_data *)chip->pdata)->gpio_conf();
+
 	for (i = 0; i < TSL258X_MAX_DEVICE_REGS; i++) {
 		ret = i2c_smbus_write_byte(clientp,
 				(TSL258X_CMD_REG | (TSL258X_CNTRL + i)));

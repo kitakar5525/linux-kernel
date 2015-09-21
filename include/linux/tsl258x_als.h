@@ -36,6 +36,7 @@ struct tsl258x_platform_data {
 	int als_def_gain;
 	int als_def_gain_trim;
 	int als_def_cal_target;
+	int (*gpio_conf)(void);
 };
 
 #endif /* _TSL258X_ALS_H_ */

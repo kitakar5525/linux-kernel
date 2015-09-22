@@ -665,6 +665,7 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 	dev_dbg(cdata->dev, "st_lsm6ds3_set_fifo_decimators_and_threshold: sensors_enabled=0x%2x\n",
 				cdata->sensors_enabled);
 
+	cdata->sensors_pattern_en = 0;
 	indio_dev = cdata->indio_dev[ST_INDIO_DEV_ACCEL];
 	sdata_accel = iio_priv(indio_dev);
 	if (((1 << ST_INDIO_DEV_ACCEL) | (1 << ST_INDIO_DEV_ACCEL_WK)) & cdata->sensors_enabled) {
@@ -775,12 +776,8 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 		accel_decimator = max_odr / sdata_accel->c_odr;
 		if ((1 << ST_INDIO_DEV_ACCEL) & cdata->sensors_enabled)
 			cdata->sensors_pattern_en |= (1 << ST_INDIO_DEV_ACCEL);
-		else
-			cdata->sensors_pattern_en &= ~(1 << ST_INDIO_DEV_ACCEL);
 		if ((1 << ST_INDIO_DEV_ACCEL_WK) & cdata->sensors_enabled)
 			cdata->sensors_pattern_en |= (1 << ST_INDIO_DEV_ACCEL_WK);
-		else
-			cdata->sensors_pattern_en &= ~(1 << ST_INDIO_DEV_ACCEL_WK);
 		dev_dbg(cdata->dev, "Accel: sensors_enabled=0x%2x, sensors_pattern_en=0x%2x\n",
 					cdata->sensors_enabled, cdata->sensors_pattern_en);
 	} else
@@ -801,12 +798,8 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 		gyro_decimator = max_odr / sdata_gyro->c_odr;
 		if ((1 << ST_INDIO_DEV_GYRO) & cdata->sensors_enabled)
 			cdata->sensors_pattern_en |= (1 << ST_INDIO_DEV_GYRO);
-		else
-			cdata->sensors_pattern_en &= ~(1 << ST_INDIO_DEV_GYRO);
 		if ((1 << ST_INDIO_DEV_GYRO_WK) & cdata->sensors_enabled)
 			cdata->sensors_pattern_en |= (1 << ST_INDIO_DEV_GYRO_WK);
-		else
-			cdata->sensors_pattern_en &= ~(1 << ST_INDIO_DEV_GYRO_WK);
 		dev_dbg(cdata->dev, "Gyro: sensors_enabled=0x%2x, sensors_pattern_en=0x%2x\n",
 					cdata->sensors_enabled, cdata->sensors_pattern_en);
 	} else

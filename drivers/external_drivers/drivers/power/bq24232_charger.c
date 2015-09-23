@@ -473,14 +473,14 @@ static int bq24232_charger_set_property(struct power_supply *psy,
 static int bq24232_charger_property_is_writeable(struct power_supply *psy,
 						enum power_supply_property psp)
 {
-#ifdef BQ24232_DBG
 	switch (psp) {
+#ifdef BQ24232_DBG
 	case POWER_SUPPLY_PROP_ONLINE:
 	case POWER_SUPPLY_PROP_CABLE_TYPE:
+#endif
 	case POWER_SUPPLY_PROP_ENABLE_CHARGING:
 		return 1;
 	}
-#endif
 	return 0;
 }
 
@@ -659,8 +659,8 @@ static void bq24232_evt_worker(struct work_struct *work)
 					BAT_TEMP_MONITOR_DELAY);
 			break;
 		case SYSFS_EVENT:
-#ifdef BQ24232_DBG
 			switch (evt->psp) {
+#ifdef BQ24232_DBG
 			case POWER_SUPPLY_PROP_ONLINE:
 				chip->online = evt->intval;
 				goto exit;
@@ -668,6 +668,7 @@ static void bq24232_evt_worker(struct work_struct *work)
 				chip->cable_type = evt->intval;
 				chip->pow_sply.type = get_power_supply_type(chip->cable_type);
 				goto exit;
+#endif
 			case POWER_SUPPLY_PROP_ENABLE_CHARGING:
 				chip->force_disable_charging = !evt->intval;
 				if (!evt->intval) {
@@ -679,7 +680,6 @@ static void bq24232_evt_worker(struct work_struct *work)
 					schedule_delayed_work(&chip->bat_temp_mon_work,BAT_TEMP_MONITOR_DELAY);
 				break;
 			}
-#endif
 			break;
 		case PMIC_EVENT:
 			chip->charging_status_n = evt->chg_stat;

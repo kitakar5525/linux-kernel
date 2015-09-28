@@ -58,6 +58,7 @@ struct bq24232_charger {
 	int cc;
 	enum power_supply_type cable_type;
 	int status;
+	bool suspended;
 
 	/*
 	 * @charging_status_n:	it must reflects the CE_N signal on BQ24232 to
@@ -452,7 +453,8 @@ static void bq24232_add_event(struct bq24232_charger *chip, struct bq24232_event
 	list_add_tail(&evt->node, &chip->queue);
 	spin_unlock_irqrestore(&chip->queue_lock, flags);
 
-	queue_work(system_nrt_wq, &chip->evt_work);
+	if (!bq24232_charger->suspended)
+		queue_work(system_nrt_wq, &chip->evt_work);
 }
 
 static int bq24232_charger_set_property(struct power_supply *psy,
@@ -518,7 +520,11 @@ static void bq24232_exception_mon_wrk(struct work_struct *work)
 	struct bq24232_charger *chip = container_of(work,
 			struct bq24232_charger,
 			bat_temp_mon_work.work);
-	struct bq24232_event *evt = kzalloc(sizeof(*evt), GFP_ATOMIC);
+	struct bq24232_event *evt;
+	if (!chip->is_charger_enabled)
+		return;
+
+	evt = kzalloc(sizeof(*evt), GFP_ATOMIC);
 	if (!evt) {
 		dev_err(chip->dev,"failed to allocate memory for exceptin_mon_wrk event\n");
 		return;
@@ -887,7 +893,32 @@ static int bq24232_charger_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int bq24232_suspend(struct device *dev)
+{
+	bq24232_charger->suspended = true;
+	flush_work(&bq24232_charger->evt_work);
+	cancel_delayed_work_sync(&bq24232_charger->bat_temp_mon_work);
+	dev_dbg(bq24232_charger->dev, "bq24232 suspend\n");
+	return 0;
+}
 
+static int bq24232_resume(struct device *dev)
+{
+	bq24232_charger->suspended = false;
+	schedule_delayed_work(&bq24232_charger->bat_temp_mon_work, 0);
+	dev_dbg(bq24232_charger->dev, "bq24232 resume\n");
+	return 0;
+}
+#else
+#define bq24232_suspend NULL
+#define bq24232_resume NULL
+#endif
+
+static const struct dev_pm_ops bq24232_pm_ops = {
+	.suspend		= bq24232_suspend,
+	.resume			= bq24232_resume,
+};
 
 static struct platform_driver bq24232_charger_driver = {
 	.probe = bq24232_charger_probe,
@@ -895,6 +926,7 @@ static struct platform_driver bq24232_charger_driver = {
 	.driver = {
 		.name = BQ24232_CHRGR_DEV_NAME,
 		.owner = THIS_MODULE,
+		.pm	= &bq24232_pm_ops,
 	},
 };
 

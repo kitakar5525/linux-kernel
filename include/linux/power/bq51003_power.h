@@ -18,7 +18,6 @@
 struct bq51003_plat_data {
 	int wc_chg_n;
 	int gpio_en1;
-	int gpio_en2;
 	int (*wc_docking_detection)(bool enable, void (*cb)(void*), void*);
 };
 

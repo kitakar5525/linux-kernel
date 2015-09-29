@@ -16,8 +16,6 @@
 static struct bq51003_plat_data bq51003_pdata = {
 	.wc_chg_n = -1,
 	.gpio_en1 = -1,
-	.gpio_en2 = -1,
-
 };
 
 void *bq51003_platform_data(void *info)
@@ -27,7 +25,6 @@ void *bq51003_platform_data(void *info)
 
 	/* acquired gpio to enable/disable wireless charger */
 	bq51003_pdata.gpio_en1 = get_gpio_by_name("wc_en1");
-	bq51003_pdata.gpio_en2 = get_gpio_by_name("wc_en2");
 
 	return &bq51003_pdata;
 }

@@ -61,15 +61,9 @@ static enum power_supply_property bq51003_power_props[] = {
 
 static void bq51003_enable(struct bq51003_power *wc_charger, int enable)
 {
-	/* set EN1/EN2 accordingly to enable value */
-	/* order is important to avoid a transition by the dynamic state */
-	if (enable) {
-		gpio_set_value(wc_charger->pdata->gpio_en2, !enable);
-		gpio_set_value(wc_charger->pdata->gpio_en1, !enable);
-	} else {
-		gpio_set_value(wc_charger->pdata->gpio_en1, !enable);
-		gpio_set_value(wc_charger->pdata->gpio_en2, !enable);
-	}
+	/* set EN1 accordingly to enable value - EN1 is mirrored on EN2 */
+	gpio_set_value(wc_charger->pdata->gpio_en1, !enable);
+
 	wc_charger->enable = !!enable;
 }
 
@@ -208,11 +202,6 @@ static int bq51003_power_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	if (!gpio_is_valid(pdata->gpio_en2)) {
-		dev_err(&pdev->dev, "Invalid gpio EN2 pin\n");
-		return -EINVAL;
-	}
-
 	ret = gpio_request(pdata->wc_chg_n, dev_name(&pdev->dev));
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to request gpio pin wc_chg_n: %d\n", ret);
@@ -232,17 +221,6 @@ static int bq51003_power_probe(struct platform_device *pdev)
 	ret = gpio_direction_output(pdata->gpio_en1, 0);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to set gpio gpio_en1 to output: %d\n", ret);
-		goto err_gpio_free;
-	}
-
-	ret = gpio_request(pdata->gpio_en2, dev_name(&pdev->dev));
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to request gpio pin gpio_en2: %d\n", ret);
-		goto err_gpio_free;
-	}
-	ret = gpio_direction_output(pdata->gpio_en2, 0);
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to set gpio gpio_en2 to output: %d\n", ret);
 		goto err_gpio_free;
 	}
 
@@ -303,7 +281,6 @@ err_free:
 err_gpio_free:
 	gpio_free(pdata->wc_chg_n);
 	gpio_free(pdata->gpio_en1);
-	gpio_free(pdata->gpio_en2);
 
 	return ret;
 }
@@ -319,7 +296,6 @@ static int bq51003_power_remove(struct platform_device *pdev)
 
 	gpio_free(wc_charger->pdata->wc_chg_n);
 	gpio_free(wc_charger->pdata->gpio_en1);
-	gpio_free(wc_charger->pdata->gpio_en2);
 
 	platform_set_drvdata(pdev, NULL);
 	return 0;

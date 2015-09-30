@@ -17,6 +17,26 @@
 #include <asm/pmic_pdata.h>
 #include "platform_bq24232.h"
 
+/*
+ * Battery temperature limits in 0.1 °C, voltage limits in uV
+ */
+#define CHGING_PROF_VOLT_MIN		2800000
+#define CHGING_PROF_VOLT_MAX		4500000
+#define CHGING_PROF_TEMP_MIN		-200
+#define CHGING_PROF_TEMP_MAX		700
+
+#define CHGING_PROF_TEMP_WARM		455
+#define CHGING_PROF_TEMP_COOL		110
+#define CHGING_PROF_VOLT_WARM		4100000
+
+/*
+ * Hysteresis values added to/subtract from battery temperature
+ * and voltage limits, to avoid charging oscillations between
+ * adjacent charging interval
+ */
+#define CHGING_PROF_TEMP_HYSIS		10
+#define CHGING_PROF_VOLT_HYSIS		100000
+
 static char *bq24232_supplied_to[] = {
 				"max17047_battery",
 };
@@ -24,31 +44,40 @@ static char *bq24232_supplied_to[] = {
 static struct bq24232_plat_data bq24232_pdata;
 
 /*
- * Battery temperature limits in 0.1 °C
- * BQ24232_NORM_CHARGE_TEMP_LOW, BQ24232_NORM_CHARGE_TEMP_HIGH and
- * BQ24232_BOOST_CHARGE_TEMP_HIHG set to be outside the range allowed
- * by charger hw component [0°C, 50°C]. Relying on hw to stop charging
- * in case of over/underheat
- */
-static int bq24232_bat_temp_profile[] = {
-		-200,	/* BQ24232_NORM_CHARGE_TEMP_LOW */
-		110,	/* BQ24232_BOOST_CHARGE_TEMP_LOW */
-		700,	/* BQ24232_BOOST_CHARGE_TEMP_HIHG */
-		700	/* BQ24232_NORM_CHARGE_TEMP_HIGH */
-};
-
-/*
- * Battery temperature limits in 0.1 °C
- * for higher battery voltage
- * BQ24232_NORM_CHARGE_TEMP_LOW and BQ24232_NORM_CHARGE_TEMP_HIGH
- * set to be outside the range allowed by charger hw component [0°C, 50°C].
+ * Battery temperature limits in 0.1 °C, voltage limits in uV.
+ * Charging temperature interval set to be outside the range
+ * allowed by charger hw component [0°C, 50°C].
  * Relying on hw to stop charging in case of over/underheat
  */
-static int bq24232_bat_highvolt_temp_profile[] = {
-		-200,	/* BQ24232_NORM_CHARGE_TEMP_LOW */
-		110,	/* BQ24232_BOOST_CHARGE_TEMP_LOW */
-		440,	/* BQ24232_BOOST_CHARGE_TEMP_HIHG */
-		440	/* BQ24232_NORM_CHARGE_TEMP_HIGH */
+struct chging_profile chging_profile_tbl[] = {
+	{
+		CHGING_CURRENT_LOW,
+		{ CHGING_PROF_VOLT_MIN, CHGING_PROF_VOLT_MAX },
+		{ 0 , 0 },
+		{ CHGING_PROF_TEMP_MIN, CHGING_PROF_TEMP_COOL },
+		{ 0 , CHGING_PROF_TEMP_HYSIS },
+	},
+	{
+		CHGING_CURRENT_NULL,
+		{ CHGING_PROF_VOLT_WARM, CHGING_PROF_VOLT_MAX },
+		{ 0 , 0 },
+		{ CHGING_PROF_TEMP_WARM, CHGING_PROF_TEMP_MAX },
+		{ 0 , 0 },
+	},
+	{
+		CHGING_CURRENT_HIGH,
+		{ CHGING_PROF_VOLT_MIN, CHGING_PROF_VOLT_WARM },
+		{ 0, CHGING_PROF_VOLT_HYSIS },
+		{ CHGING_PROF_TEMP_COOL, CHGING_PROF_TEMP_MAX },
+		{ 0, 0 },
+	},
+	{
+		CHGING_CURRENT_HIGH,
+		{ CHGING_PROF_VOLT_MIN, CHGING_PROF_VOLT_MAX },
+		{ 0, 0 },
+		{ CHGING_PROF_TEMP_COOL, CHGING_PROF_TEMP_WARM },
+		{ 0, CHGING_PROF_TEMP_HYSIS },
+	}
 };
 
 /*
@@ -56,8 +85,6 @@ static int bq24232_bat_highvolt_temp_profile[] = {
  * battery NTC. Expressed in 0.1 °C
  */
 #define BQ24232_BATTERY_TEMP_OFFSET		30
-
-#define BQ24232_BAT_HIGH_VOLT_THRESHOLD		4100000	/* in uV */
 
 void *bq24232_charger_platform_data(void *info)
 {
@@ -73,9 +100,10 @@ void *bq24232_charger_platform_data(void *info)
 	bq24232_pdata.get_charging_status = pmic_get_ext_charging_status;
 	bq24232_pdata.enable_vbus = pmic_enable_vbus;
 #endif
-	bq24232_pdata.bat_temp_profile = bq24232_bat_temp_profile;
-	bq24232_pdata.bat_hv_temp_profile = bq24232_bat_highvolt_temp_profile;
-	bq24232_pdata.bat_hv_threshold = BQ24232_BAT_HIGH_VOLT_THRESHOLD;
+	if (chging_profile_tbl) {
+		bq24232_pdata.chging_profiles = chging_profile_tbl;
+		bq24232_pdata.num_chging_profiles = ARRAY_SIZE(chging_profile_tbl);
+	}
 	bq24232_pdata.supplied_to = bq24232_supplied_to;
 	bq24232_pdata.num_supplicants = ARRAY_SIZE(bq24232_supplied_to);
 	if  (INTEL_MID_BOARD(2, PHONE, MRFL, RBY, PRO) ||

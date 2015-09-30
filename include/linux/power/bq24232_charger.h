@@ -45,11 +45,23 @@ void bq24232_set_charging_status(bool chg_stat)
 #endif
 int bq24232_assert_ce_n(bool val);
 
-enum bq24232_chrgrate_temp_limit {
-	BQ24232_NORM_CHARGE_TEMP_LOW,
-	BQ24232_BOOST_CHARGE_TEMP_LOW,
-	BQ24232_BOOST_CHARGE_TEMP_HIGH,
-	BQ24232_NORM_CHARGE_TEMP_HIGH
+enum chging_current_mode {
+	CHGING_CURRENT_NULL,
+	CHGING_CURRENT_LOW,
+	CHGING_CURRENT_HIGH
+};
+
+struct chging_profile {
+	enum chging_current_mode mode;
+	int volt_range[2];
+	int volt_hysis[2];
+	int temp_range[2];
+	int temp_hysis[2];
+};
+
+enum bat_range {
+	RANGE_LOW,
+	RANGE_HIGH
 };
 
 /**
@@ -57,8 +69,8 @@ enum bq24232_chrgrate_temp_limit {
  * @name:		Name for the chargers power_supply device
  * @supplied_to:	Devices supplied by this charger
  * @num_supplicants:	Number of devices supplied by this charger
- * @bat_temp_profile:	Temperature ranges in wich normal/boost charge is allowed
- * @bat_hv_temp_profile:	Charge rates temperature ranges for higher battery voltage
+ * @chging_profiles:	Charge current in function of battery temperature/voltage
+ * @num_chging_profiles:	Number of charging profiles defined
  * @pgood_gpio:	GPIO which is used to indicate the chargers status
  * @chg_rate_temp_gpio:	GPIO which is used to select the charge rate
  * @charger_ce_n_gpio:	GPIO to assert low to charge enable, high to disable it
@@ -69,9 +81,8 @@ struct bq24232_plat_data {
 
 	char **supplied_to;
 	size_t num_supplicants;
-	int *bat_temp_profile;
-	int *bat_hv_temp_profile;
-	int bat_hv_threshold;
+	struct chging_profile *chging_profiles;
+	int num_chging_profiles;
 	int pgood_gpio;
 	int chg_rate_temp_gpio;
 	int charger_ce_n_gpio;

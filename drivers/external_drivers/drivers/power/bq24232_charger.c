@@ -60,6 +60,7 @@ struct bq24232_charger {
 	int status;
 	bool suspended;
 	bool chging_started;
+	struct chging_profile *curr_chging_profile;
 
 	/*
 	 * @charging_status_n:	it must reflects the CE_N signal on BQ24232 to
@@ -219,48 +220,46 @@ static int get_psy_property_val(struct power_supply *psy,
 	return ret;
 }
 
-static bool is_bat_temp_allowed(struct bq24232_charger *chip,
-		enum bq24232_chrgrate_type chgrt)
+static struct chging_profile *select_chging_profile(struct bq24232_charger *chip,
+				bool chk_hysis)
 {
-	int *bat_profile, ret, bat_temp = 0, vbat = 0;
+	int ret, i = 0, bat_temp = 0, vbat = 0;
+	int tbat_hysis_l = 0, tbat_hysis_h = 0;
+	int vbat_hysis_l = 0, vbat_hysis_h = 0;
+	struct chging_profile *current_profile = chip->curr_chging_profile;
 
 	ret = get_psy_property_val(chip->bat_psy, POWER_SUPPLY_TYPE_BATTERY,
 			POWER_SUPPLY_PROP_TEMP, &bat_temp);
 	if (ret) {
 		dev_warn(chip->dev, "cannot retrieve battery temperature\n");
-		goto bat_temp_err;
+		goto profile_err;
 	}
 	ret = get_psy_property_val(chip->bat_psy, POWER_SUPPLY_TYPE_BATTERY,
 			POWER_SUPPLY_PROP_VOLTAGE_NOW, &vbat);
 	if (ret) {
 		dev_warn(chip->dev, "cannot retrieve battery voltage\n");
-		goto bat_temp_err;
-	}
-
-	if (vbat < chip->pdata->bat_hv_threshold) {
-		if (!chip->pdata->bat_temp_profile) {
-			dev_warn(chip->dev, "no battery temperature profile found\n");
-			goto bat_temp_err;
-		}
-		bat_profile = chip->pdata->bat_temp_profile;
-	} else {
-		if (!chip->pdata->bat_hv_temp_profile) {
-			dev_warn(chip->dev, "no battery temperature profile found for high voltage\n");
-			goto bat_temp_err;
-		}
-		bat_profile = chip->pdata->bat_hv_temp_profile;
+		goto profile_err;
 	}
 	bat_temp -= chip->pdata->bat_temp_offset;
-	switch (chgrt) {
-	case (BQ24232_NORM_CHARGE):
-		return (bat_temp >= bat_profile[BQ24232_NORM_CHARGE_TEMP_LOW] &&
-				bat_temp <= bat_profile[BQ24232_NORM_CHARGE_TEMP_HIGH]);
-	case (BQ24232_BOOST_CHARGE):
-		return (bat_temp >= bat_profile[BQ24232_BOOST_CHARGE_TEMP_LOW] &&
-				bat_temp <= bat_profile[BQ24232_BOOST_CHARGE_TEMP_HIGH]);
+
+	for (i = 0; i < chip->pdata->num_chging_profiles; i++) {
+		struct chging_profile *profile = &(chip->pdata->chging_profiles[i]);
+		if (chk_hysis) {
+			tbat_hysis_l = profile->temp_hysis[RANGE_LOW];
+			tbat_hysis_h = profile->temp_hysis[RANGE_HIGH];
+			vbat_hysis_l = profile->volt_hysis[RANGE_LOW];
+			vbat_hysis_h = profile->volt_hysis[RANGE_HIGH];
+		}
+		if (bat_temp >= (profile->temp_range[RANGE_LOW] + tbat_hysis_l) &&
+			bat_temp <= (profile->temp_range[RANGE_HIGH] - tbat_hysis_h) &&
+			vbat >= (profile->volt_range[RANGE_LOW] + vbat_hysis_l) &&
+			vbat <= (profile->volt_range[RANGE_HIGH] - vbat_hysis_h)) {
+			current_profile = profile;
+			break;
+		}
 	}
-bat_temp_err:
-	return false;
+profile_err:
+	return current_profile;
 }
 
 static void bq24232_update_pgood_status(struct bq24232_charger *chip)
@@ -275,18 +274,18 @@ static void bq24232_update_pgood_status(struct bq24232_charger *chip)
 
 static inline bool bq24232_can_enable_charging(struct bq24232_charger *chip)
 {
-	bool bat_temp_ok;
 	bq24232_update_pgood_status(chip);
-	bat_temp_ok = is_bat_temp_allowed(chip, BQ24232_NORM_CHARGE);
 
-	if (!chip->pgood_valid || !chip->is_charger_enabled || !bat_temp_ok || chip->force_disable_charging) {
+	chip->curr_chging_profile = select_chging_profile(chip, true);
+
+	if (!chip->pgood_valid || !chip->is_charger_enabled || !chip->curr_chging_profile->mode || chip->force_disable_charging) {
 		dev_warn(chip->dev,
 				"%s: cannot enable charging, pgood_valid = %d is_charger_enabled = %d,\n"
-				"bat_temp_ok = %d, force_disable_charging = %d\n",
+				"profile = %d, force_disable_charging = %d\n",
 				__func__,
 				chip->pgood_valid,
 				chip->is_charger_enabled,
-				bat_temp_ok,
+				chip->curr_chging_profile->mode,
 				chip->force_disable_charging);
 		return false;
 	}
@@ -336,7 +335,7 @@ static void bq24232_update_chrg_current_status(struct bq24232_charger *chip)
 
 static bool bq24232_charger_can_enable_boost(struct bq24232_charger *chip)
 {
-	return is_bat_temp_allowed(chip, BQ24232_BOOST_CHARGE);
+	return (chip->curr_chging_profile->mode == CHGING_CURRENT_HIGH);
 }
 
 static int bq24232_enable_boost(
@@ -812,6 +811,10 @@ static int bq24232_charger_probe(struct platform_device *pdev)
 	bq24232_charger->charging_status_n = 0;
 	bq24232_charger->force_disable_charging = 0;
 
+	/*
+	 * At probe do not use hysteresis to select the first charging profile
+	 */
+	bq24232_charger->curr_chging_profile = select_chging_profile(bq24232_charger, false);
 	if(pdata->enable_vbus) {
 		ret = pdata->enable_vbus(true);
 		if (ret)

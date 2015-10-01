@@ -59,6 +59,7 @@ struct bq24232_charger {
 	enum power_supply_type cable_type;
 	int status;
 	bool suspended;
+	bool chging_started;
 
 	/*
 	 * @charging_status_n:	it must reflects the CE_N signal on BQ24232 to
@@ -365,7 +366,7 @@ static void bq24232_update_charging_status(struct bq24232_charger *chip)
 		dev_warn(chip->dev, "%s: hw charging status unavailable\n", __func__);
 
 	if (bq24232_can_enable_charging(chip)) {
-		if (chip->charging_status_n)
+		if (chip->chging_started && chip->charging_status_n)
 			chip->status = POWER_SUPPLY_STATUS_FULL;
 		else
 			chip->status = POWER_SUPPLY_STATUS_CHARGING;
@@ -659,6 +660,7 @@ static void bq24232_evt_worker(struct work_struct *work)
 				/* POWER_SUPPLY_CHARGER_EVENT_SUSPEND POWER_SUPPLY_CHARGER_EVENT_DISCONNECT */
 				chip->is_charger_enabled = false;
 				chip->online = 0;
+				chip->chging_started = false;
 			}
 			break;
 		case TEMP_EVENT:
@@ -690,6 +692,8 @@ static void bq24232_evt_worker(struct work_struct *work)
 			break;
 		case PMIC_EVENT:
 			chip->charging_status_n = evt->chg_stat;
+			if (!evt->chg_stat)
+				chip->chging_started = true;
 			break;
 		case UPDATE_EVENT:
 			break;

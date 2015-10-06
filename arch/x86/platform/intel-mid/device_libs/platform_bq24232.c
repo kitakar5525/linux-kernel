@@ -55,7 +55,7 @@ static int bq24232_bat_highvolt_temp_profile[] = {
  * Battery temperature offset between sw measured value and
  * battery NTC. Expressed in 0.1 °C
  */
-#define BQ24232_BATTERY_TEMP_OFFSET		50
+#define BQ24232_BATTERY_TEMP_OFFSET		30
 
 #define BQ24232_BAT_HIGH_VOLT_THRESHOLD		4100000	/* in uV */
 

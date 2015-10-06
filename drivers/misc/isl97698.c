@@ -313,6 +313,10 @@ static int  isl97698_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, chip);
 
 	brightness_set_chip_enable(chip, ISL_CHIP_ENABLE);
+
+	/* Need at least 100us before first I2C access. */
+	mdelay(1);
+
 	res = brightness_chip_check(chip);
 	if (res <  0) {
 		dev_err(&client->dev, "brightness_chip_check failed\n");

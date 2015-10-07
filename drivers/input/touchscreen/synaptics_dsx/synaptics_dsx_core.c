@@ -3573,6 +3573,9 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
 	if (rmi4_data->stay_awake)
+		rmi4_data->current_page = MASK_8BIT;
+		synaptics_rmi4_sensor_wake(rmi4_data);
+		synaptics_rmi4_irq_enable(rmi4_data, true, false);
 		return 0;
 
 	if (rmi4_data->enable_wakeup_gesture) {
@@ -3605,9 +3608,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 	struct synaptics_rmi4_exp_fhandler *exp_fhandler;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
-	if (rmi4_data->stay_awake)
-		return 0;
-
 	if (rmi4_data->enable_wakeup_gesture) {
 		synaptics_rmi4_wakeup_gesture(rmi4_data, false);
 		goto exit;
@@ -3617,6 +3617,9 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 	synaptics_rmi4_sensor_wake(rmi4_data);
 	synaptics_rmi4_irq_enable(rmi4_data, true, false);
+
+	if (rmi4_data->stay_awake)
+		return 0;
 
 	mutex_lock(&exp_data.mutex);
 	if (!list_empty(&exp_data.list)) {

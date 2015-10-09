@@ -220,7 +220,7 @@
 #define	SIGN_Y_A			(-1)
 #define	SIGN_Z_A			(-1)
 #define	SIGN_X_G			1
-#define	SIGN_Y_G			1
+#define	SIGN_Y_G			(-1)
 #define	SIGN_Z_G			(-1)
 #endif
 

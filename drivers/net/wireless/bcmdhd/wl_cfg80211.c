@@ -11528,6 +11528,8 @@ s32 wl_cfg80211_attach(struct net_device *ndev, void *context)
 		goto cfg80211_attach_out;
 #endif 
 
+	INIT_DELAYED_WORK(&cfg->pm_enable_work, wl_cfg80211_work_handler);
+
 	g_bcm_cfg = cfg;
 
 #if defined(WL_ENABLE_P2P_IF)
@@ -12466,7 +12468,6 @@ static s32 __wl_cfg80211_up(struct bcm_cfg80211 *cfg)
 
 	err = dhd_monitor_init(cfg->pub);
 
-	INIT_DELAYED_WORK(&cfg->pm_enable_work, wl_cfg80211_work_handler);
 	wl_set_drv_status(cfg, READY, ndev);
 	return err;
 }

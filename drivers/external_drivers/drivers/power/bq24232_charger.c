@@ -365,7 +365,10 @@ static void bq24232_update_charging_status(struct bq24232_charger *chip)
 		dev_warn(chip->dev, "%s: hw charging status unavailable\n", __func__);
 
 	if (bq24232_can_enable_charging(chip)) {
-		if (chip->chging_started && chip->charging_status_n)
+		if (chip->chging_started &&
+			chip->charging_status_n &&
+			((chip->status == POWER_SUPPLY_STATUS_CHARGING) ||
+                        (chip->status == POWER_SUPPLY_STATUS_FULL)))
 			chip->status = POWER_SUPPLY_STATUS_FULL;
 		else
 			chip->status = POWER_SUPPLY_STATUS_CHARGING;
@@ -404,7 +407,7 @@ static void bq24232_update_charging_status(struct bq24232_charger *chip)
 		if (ret < 0)
 			dev_err(chip->dev, "%s: cannot get power_supply property from wireless (%d)\n", __func__, ret);
 		else {
-			if (w_online)
+			if (w_online && !chip->pgood_valid)
 				chip->status = POWER_SUPPLY_STATUS_CHARGING;
 		}
 	}

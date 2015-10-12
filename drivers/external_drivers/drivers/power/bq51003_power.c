@@ -325,18 +325,10 @@ static int bq51003_power_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static void bq51003_power_shutdown(struct platform_device *pdev)
-{
-	struct bq51003_power *wc_charger = platform_get_drvdata(pdev);
-
-	gpio_set_value(wc_charger->pdata->gpio_en1, 1);
-	gpio_set_value(wc_charger->pdata->gpio_en2, 1);
-}
 
 static struct platform_driver bq51003_power_driver = {
 	.probe = bq51003_power_probe,
 	.remove = bq51003_power_remove,
-	.shutdown = bq51003_power_shutdown,
 	.driver = {
 		.name = DEV_NAME,
 		.owner = THIS_MODULE,

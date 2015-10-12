@@ -1390,7 +1390,8 @@ SET_ODR:
 			return err;
 
 		update_current_odr(sdata, st_lsm6ds3_odr_table.odr_avl[i].hz);
-		break;
+		goto OUT;
+
 	case ST_INDIO_DEV_SIGN_MOTION:
 		err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
 					ST_LSM6DS3_SIGN_MOTION_EN_ADDR,
@@ -1448,11 +1449,11 @@ SET_ODR:
 		return -EINVAL;
 	}
 
-OUT:
 	err = st_lsm6ds3_set_extra_dependency(sdata, true);
 	if (err < 0)
 		return err;
 
+OUT:
 	sdata->cdata->sensors_enabled |= (1 << sdata->sindex);
 
 	return 0;

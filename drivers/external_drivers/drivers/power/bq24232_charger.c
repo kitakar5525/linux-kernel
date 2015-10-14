@@ -884,22 +884,24 @@ io_error1:
 
 static int bq24232_charger_remove(struct platform_device *pdev)
 {
-	struct bq24232_charger *bq24232_charger = platform_get_drvdata(pdev);
-
 	if (bq24232_charger->pdata->wc_direct_support)
 		power_supply_unreg_notifier(&bq24232_charger->psly_nb);
-
-	cancel_delayed_work_sync(&bq24232_charger->bat_temp_mon_work);
 
 	power_supply_unregister(&bq24232_charger->pow_sply);
 
 	usb_unregister_notifier(bq24232_charger->transceiver, &bq24232_charger->otg_nb);
 
-	if (bq24232_charger->pdata->chg_rate_temp_gpio)
+	flush_work(&bq24232_charger->evt_work);
+	cancel_delayed_work_sync(&bq24232_charger->bat_temp_mon_work);
+
+	if (gpio_is_valid(bq24232_charger->pdata->chg_rate_temp_gpio))
 		gpio_free(bq24232_charger->pdata->chg_rate_temp_gpio);
 
-	if (bq24232_charger->pdata->pgood_gpio)
+	if (gpio_is_valid(bq24232_charger->pdata->pgood_gpio))
 		gpio_free(bq24232_charger->pdata->pgood_gpio);
+
+	if (gpio_is_valid(bq24232_charger->pdata->charger_ce_n_gpio))
+		gpio_free(bq24232_charger->pdata->charger_ce_n_gpio);
 
 	return 0;
 }

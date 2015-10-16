@@ -294,17 +294,6 @@ struct synaptics_rmi4_f11_data_1_5 {
 	};
 };
 
-struct synaptics_rmi4_f11_data_28 {
-	union {
-		struct {
-			unsigned char has_bending_detect:1;
-			unsigned char has_large_object_present:1;
-			unsigned char reserved:6;
-		} __packed;
-		unsigned char data[1];
-	};
-};
-
 struct synaptics_rmi4_f12_query_5 {
 	union {
 		struct {
@@ -767,7 +756,6 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int temp;
 	struct synaptics_rmi4_f11_data_1_5 data;
 	struct synaptics_rmi4_f11_extra_data *extra_data;
-	struct synaptics_rmi4_f11_data_28 detected_large_object;
 
 	/*
 	 * The number of finger status registers is determined by the
@@ -797,28 +785,6 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			rmi4_data->suspend = false;
 		}
 
-		return 0;
-	}
-
-	retval = synaptics_rmi4_reg_read(rmi4_data,
-			data_addr + extra_data->data28_offset,
-			detected_large_object.data,
-			sizeof(detected_large_object.data));
-	if (retval < 0) {
-		dev_err(rmi4_data->pdev->dev.parent,
-			"%s: Unable to read large_object detection register\n",
-			__func__);
-		return 0;
-	}
-
-	if (detected_large_object.has_large_object_present) {
-		dev_dbg(rmi4_data->pdev->dev.parent,
-			"%s: Large object detected.\n",
-			__func__);
-		input_report_key(rmi4_data->input_dev, KEY_SLEEP, 1);
-		input_sync(rmi4_data->input_dev);
-		input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
-		input_sync(rmi4_data->input_dev);
 		return 0;
 	}
 
@@ -881,6 +847,16 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				x = rmi4_data->sensor_max_x - x;
 			if (rmi4_data->hw_if->board_data->y_flip)
 				y = rmi4_data->sensor_max_y - y;
+
+			if (wx >= 15 || wy >= 15) {
+				dev_dbg(rmi4_data->pdev->dev.parent,
+					"%s: Large object detected.\n", __func__);
+				input_report_key(rmi4_data->input_dev, KEY_SLEEP, 1);
+				input_sync(rmi4_data->input_dev);
+				input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
+				input_sync(rmi4_data->input_dev);
+				goto exit;
+			}
 
 			input_report_key(rmi4_data->input_dev,
 					BTN_TOUCH, 1);
@@ -1514,6 +1490,7 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 	int retval;
 	unsigned char offset;
 	unsigned char fingers_supported;
+	unsigned char command = 0x7f;
 	struct synaptics_rmi4_f11_extra_data *extra_data;
 	struct synaptics_rmi4_f11_query_0_5 query_0_5;
 	struct synaptics_rmi4_f11_query_7_8 query_7_8;
@@ -1701,11 +1678,8 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 
 	/* data 28 */
 	if (query_0_5.has_bending_correction ||
-			query_0_5.has_large_object_suppression) {
-		extra_data->data28_offset = offset;
-		rmi4_data->f11_large_object = query_0_5.has_large_object_suppression;
+			query_0_5.has_large_object_suppression)
 		offset += 1;
-	}
 
 	/* data 29 30 31 */
 	if (query_0_5.has_query_9 && query_9.has_pen_hover_discrimination)
@@ -1735,6 +1709,18 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 	/* data 38 */
 	if (query_0_5.has_query_27 && query_27.has_wakeup_gesture)
 		extra_data->data38_offset = offset;
+
+	/* data 58: disable large object */
+	retval = synaptics_rmi4_reg_write(rmi4_data,
+			fhandler->full_addr.ctrl_base + 38,
+			&command,
+			sizeof(command));
+	if (retval < 0) {
+		dev_err(rmi4_data->pdev->dev.parent,
+				"%s: Failed to disable large object\n",
+				__func__);
+		return retval;
+	}
 
 	return retval;
 }
@@ -2619,10 +2605,8 @@ static void synaptics_rmi4_set_params(struct synaptics_rmi4_data *rmi4_data)
 		input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_POWER);
 	}
 
-	if (rmi4_data->f11_large_object) {
-		set_bit(KEY_SLEEP, rmi4_data->input_dev->keybit);
-		input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_SLEEP);
-	}
+	set_bit(KEY_SLEEP, rmi4_data->input_dev->keybit);
+	input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_SLEEP);
 
 	return;
 }

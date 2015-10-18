@@ -2726,7 +2726,7 @@ int st_lsm6ds3_common_probe(struct lsm6ds3_data *cdata, int irq)
 	err = cdata->tf->read(cdata, ST_LSM6DS3_WAI_ADDRESS, 1, &wai, true);
 	if (err < 0) {
 		dev_err(cdata->dev, "failed to read Who-Am-I register.\n");
-		return err;
+		return -EPROBE_DEFER;
 	}
 	if (wai != ST_LSM6DS3_WAI_EXP) {
 		dev_err(cdata->dev, "Who-Am-I value not valid.\n");

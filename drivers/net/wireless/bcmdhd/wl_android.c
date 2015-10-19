@@ -2262,6 +2262,10 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 	/* CUSTOMER_SET_COUNTRY feature is define for only GGSM model */
 	else if (strnicmp(command, CMD_COUNTRY, strlen(CMD_COUNTRY)) == 0) {
 		char *country_code = command + strlen(CMD_COUNTRY) + 1;
+
+		ret = -EINVAL;
+		goto exit;
+
 #ifdef CUSTOMER_HW5
 		/* Customer_hw5 want to keep connections */
 		bytes_written = wldev_set_country(net, country_code, true, false);

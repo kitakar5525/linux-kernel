@@ -433,7 +433,7 @@ static void lis3dsh_acc_set_init_statepr1_param(struct lis3dsh_acc_data *acc)
 	acc->resume_state[LIS3DSH_RES_TIM1_1_L] = 0x0F;
 	acc->resume_state[LIS3DSH_RES_TIM1_1_H] = 0x00;
 	acc->resume_state[LIS3DSH_RES_THRS2_1] = 0x0;
-	acc->resume_state[LIS3DSH_RES_THRS1_1] = 0x16;
+	acc->resume_state[LIS3DSH_RES_THRS1_1] = 0x1B;
 	/* DES1 not available*/
 	acc->resume_state[LIS3DSH_RES_SA_1] = 0x00;
 	acc->resume_state[LIS3DSH_RES_MA_1] = 0x20;

@@ -405,10 +405,10 @@ static void lis3dsh_acc_set_init_statepr1_inst(struct lis3dsh_acc_data *acc)
 	acc->resume_stmach_program1[2] = SETP_CMD;
 	acc->resume_stmach_program1[3] = 0x50;
 	acc->resume_stmach_program1[4] = 0x01;
-	acc->resume_stmach_program1[5] = GNTH1_OPCODE;
-	acc->resume_stmach_program1[6] = (LNTH1_OPCODE << 4) | TI3_OPCODE;
-	acc->resume_stmach_program1[7] = (LNTH2_OPCODE << 4) | GNTH2_OPCODE;
-	acc->resume_stmach_program1[8] = (LNTH2_OPCODE << 4) | TI2_OPCODE;
+	acc->resume_stmach_program1[5] = OUTC_CMD;
+	acc->resume_stmach_program1[6] = SRP_CMD;
+	acc->resume_stmach_program1[7] = GNTH1_OPCODE;
+	acc->resume_stmach_program1[8] = (LNTH1_OPCODE << 4) | TI1_OPCODE;
 	acc->resume_stmach_program1[9] = SETP_CMD;
 	acc->resume_stmach_program1[10] = 0x50;
 	acc->resume_stmach_program1[11] = 0x02;
@@ -427,13 +427,13 @@ static void lis3dsh_acc_set_init_statepr1_param(struct lis3dsh_acc_data *acc)
 {
 #ifdef	LOAD_SP1_PARAMETERS
 	acc->resume_state[LIS3DSH_RES_TIM4_1] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM3_1] = 0x05;
-	acc->resume_state[LIS3DSH_RES_TIM2_1_L] = 0x0A;
+	acc->resume_state[LIS3DSH_RES_TIM3_1] = 0x00;
+	acc->resume_state[LIS3DSH_RES_TIM2_1_L] = 0x00;
 	acc->resume_state[LIS3DSH_RES_TIM2_1_H] = 0x00;
-	acc->resume_state[LIS3DSH_RES_TIM1_1_L] = 0x03;
+	acc->resume_state[LIS3DSH_RES_TIM1_1_L] = 0x0F;
 	acc->resume_state[LIS3DSH_RES_TIM1_1_H] = 0x00;
-	acc->resume_state[LIS3DSH_RES_THRS2_1] = 0x16;
-	acc->resume_state[LIS3DSH_RES_THRS1_1] = 0x15;
+	acc->resume_state[LIS3DSH_RES_THRS2_1] = 0x0;
+	acc->resume_state[LIS3DSH_RES_THRS1_1] = 0x16;
 	/* DES1 not available*/
 	acc->resume_state[LIS3DSH_RES_SA_1] = 0x00;
 	acc->resume_state[LIS3DSH_RES_MA_1] = 0x20;

@@ -68,6 +68,9 @@ struct psb_intel_limit_t {
 	struct psb_intel_p2_t p2;
 };
 
+extern int synaptics_rmi4_palm_enable();
+extern int synaptics_rmi4_palm_disable();
+
 /**
  * Returns whether any output on the specified pipe is of the specified type
  */
@@ -1229,10 +1232,15 @@ int psb_power_mode_set_ioctl(struct drm_device *dev, void *data,
 	switch (hwc_mode) {
 	case POWER_MODE_OFF:
 		funcs->dpms(connector, DRM_MODE_DPMS_OFF);
+		synaptics_rmi4_palm_disable();
 		break;
 	case POWER_MODE_NORMAL:
 		funcs->dpms(connector, DRM_MODE_DPMS_ON);
+		synaptics_rmi4_palm_enable();
 		break;
+	case POWER_MODE_DOZE:
+	case POWER_MODE_DOZE_SUSPEND:
+		synaptics_rmi4_palm_disable();
 	default:
 		DRM_INFO("Not support display standby mode yet!\n");
 		break;

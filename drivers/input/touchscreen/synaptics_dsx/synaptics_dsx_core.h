@@ -82,6 +82,8 @@
 #define MASK_2BIT 0x03
 #define MASK_1BIT 0x01
 
+#define PALM_DEBOUNCE_MSEC 750
+
 enum exp_fn {
 	RMI_DEV = 0,
 	RMI_FW_UPDATER,
@@ -242,6 +244,11 @@ struct synaptics_rmi4_device_info {
  * @stay_awake: flag to indicate whether to stay awake during suspend
  * @f11_wakeup_gesture: flag to indicate support for wakeup gestures in F$11
  * @f12_wakeup_gesture: flag to indicate support for wakeup gestures in F$12
+ * @ambient_mode: flag to indicate if we are in ambient mode
+ * @palm_detected: flag to indicate if we detect palm event last time
+ * @btn_touch_down: flag to indicate if we detect normal touch last time
+ * @palm_debounce: flag to record palm debounce time
+ * @palm_detect_threshold: minimum width at which a finger is considered a palm
  * @enable_wakeup_gesture: flag to indicate usage of wakeup gestures
  * @wedge_sensor: flag to indicate use of wedge sensor
  * @reset_device: pointer to device reset function
@@ -288,6 +295,11 @@ struct synaptics_rmi4_data {
 	bool stay_awake;
 	bool f11_wakeup_gesture;
 	bool f12_wakeup_gesture;
+	bool ambient_mode;
+	bool palm_detected;
+	bool btn_touch_down;
+	struct timespec palm_debounce;
+	unsigned palm_detect_threshold;
 	bool enable_wakeup_gesture;
 	bool wedge_sensor;
 	int (*reset_device)(struct synaptics_rmi4_data *rmi4_data);

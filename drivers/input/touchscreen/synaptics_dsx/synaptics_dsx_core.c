@@ -27,7 +27,10 @@
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/input/synaptics_dsx.h>
+
 #include "synaptics_dsx_core.h"
+#include "synaptics_dsx_core_events.h"
+
 #ifdef KERNEL_ABOVE_2_6_38
 #include <linux/input/mt.h>
 #endif
@@ -545,6 +548,21 @@ static struct kobj_attribute virtual_key_map_attr = {
 	.show = synaptics_rmi4_virtual_key_map_show,
 };
 
+static void input_report_key_traced(struct input_dev *idev, int key, int press)
+{
+	trace_synaptics_key_press(key, press);
+
+	input_report_key(idev, key, press);
+}
+
+static void input_report_abs_traced(struct input_dev *idev, unsigned int code,
+				    int value)
+{
+	trace_synaptics_abs(code, value);
+
+	input_report_abs(idev, code, value);
+}
+
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -788,9 +806,9 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		}
 
 		if (detected_gestures) {
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 1);
+			input_report_key_traced(rmi4_data->input_dev, KEY_POWER, 1);
 			input_sync(rmi4_data->input_dev);
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 0);
+			input_report_key_traced(rmi4_data->input_dev, KEY_POWER, 0);
 			input_sync(rmi4_data->input_dev);
 			rmi4_data->suspend = false;
 		}
@@ -856,7 +874,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			timespec_add_ns(&rmi4_data->palm_debounce,
 					PALM_DEBOUNCE_MSEC * NSEC_PER_MSEC);
 			/* send KEY_SLEEP up here */
-			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
+			input_report_key_traced(rmi4_data->input_dev, KEY_SLEEP, 0);
 			input_sync(rmi4_data->input_dev);
 
 			mutex_unlock(&(rmi4_data->rmi4_report_mutex));
@@ -876,7 +894,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				return 1;
 			}
 
-			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 1);
+			input_report_key_traced(rmi4_data->input_dev, KEY_SLEEP, 1);
 			rmi4_data->palm_detected = true;
 			input_sync(rmi4_data->input_dev);
 
@@ -945,20 +963,22 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				x = rmi4_data->sensor_max_x - x;
 			if (rmi4_data->hw_if->board_data->y_flip)
 				y = rmi4_data->sensor_max_y - y;
+			trace_synaptics_rmi4_f11_abs_report_finger(finger_status,
+								   x, y, wx, wy);
 
 			rmi4_data->btn_touch_down = true;
-			input_report_key(rmi4_data->input_dev,
+			input_report_key_traced(rmi4_data->input_dev,
 					BTN_TOUCH, 1);
-			input_report_key(rmi4_data->input_dev,
+			input_report_key_traced(rmi4_data->input_dev,
 					BTN_TOOL_FINGER, 1);
-			input_report_abs(rmi4_data->input_dev,
+			input_report_abs_traced(rmi4_data->input_dev,
 					ABS_MT_POSITION_X, x);
-			input_report_abs(rmi4_data->input_dev,
+			input_report_abs_traced(rmi4_data->input_dev,
 					ABS_MT_POSITION_Y, y);
 #ifdef REPORT_2D_W
-			input_report_abs(rmi4_data->input_dev,
+			input_report_abs_traced(rmi4_data->input_dev,
 					ABS_MT_TOUCH_MAJOR, max(wx, wy));
-			input_report_abs(rmi4_data->input_dev,
+			input_report_abs_traced(rmi4_data->input_dev,
 					ABS_MT_TOUCH_MINOR, min(wx, wy));
 #endif
 #ifndef TYPE_B_PROTOCOL
@@ -981,9 +1001,9 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	}
 
 	if ((touch_count == 0) && rmi4_data->btn_touch_down) {
-		input_report_key(rmi4_data->input_dev,
+		input_report_key_traced(rmi4_data->input_dev,
 				BTN_TOUCH, 0);
-		input_report_key(rmi4_data->input_dev,
+		input_report_key_traced(rmi4_data->input_dev,
 				BTN_TOOL_FINGER, 0);
 #ifndef TYPE_B_PROTOCOL
 		input_mt_sync(rmi4_data->input_dev);
@@ -1037,9 +1057,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			return 0;
 
 		if (detected_gestures) {
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 1);
+			input_report_key_traced(rmi4_data->input_dev, KEY_POWER, 1);
 			input_sync(rmi4_data->input_dev);
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 0);
+			input_report_key_traced(rmi4_data->input_dev, KEY_POWER, 0);
 			input_sync(rmi4_data->input_dev);
 			rmi4_data->suspend = false;
 		}
@@ -1127,6 +1147,8 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		if (rmi4_data->hw_if->board_data->y_flip)
 			y = rmi4_data->sensor_max_y - y;
 
+		trace_synaptics_rmi4_f12_abs_report_finger(finger_status,
+							   x, y, wx, wy);
 		switch (finger_status) {
 		case F12_FINGER_STATUS:
 		case F12_STYLUS_STATUS:
@@ -1137,25 +1159,25 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					MT_TOOL_FINGER, 1);
 #endif
 
-			input_report_key(rmi4_data->input_dev,
+			input_report_key_traced(rmi4_data->input_dev,
 					BTN_TOUCH, 1);
-			input_report_key(rmi4_data->input_dev,
+			input_report_key_traced(rmi4_data->input_dev,
 					BTN_TOOL_FINGER, 1);
-			input_report_abs(rmi4_data->input_dev,
+			input_report_abs_traced(rmi4_data->input_dev,
 					ABS_MT_POSITION_X, x);
-			input_report_abs(rmi4_data->input_dev,
+			input_report_abs_traced(rmi4_data->input_dev,
 					ABS_MT_POSITION_Y, y);
 #ifdef REPORT_2D_W
 			if (rmi4_data->wedge_sensor) {
-				input_report_abs(rmi4_data->input_dev,
+				input_report_abs_traced(rmi4_data->input_dev,
 						ABS_MT_TOUCH_MAJOR, wx);
-				input_report_abs(rmi4_data->input_dev,
+				input_report_abs_traced(rmi4_data->input_dev,
 						ABS_MT_TOUCH_MINOR, wx);
 			} else {
-				input_report_abs(rmi4_data->input_dev,
+				input_report_abs_traced(rmi4_data->input_dev,
 						ABS_MT_TOUCH_MAJOR,
 						max(wx, wy));
-				input_report_abs(rmi4_data->input_dev,
+				input_report_abs_traced(rmi4_data->input_dev,
 						ABS_MT_TOUCH_MINOR,
 						min(wx, wy));
 			}
@@ -1201,9 +1223,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #ifdef F12_DATA_15_WORKAROUND
 		fingers_already_present = 0;
 #endif
-		input_report_key(rmi4_data->input_dev,
+		input_report_key_traced(rmi4_data->input_dev,
 				BTN_TOUCH, 0);
-		input_report_key(rmi4_data->input_dev,
+		input_report_key_traced(rmi4_data->input_dev,
 				BTN_TOOL_FINGER, 0);
 #ifndef TYPE_B_PROTOCOL
 		input_mt_sync(rmi4_data->input_dev);
@@ -1288,14 +1310,14 @@ static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
 				}
 			}
 			touch_count++;
-			input_report_key(rmi4_data->input_dev,
+			input_report_key_traced(rmi4_data->input_dev,
 					f1a->button_map[button],
 					status);
 		} else {
 			if (before_2d_status[button] == 1) {
 				before_2d_status[button] = 0;
 				touch_count++;
-				input_report_key(rmi4_data->input_dev,
+				input_report_key_traced(rmi4_data->input_dev,
 						f1a->button_map[button],
 						status);
 			} else {
@@ -1307,7 +1329,7 @@ static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
 		}
 #else
 		touch_count++;
-		input_report_key(rmi4_data->input_dev,
+		input_report_key_traced(rmi4_data->input_dev,
 				f1a->button_map[button],
 				status);
 #endif
@@ -1355,6 +1377,7 @@ static void synaptics_rmi4_report_touch(struct synaptics_rmi4_data *rmi4_data,
 	default:
 		break;
 	}
+	trace_synaptics_rmi4_report_touch(rmi4_data, fhandler->fn_number);
 
 	return;
 }
@@ -1436,6 +1459,8 @@ static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 	struct synaptics_rmi4_data *rmi4_data = data;
 	const struct synaptics_dsx_board_data *bdata =
 			rmi4_data->hw_if->board_data;
+
+	trace_synaptics_rmi4_irq(gpio_get_value(bdata->irq_gpio), bdata->irq_on_state);
 
 	if (gpio_get_value(bdata->irq_gpio) != bdata->irq_on_state)
 		goto exit;
@@ -2915,9 +2940,9 @@ static int synaptics_rmi4_free_fingers(struct synaptics_rmi4_data *rmi4_data)
 	}
 #endif
 	if (rmi4_data->btn_touch_down) {
-		input_report_key(rmi4_data->input_dev,
+		input_report_key_traced(rmi4_data->input_dev,
 				BTN_TOUCH, 0);
-		input_report_key(rmi4_data->input_dev,
+		input_report_key_traced(rmi4_data->input_dev,
 				BTN_TOOL_FINGER, 0);
 #ifndef TYPE_B_PROTOCOL
 		input_mt_sync(rmi4_data->input_dev);
@@ -3499,6 +3524,8 @@ static void synaptics_rmi4_f12_wg(struct synaptics_rmi4_data *rmi4_data,
 static void synaptics_rmi4_wakeup_gesture(struct synaptics_rmi4_data *rmi4_data,
 		bool enable)
 {
+	trace_synaptics_rmi4_wakeup_gesture(rmi4_data, enable);
+
 	if (rmi4_data->f11_wakeup_gesture)
 		synaptics_rmi4_f11_wg(rmi4_data, enable);
 	else if (rmi4_data->f12_wakeup_gesture)
@@ -3785,6 +3812,9 @@ int synaptics_rmi4_palm_disable(void)
 
 module_init(synaptics_rmi4_init);
 module_exit(synaptics_rmi4_exit);
+
+#define CREATE_TRACE_POINTS 1
+#include "synaptics_dsx_core_events.h"
 
 MODULE_AUTHOR("Synaptics, Inc.");
 MODULE_DESCRIPTION("Synaptics DSX Touch Driver");

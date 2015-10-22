@@ -410,6 +410,53 @@ ssize_t iio_buffer_write_length(struct device *dev,
 }
 EXPORT_SYMBOL(iio_buffer_write_length);
 
+ssize_t iio_buffer_read_store_length(struct device *dev,
+			       struct device_attribute *attr,
+			       char *buf)
+{
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_buffer *buffer = indio_dev->buffer;
+
+	if (buffer->access->get_store_length)
+		return sprintf(buf, "%d\n",
+			       buffer->access->get_store_length(buffer));
+
+	return 0;
+}
+EXPORT_SYMBOL(iio_buffer_read_store_length);
+
+ssize_t iio_buffer_write_store_length(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf,
+				size_t len)
+{
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_buffer *buffer = indio_dev->buffer;
+	unsigned int val;
+	int ret;
+
+	ret = kstrtouint(buf, 10, &val);
+	if (ret)
+		return ret;
+
+	if (buffer->access->get_store_length)
+		if (val == buffer->access->get_store_length(buffer))
+			return len;
+
+	mutex_lock(&indio_dev->mlock);
+	if (iio_buffer_is_active(indio_dev, indio_dev->buffer)) {
+		ret = -EBUSY;
+	} else {
+		if (buffer->access->set_store_length)
+			buffer->access->set_store_length(buffer, val);
+		ret = 0;
+	}
+	mutex_unlock(&indio_dev->mlock);
+
+	return ret ? ret : len;
+}
+EXPORT_SYMBOL(iio_buffer_write_store_length);
+
 ssize_t iio_buffer_show_enable(struct device *dev,
 			       struct device_attribute *attr,
 			       char *buf)

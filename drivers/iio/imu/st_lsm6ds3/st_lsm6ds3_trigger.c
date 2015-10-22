@@ -64,12 +64,10 @@ static void st_lsm6ds3_irq_management(struct work_struct *data_work)
 	if (src_fifo & ST_LSM6DS3_FIFO_DATA_AVL) {
 		dev_dbg(cdata->dev, "ST_LSM6DS3_FIFO_DATA_AVL\n");
 		if (src_fifo & ST_LSM6DS3_FIFO_DATA_OVR) {
-			st_lsm6ds3_set_fifo_mode(cdata, BYPASS);
-			st_lsm6ds3_set_fifo_mode(cdata, CONTINUOS);
 			dev_err(cdata->dev,
 				"data fifo overrun, reduce fifo size.\n");
-		} else
-			st_lsm6ds3_read_fifo(cdata, false);
+		}
+		st_lsm6ds3_read_fifo(cdata, false);
 	}
 
 	if (src_value & ST_LSM6DS3_SRC_STEP_DETECTOR_DATA_AVL) {

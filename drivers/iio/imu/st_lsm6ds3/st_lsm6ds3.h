@@ -141,6 +141,7 @@ struct lsm6ds3_data {
 
 	u8 *fifo_data;
 	u8 sensors_enabled;
+	u8 tmp_sensors_enabled;
 	u8 axis_enabled;
 	u8 sensors_pattern_en;
 	u8 gyro_selftest_status;
@@ -162,6 +163,7 @@ struct lsm6ds3_data {
 	int irq;
 
 	s64 timestamp;
+	s64 last_timestamp;
 	int64_t accel_deltatime;
 	int64_t accel_timestamp;
 	int64_t gyro_deltatime;

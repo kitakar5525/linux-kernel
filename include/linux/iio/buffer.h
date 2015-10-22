@@ -47,11 +47,14 @@ struct iio_buffer_access_funcs {
 	int (*set_bytes_per_datum)(struct iio_buffer *buffer, size_t bpd);
 	int (*get_length)(struct iio_buffer *buffer);
 	int (*set_length)(struct iio_buffer *buffer, int length);
+	int (*get_store_length)(struct iio_buffer *buffer);
+	int (*set_store_length)(struct iio_buffer *buffer, int store_length);
 };
 
 /**
  * struct iio_buffer - general buffer structure
  * @length:		[DEVICE] number of datums in buffer
+ * @store_length:	[DEVICE] number of samples to be collected in the HW FIFO
  * @bytes_per_datum:	[DEVICE] size of individual datum including timestamp
  * @scan_el_attrs:	[DRIVER] control of scan elements if that scan mode
  *			control method is used
@@ -70,6 +73,7 @@ struct iio_buffer_access_funcs {
  */
 struct iio_buffer {
 	int					length;
+	int					store_length;
 	int					bytes_per_datum;
 	struct attribute_group			*scan_el_attrs;
 	long					*scan_mask;
@@ -154,6 +158,19 @@ ssize_t iio_buffer_write_length(struct device *dev,
 			      const char *buf,
 			      size_t len);
 /**
+ * iio_buffer_read_store_length() - attr func to get number of datums want to read in the buffer
+ **/
+ssize_t iio_buffer_read_store_length(struct device *dev,
+			       struct device_attribute *attr,
+			       char *buf);
+/**
+ * iio_buffer_write_store_length() - attr func to set number of datums want to write in the buffer
+ **/
+ssize_t iio_buffer_write_store_length(struct device *dev,
+			      struct device_attribute *attr,
+			      const char *buf,
+			      size_t len);
+/**
  * iio_buffer_store_enable() - attr to turn the buffer on
  **/
 ssize_t iio_buffer_store_enable(struct device *dev,
@@ -169,6 +186,10 @@ ssize_t iio_buffer_show_enable(struct device *dev,
 #define IIO_BUFFER_LENGTH_ATTR DEVICE_ATTR(length, S_IRUGO | S_IWUSR,	\
 					   iio_buffer_read_length,	\
 					   iio_buffer_write_length)
+
+#define IIO_BUFFER_STORE_LENGTH_ATTR DEVICE_ATTR(store_length, S_IRUGO | S_IWUSR,	\
+					   iio_buffer_read_store_length,	\
+					   iio_buffer_write_store_length)
 
 #define IIO_BUFFER_ENABLE_ATTR DEVICE_ATTR(enable, S_IRUGO | S_IWUSR,	\
 					   iio_buffer_show_enable,	\

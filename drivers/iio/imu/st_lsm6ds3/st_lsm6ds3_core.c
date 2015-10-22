@@ -117,6 +117,9 @@
 #define ST_LSM6DS3_MAX_FIFO_LENGHT		(ST_LSM6DS3_MAX_FIFO_SIZE / \
 					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE)
 
+#define	ST_LSM6DS3_STOP_ON_FTH_ADDR		0x13
+#define	ST_LSM6DS3_STOP_ON_FTH_MASK		0x01
+
 /* CUSTOM VALUES FOR ACCEL SENSOR */
 #define ST_LSM6DS3_ACCEL_ODR_ADDR		0x10
 #define ST_LSM6DS3_ACCEL_ODR_MASK		0xf0
@@ -223,6 +226,8 @@
 #define	SIGN_Y_G			(-1)
 #define	SIGN_Z_G			(-1)
 #endif
+
+#define	IIO_BUFFER_KFIFO_DEFAULT_LEN	2
 
 #define ST_LSM6DS3_ACCEL_SUFFIX_NAME		"accel"
 #define ST_LSM6DS3_GYRO_SUFFIX_NAME		"gyro"
@@ -678,13 +683,17 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 		if ((1 << ST_INDIO_DEV_ACCEL) & cdata->sensors_enabled) {
 			if ((1 << ST_INDIO_DEV_ACCEL_WK) & cdata->sensors_enabled) {
 				fifo_len_accel =
-					(indio_dev->buffer->length < cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->length) ?
-					indio_dev->buffer->length : cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->length;
-				fifo_len_accel /= 2;
+					(indio_dev->buffer->store_length <
+						cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->store_length) ?
+					indio_dev->buffer->store_length :
+					cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->store_length;
+				fifo_len_accel /= IIO_BUFFER_KFIFO_DEFAULT_LEN;
 			} else
-				fifo_len_accel = (indio_dev->buffer->length / 2);
+				fifo_len_accel = (indio_dev->buffer->store_length /
+							IIO_BUFFER_KFIFO_DEFAULT_LEN);
 		} else
-			fifo_len_accel = (cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->length / 2);
+			fifo_len_accel = (cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->store_length /
+						IIO_BUFFER_KFIFO_DEFAULT_LEN);
 	}
 
 	indio_dev = cdata->indio_dev[ST_INDIO_DEV_GYRO];
@@ -699,13 +708,17 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 		if ((1 << ST_INDIO_DEV_GYRO) & cdata->sensors_enabled) {
 			if ((1 << ST_INDIO_DEV_GYRO_WK) & cdata->sensors_enabled) {
 				fifo_len_gyro =
-					(indio_dev->buffer->length < cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->length) ?
-						indio_dev->buffer->length : cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->length;
-				fifo_len_gyro /= 2;
+					(indio_dev->buffer->store_length <
+						cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->store_length) ?
+					indio_dev->buffer->store_length :
+					cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->store_length;
+				fifo_len_gyro /= IIO_BUFFER_KFIFO_DEFAULT_LEN;
 			} else
-				fifo_len_gyro = (indio_dev->buffer->length / 2);
+				fifo_len_gyro = (indio_dev->buffer->store_length /
+							IIO_BUFFER_KFIFO_DEFAULT_LEN);
 		} else
-			fifo_len_gyro = (cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->length / 2);
+			fifo_len_gyro = (cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->store_length /
+						IIO_BUFFER_KFIFO_DEFAULT_LEN);
 	}
 
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
@@ -721,7 +734,8 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 				max_odr = sdata_ext0->c_odr;
 			}
 
-			fifo_len_ext0 = (indio_dev->buffer->length / 2);
+			fifo_len_ext0 = (indio_dev->buffer->store_length /
+						IIO_BUFFER_KFIFO_DEFAULT_LEN);
 		}
 	}
 
@@ -737,7 +751,8 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 				max_odr = sdata_ext1->c_odr;
 			}
 
-			fifo_len_ext1 = (indio_dev->buffer->length / 2);
+			fifo_len_ext1 = (indio_dev->buffer->store_length /
+						IIO_BUFFER_KFIFO_DEFAULT_LEN);
 		}
 	}
 
@@ -2884,23 +2899,66 @@ EXPORT_SYMBOL(st_lsm6ds3_common_remove);
 #ifdef CONFIG_PM
 int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 {
+#define	MIN_BUF_TIMEOUT	2500000000
 	int err, i;
 	struct lsm6ds3_sensor_data *sdata;
-	u8 tmp_sensors_enabled = cdata->sensors_enabled;
+	cdata->tmp_sensors_enabled = cdata->sensors_enabled;
 
-	if (!stay_wake && (tmp_sensors_enabled & ST_INDIO_DEV_AG_MASK)) {
+	if (!stay_wake && (cdata->tmp_sensors_enabled & ST_INDIO_DEV_AG_MASK)) {
+		u16 tmp_fifo_len_accel = 0, fifo_len;
+		struct iio_dev *indio_dev = cdata->indio_dev[ST_INDIO_DEV_ACCEL];
+
+		mutex_lock(&cdata->fifo_lock);
+		err = st_lsm6ds3_set_fifo_mode(cdata, BYPASS);
+		if (err < 0)
+			goto release_lock;
+
 		for (i = 0; i < (ST_INDIO_DEV_GYRO_WK + 1); i++) {
 			sdata = iio_priv(cdata->indio_dev[i]);
-
-			err = st_lsm6ds3_set_enable(sdata, false);
-			if (err < 0)
-				return err;
-
 			err = st_lsm6ds3_set_drdy_irq(sdata, false);
 			if (err < 0)
-				return err;
+				goto release_lock;
+
+			if (i == ST_INDIO_DEV_ACCEL) {
+				tmp_fifo_len_accel = indio_dev->buffer->store_length;
+				indio_dev->buffer->store_length = MIN_BUF_TIMEOUT *
+									IIO_BUFFER_KFIFO_DEFAULT_LEN /
+									cdata->accel_deltatime;;
+			}
+
+			if (i == ST_INDIO_DEV_GYRO) {
+				err = st_lsm6ds3_set_enable(sdata, false);
+				if (err < 0) {
+					if (tmp_fifo_len_accel)
+						indio_dev->buffer->store_length = tmp_fifo_len_accel;
+					goto release_lock;
+				}
+			}
 		}
-		cdata->sensors_enabled = tmp_sensors_enabled;
+
+		/* Enable FIFO threshold level use */
+		err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
+						ST_LSM6DS3_STOP_ON_FTH_ADDR,
+						ST_LSM6DS3_STOP_ON_FTH_MASK,
+						ST_LSM6DS3_EN_BIT, false);
+		if (err < 0)
+			goto release_lock;
+
+		fifo_len = st_lsm6ds3_set_fifo_decimators_and_threshold(cdata);
+		if (fifo_len < 0) {
+			err = fifo_len;
+			goto release_lock;
+		}
+
+		if (fifo_len > 0) {
+			err = st_lsm6ds3_set_fifo_mode(cdata, CONTINUOS);
+			if (err < 0)
+				goto release_lock;
+		}
+		mutex_unlock(&cdata->fifo_lock);
+
+		if (tmp_fifo_len_accel)
+			indio_dev->buffer->store_length = tmp_fifo_len_accel;
 	}
 
 	/* Disable step detector irq */
@@ -2926,6 +2984,10 @@ int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 			enable_irq_wake(cdata->irq);
 
 	return 0;
+
+release_lock:
+	mutex_unlock(&cdata->fifo_lock);
+	return err;
 }
 EXPORT_SYMBOL(st_lsm6ds3_common_suspend);
 
@@ -2952,9 +3014,6 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 		struct timespec ts;
 		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume enable step_c\n");
 
-		get_monotonic_boottime(&ts);
-		cdata->timestamp = timespec_to_ns(&ts);
-
 		iio_trigger_poll_chained(
 			cdata->trig[ST_INDIO_DEV_STEP_COUNTER], 0);
 		sdata = iio_priv(cdata->indio_dev[ST_INDIO_DEV_STEP_COUNTER]);
@@ -2963,26 +3022,65 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 			return err;
 	}
 
-	if (cdata->sensors_enabled & ST_INDIO_DEV_AG_MASK) {
+	if (cdata->tmp_sensors_enabled & ST_INDIO_DEV_AG_MASK) {
+		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume stay_wake=%d\n", stay_wake);
+		mutex_lock(&cdata->fifo_lock);
 		st_lsm6ds3_read_fifo(cdata, true);
+
 		if (!stay_wake) {
+			u16 fifo_len;
+			err = st_lsm6ds3_set_fifo_mode(cdata, BYPASS);
+			if (err < 0)
+				goto release_lock;
+
 			for (i = 0; i < (ST_INDIO_DEV_GYRO_WK + 1); i++) {
 				sdata = iio_priv(cdata->indio_dev[i]);
 
-				if ((1 << sdata->sindex) & cdata->sensors_enabled) {
+				if ((1 << sdata->sindex) & cdata->tmp_sensors_enabled) {
 					err = st_lsm6ds3_set_drdy_irq(sdata, true);
 					if (err < 0)
-						return err;
+						goto release_lock;
 
-					err = st_lsm6ds3_set_enable(sdata, true);
-					if (err < 0)
-						return err;
+					if (i == ST_INDIO_DEV_GYRO) {
+						err = st_lsm6ds3_set_enable(sdata, true);
+						if (err < 0)
+							goto release_lock;
+
+					}
 				}
+			}
+
+			/* Disable FIFO threshold level use */
+			err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
+							ST_LSM6DS3_STOP_ON_FTH_ADDR,
+							ST_LSM6DS3_STOP_ON_FTH_MASK,
+							ST_LSM6DS3_DIS_BIT, false);
+			if (err < 0)
+				goto release_lock;
+
+			fifo_len = st_lsm6ds3_set_fifo_decimators_and_threshold(cdata);
+			if (fifo_len < 0) {
+				err = fifo_len;
+				goto release_lock;
+			}
+
+			if (fifo_len > 0) {
+				err = st_lsm6ds3_set_fifo_mode(cdata, CONTINUOS);
+				if (err < 0)
+					goto release_lock;
 			}
 		}
 
+		mutex_unlock(&cdata->fifo_lock);
+		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume [%lld]\n", ktime_to_ns(ktime_get_boottime()));
+
 	}
 	return 0;
+
+release_lock:
+	mutex_unlock(&cdata->fifo_lock);
+	return err;
+
 }
 EXPORT_SYMBOL(st_lsm6ds3_common_resume);
 #endif /* CONFIG_PM */

@@ -46,11 +46,18 @@ static int iio_get_length_kfifo(struct iio_buffer *r)
 	return r->length;
 }
 
+static int iio_get_store_length_kfifo(struct iio_buffer *r)
+{
+	return r->store_length;
+}
+
 static IIO_BUFFER_ENABLE_ATTR;
 static IIO_BUFFER_LENGTH_ATTR;
+static IIO_BUFFER_STORE_LENGTH_ATTR;
 
 static struct attribute *iio_kfifo_attributes[] = {
 	&dev_attr_length.attr,
+	&dev_attr_store_length.attr,
 	&dev_attr_enable.attr,
 	NULL,
 };
@@ -89,6 +96,17 @@ static int iio_set_length_kfifo(struct iio_buffer *r, int length)
 	if (r->length != length) {
 		r->length = length;
 		iio_mark_update_needed_kfifo(r);
+	}
+	return 0;
+}
+
+static int iio_set_store_length_kfifo(struct iio_buffer *r, int store_length)
+{
+	/* Avoid an invalid state */
+	if (store_length < 2)
+		store_length = 2;
+	if (r->store_length != store_length) {
+		r->store_length = store_length;
 	}
 	return 0;
 }
@@ -137,6 +155,8 @@ static const struct iio_buffer_access_funcs kfifo_access_funcs = {
 	.set_bytes_per_datum = &iio_set_bytes_per_datum_kfifo,
 	.get_length = &iio_get_length_kfifo,
 	.set_length = &iio_set_length_kfifo,
+	.get_store_length = &iio_get_store_length_kfifo,
+	.set_store_length = &iio_set_store_length_kfifo,
 };
 
 struct iio_buffer *iio_kfifo_allocate(struct iio_dev *indio_dev)

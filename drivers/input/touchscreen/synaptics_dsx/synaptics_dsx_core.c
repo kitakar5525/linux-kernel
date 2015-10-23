@@ -855,6 +855,10 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			get_monotonic_boottime(&rmi4_data->palm_debounce);
 			timespec_add_ns(&rmi4_data->palm_debounce,
 					PALM_DEBOUNCE_MSEC * NSEC_PER_MSEC);
+			/* send KEY_SLEEP up here */
+			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
+			input_sync(rmi4_data->input_dev);
+
 			mutex_unlock(&(rmi4_data->rmi4_report_mutex));
 			return 0;
 		}
@@ -872,6 +876,10 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				return 1;
 			}
 
+			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 1);
+			rmi4_data->palm_detected = true;
+			input_sync(rmi4_data->input_dev);
+
 			/* avoid that BTN_TOUCH is down before a palm while it is up after a palm */
 			if (rmi4_data->btn_touch_down) {
 				mutex_unlock(&(rmi4_data->rmi4_report_mutex));
@@ -880,13 +888,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			}
 			dev_dbg(rmi4_data->pdev->dev.parent,
 					"%s: Palm detected\n", __func__);
-			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 1);
-			input_sync(rmi4_data->input_dev);
 
-			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
-			input_sync(rmi4_data->input_dev);
-
-			rmi4_data->palm_detected = true;
 			mutex_unlock(&(rmi4_data->rmi4_report_mutex));
 			return 1;
 		}

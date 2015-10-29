@@ -25,6 +25,7 @@
 #include <linux/input.h>
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <linux/input/synaptics_dsx.h>
 
@@ -1465,7 +1466,9 @@ static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 	if (gpio_get_value(bdata->irq_gpio) != bdata->irq_on_state)
 		goto exit;
 
+	pm_runtime_get_sync(&rmi4_data->pdev->dev);
 	synaptics_rmi4_sensor_report(rmi4_data, true);
+	pm_runtime_put(&rmi4_data->pdev->dev);
 
 exit:
 	return IRQ_HANDLED;
@@ -3324,6 +3327,8 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 			&exp_data.work,
 			0);
 
+	pm_runtime_enable(&pdev->dev);
+
 	return retval;
 
 err_sysfs:
@@ -3382,6 +3387,8 @@ static int synaptics_rmi4_remove(struct platform_device *pdev)
 	struct synaptics_rmi4_data *rmi4_data = platform_get_drvdata(pdev);
 	const struct synaptics_dsx_board_data *bdata =
 			rmi4_data->hw_if->board_data;
+
+	pm_runtime_disable(&pdev->dev);
 
 	cancel_delayed_work_sync(&exp_data.work);
 	flush_workqueue(exp_data.workqueue);

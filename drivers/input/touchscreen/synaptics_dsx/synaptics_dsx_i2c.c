@@ -25,6 +25,7 @@
 #include <linux/types.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/input/synaptics_dsx.h>
 #include "synaptics_dsx_core.h"
 
@@ -438,11 +439,15 @@ static int synaptics_rmi4_i2c_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
+	pm_runtime_enable(&client->dev);
+
 	return 0;
 }
 
 static int synaptics_rmi4_i2c_remove(struct i2c_client *client)
 {
+	pm_runtime_disable(&client->dev);
+
 	platform_device_unregister(synaptics_dsx_i2c_device);
 
 	return 0;

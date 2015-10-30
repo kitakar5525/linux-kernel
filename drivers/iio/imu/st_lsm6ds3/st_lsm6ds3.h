@@ -139,6 +139,7 @@ struct lsm6ds3_data {
 	bool reset_steps;
 	bool sign_motion_event_ready;
 
+	u8 *fifo;
 	u8 *fifo_data;
 	u8 sensors_enabled;
 	u8 tmp_sensors_enabled;

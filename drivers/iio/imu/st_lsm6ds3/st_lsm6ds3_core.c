@@ -113,7 +113,7 @@
 #define ST_LSM6DS3_FIFO_THR_IRQ_MASK		0x08
 #define ST_LSM6DS3_RESET_ADDR			0x12
 #define ST_LSM6DS3_RESET_MASK			0x01
-#define ST_LSM6DS3_MAX_FIFO_SIZE		8192
+#define ST_LSM6DS3_MAX_FIFO_SIZE		4320
 #define ST_LSM6DS3_MAX_FIFO_LENGHT		(ST_LSM6DS3_MAX_FIFO_SIZE / \
 					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE)
 
@@ -942,12 +942,13 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 
 		cdata->fifo_threshold = fifo_len;
 	}
-	kfree(cdata->fifo_data);
+	kfree(cdata->fifo);
+	cdata->fifo = 0;
 	cdata->fifo_data = 0;
 
 	if (fifo_len > 0) {
-		cdata->fifo_data = kmalloc(cdata->fifo_threshold, GFP_KERNEL);
-		if (!cdata->fifo_data)
+		cdata->fifo = kmalloc(cdata->fifo_threshold, GFP_KERNEL);
+		if (!cdata->fifo)
 			return -ENOMEM;
 	}
 
@@ -2724,6 +2725,7 @@ int st_lsm6ds3_common_probe(struct lsm6ds3_data *cdata, int irq)
 	mutex_init(&cdata->passthrough_lock);
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 
+	cdata->fifo = 0;
 	cdata->fifo_data = 0;
 
 	err = cdata->tf->read(cdata, ST_LSM6DS3_WAI_ADDRESS, 1, &wai, true);

@@ -3004,7 +3004,14 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 
 	/* Enable step detector irq */
 	if (cdata->sensors_enabled & (1 << ST_INDIO_DEV_STEP_DETECTOR)) {
+		struct timespec ts;
 		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume enable step_d\n");
+
+		/* timestamp for step detector should be updated on
+		 * system resume. Otherwise, event will be considered invalid.
+		 */
+		get_monotonic_boottime(&ts);
+		cdata->timestamp = timespec_to_ns(&ts);
 		sdata = iio_priv(cdata->indio_dev[ST_INDIO_DEV_STEP_DETECTOR]);
 		err = st_lsm6ds3_set_drdy_irq(sdata, true);
 		if (err < 0)
@@ -3016,6 +3023,11 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 		struct timespec ts;
 		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume enable step_c\n");
 
+		/* timestamp for step counter should be updated on
+		 * system resume. Otherwise, event will be considered invalid.
+		 */
+		get_monotonic_boottime(&ts);
+		cdata->timestamp = timespec_to_ns(&ts);
 		iio_trigger_poll_chained(
 			cdata->trig[ST_INDIO_DEV_STEP_COUNTER], 0);
 		sdata = iio_priv(cdata->indio_dev[ST_INDIO_DEV_STEP_COUNTER]);

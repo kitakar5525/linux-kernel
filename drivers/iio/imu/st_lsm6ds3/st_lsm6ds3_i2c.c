@@ -14,6 +14,7 @@
 #include <linux/i2c.h>
 #include <linux/iio/iio.h>
 #include <linux/gpio.h>
+#include <linux/pm_runtime.h>
 #include <linux/platform_data/st_lsm6ds3_pdata.h>
 
 #include "st_lsm6ds3.h"
@@ -35,12 +36,16 @@ static int st_lsm6ds3_i2c_read(struct lsm6ds3_data *cdata,
 	msg[1].len = len;
 	msg[1].buf = data;
 
+	pm_runtime_get_sync(cdata->dev);
+
 	if (b_lock) {
 		mutex_lock(&cdata->bank_registers_lock);
 		err = i2c_transfer(client->adapter, msg, 2);
 		mutex_unlock(&cdata->bank_registers_lock);
 	} else
 		err = i2c_transfer(client->adapter, msg, 2);
+
+	pm_runtime_put(cdata->dev);
 
 	return err;
 }
@@ -62,12 +67,16 @@ static int st_lsm6ds3_i2c_write(struct lsm6ds3_data *cdata,
 	msg.len = len;
 	msg.buf = send;
 
+	pm_runtime_get_sync(cdata->dev);
+
 	if (b_lock) {
 		mutex_lock(&cdata->bank_registers_lock);
 		err = i2c_transfer(client->adapter, &msg, 1);
 		mutex_unlock(&cdata->bank_registers_lock);
 	} else
 		err = i2c_transfer(client->adapter, &msg, 1);
+
+	pm_runtime_put(cdata->dev);
 
 	return err;
 }
@@ -102,6 +111,8 @@ static int st_lsm6ds3_i2c_probe(struct i2c_client *client,
 	if (err < 0)
 		goto free_data;
 
+	pm_runtime_enable(cdata->dev);
+
 	return 0;
 
 free_data:
@@ -112,6 +123,8 @@ free_data:
 static int st_lsm6ds3_i2c_remove(struct i2c_client *client)
 {
 	struct lsm6ds3_data *cdata = i2c_get_clientdata(client);
+
+	pm_runtime_disable(cdata->dev);
 
 	st_lsm6ds3_common_remove(cdata, client->irq);
 	kfree(cdata);

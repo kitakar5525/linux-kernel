@@ -27,6 +27,7 @@
 #include <asm/unaligned.h>
 #include <linux/iio/common/st_sensors.h>
 #include <linux/lnw_gpio.h>
+#include <linux/pm_runtime.h>
 #include "st_lsm6ds3.h"
 
 #define MS_TO_NS(msec)				((msec) * 1000 * 1000)
@@ -2926,6 +2927,8 @@ int st_lsm6ds3_common_probe(struct lsm6ds3_data *cdata, int irq)
 
 	device_init_wakeup(cdata->dev, true);
 
+	pm_runtime_enable(cdata->dev);
+
 	return 0;
 
 iio_device_unregister_and_trigger_deallocate:
@@ -2947,6 +2950,8 @@ EXPORT_SYMBOL(st_lsm6ds3_common_probe);
 void st_lsm6ds3_common_remove(struct lsm6ds3_data *cdata, int irq)
 {
 	int i;
+
+	pm_runtime_disable(cdata->dev);
 
 	for (i = 0; i < ST_INDIO_DEV_NUM; i++)
 		iio_device_unregister(cdata->indio_dev[i]);

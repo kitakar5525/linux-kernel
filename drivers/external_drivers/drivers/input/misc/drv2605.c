@@ -61,6 +61,7 @@
 #include <linux/mutex.h>
 #include <linux/clk.h>
 #include <linux/wakelock.h>
+#include <linux/pm_runtime.h>
 
 /*	Current code version: 182 */
 MODULE_AUTHOR("Immersion Corp.");
@@ -121,12 +122,16 @@ static void drv260x_write_reg_val(const unsigned char *data, unsigned int size)
 	if (size % 2 != 0)
 		return;
 
+	pm_runtime_get_sync(&drv260x->client->dev);
+
 	while (i < size) {
 /*Check if OTP memory have already been written once.*/
 		if ((vibdata.otp_status == false) || (data[i] < RATED_VOLTAGE_REG) || (data[i] > FEEDBACK_CONTROL_REG))
 			i2c_smbus_write_byte_data(drv260x->client, data[i], data[i + 1]);
 		i += 2;
 	}
+
+	pm_runtime_put(&drv260x->client->dev);
 }
 
 static void drv260x_set_go_bit(char val)
@@ -140,7 +145,13 @@ static void drv260x_set_go_bit(char val)
 
 static unsigned char drv260x_read_reg(unsigned char reg)
 {
-	return i2c_smbus_read_byte_data(drv260x->client, reg);
+	int ret;
+
+	pm_runtime_get_sync(&drv260x->client->dev);
+	ret = i2c_smbus_read_byte_data(drv260x->client, reg);
+	pm_runtime_put(&drv260x->client->dev);
+
+	return ret;
 }
 
 static ssize_t drv260x_calibration_status_show(struct device *dev,
@@ -555,6 +566,8 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 		break;
 	}
 
+	pm_runtime_enable(&drv260x->client->dev);
+
 	/* Choose default effect library */
 	drv2605_select_library(vibdata.pdata->effect_library);
 
@@ -568,6 +581,8 @@ static int drv260x_probe(struct i2c_client *client, const struct i2c_device_id *
 
 static int drv260x_remove(struct i2c_client *client)
 {
+	pm_runtime_disable(&drv260x->client->dev);
+
 	dev_err(drv260x->device, "remove");
 	return 0;
 }

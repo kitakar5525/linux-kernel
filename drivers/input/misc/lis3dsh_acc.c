@@ -47,6 +47,7 @@
 #include	<linux/slab.h>
 #include	<linux/wakelock.h>
 #include	<linux/input/lis3dsh.h>
+#include 	<linux/pm_runtime.h>
 #include	<asm/intel_scu_flis.h>
 
 /* TILT_WAKELOCK_HOLD_MS defines time to hold wakelock to allow receiver of
@@ -466,6 +467,8 @@ static int lis3dsh_acc_i2c_read(struct lis3dsh_acc_data *acc,
 		},
 	};
 
+	pm_runtime_get_sync(&acc->client->dev);
+
 	do {
 		err = i2c_transfer(acc->client->adapter, msgs, 2);
 		if (err != 2)
@@ -478,6 +481,8 @@ static int lis3dsh_acc_i2c_read(struct lis3dsh_acc_data *acc,
 	} else {
 		err = 0;
 	}
+
+	pm_runtime_put(&acc->client->dev);
 
 	return err;
 }
@@ -497,6 +502,8 @@ static int lis3dsh_acc_i2c_write(struct lis3dsh_acc_data *acc, u8 *buf,
 		 },
 	};
 
+	pm_runtime_get_sync(&acc->client->dev);
+
 	do {
 		err = i2c_transfer(acc->client->adapter, msgs, 1);
 		if (err != 1)
@@ -509,6 +516,8 @@ static int lis3dsh_acc_i2c_write(struct lis3dsh_acc_data *acc, u8 *buf,
 	} else {
 		err = 0;
 	}
+
+	pm_runtime_put(&acc->client->dev);
 
 	return err;
 }
@@ -1791,6 +1800,8 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 
 	mutex_unlock(&acc->lock);
 
+	pm_runtime_enable(&acc->client->dev);
+
 	dev_info(&client->dev, "%s: probed\n", LIS3DSH_ACC_DEV_NAME);
 
 	return 0;
@@ -1820,6 +1831,8 @@ exit_check_functionality_failed:
 static int lis3dsh_acc_remove(struct i2c_client *client)
 {
 	struct lis3dsh_acc_data *acc = i2c_get_clientdata(client);
+
+	pm_runtime_disable(&acc->client->dev);
 
 	if (acc->pdata->gpio_int1 > 0) {
 		free_irq(acc->irq1, acc);

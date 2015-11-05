@@ -24,6 +24,7 @@
 #include <linux/backlight.h>
 #include <linux/isl97698.h>
 #include <linux/reboot.h>
+#include <linux/pm_runtime.h>
 
 #define BACKLIGHT_NAME		"i2c-bl"
 
@@ -110,6 +111,7 @@ static struct isl97698_st *isl97698_st_chip = NULL;
 
 static int isl97698_i2c_write(struct i2c_client *client, u8 addr, u8 val)
 {
+	int ret;
 	u8 txbuf[2];
 	struct i2c_msg msg = {
 		.addr = client->addr,
@@ -119,11 +121,18 @@ static int isl97698_i2c_write(struct i2c_client *client, u8 addr, u8 val)
 	};
 	txbuf[0] = addr;
 	txbuf[1] = val;
-	return i2c_transfer(client->adapter, &msg, 1);
+
+	pm_runtime_get_sync(&client->dev);
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	pm_runtime_put(&client->dev);
+
+	return ret;
 }
+
 
 static int isl97698_i2c_read(struct i2c_client *client, u8 addr, u8 *val)
 {
+	int ret;
 	struct i2c_msg msgs[2] = {
 		{
 			.addr = client->addr,
@@ -139,7 +148,11 @@ static int isl97698_i2c_read(struct i2c_client *client, u8 addr, u8 *val)
 		}
 	};
 
-	return i2c_transfer(client->adapter, msgs, 2);
+	pm_runtime_get_sync(&client->dev);
+	ret = i2c_transfer(client->adapter, msgs, 2);
+	pm_runtime_put(&client->dev);
+
+	return ret;
 }
 
 static int brightness_get_value(struct isl97698_st *isl, int *level)
@@ -356,6 +369,8 @@ static int  isl97698_probe(struct i2c_client *client,
 		dev_err(&client->dev, "register backlight failed\n");
 		goto isl_probe_fail;
 	}
+	pm_runtime_enable(&client->dev);
+
 	dev_info(&client->dev, "Brightness isl97698_probe successed\n");
 
 	res = register_reboot_notifier(&isl_reboot_notifier);
@@ -374,6 +389,8 @@ isl_probe_fail:
 static int isl97698_remove(struct i2c_client *client)
 {
 	struct isl97698_st *isl = i2c_get_clientdata(client);
+
+	pm_runtime_disable(&client->dev);
 
 	isl97698_backlight_unregister(isl);
 	unregister_reboot_notifier(&isl_reboot_notifier);

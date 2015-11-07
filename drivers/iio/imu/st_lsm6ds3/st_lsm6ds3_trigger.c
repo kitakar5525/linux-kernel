@@ -31,6 +31,7 @@ static struct workqueue_struct *st_lsm6ds3_wq;
 
 void st_lsm6ds3_flush_works()
 {
+	pr_info("st_lsm6ds3_flush_works");
 	flush_workqueue(st_lsm6ds3_wq);
 }
 
@@ -67,7 +68,10 @@ static void st_lsm6ds3_irq_management(struct work_struct *data_work)
 			dev_err(cdata->dev,
 				"data fifo overrun, reduce fifo size.\n");
 		}
+		mutex_lock(&cdata->fifo_lock);
 		st_lsm6ds3_read_fifo(cdata, false);
+		mutex_unlock(&cdata->fifo_lock);
+
 	}
 
 	if (src_value & ST_LSM6DS3_SRC_STEP_DETECTOR_DATA_AVL) {

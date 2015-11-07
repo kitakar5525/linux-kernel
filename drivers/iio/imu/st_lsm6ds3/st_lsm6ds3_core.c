@@ -2910,6 +2910,16 @@ int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 		u16 tmp_fifo_len_accel = 0, fifo_len;
 		struct iio_dev *indio_dev = cdata->indio_dev[ST_INDIO_DEV_ACCEL];
 
+		/* We MUST flush wq to ensure that the data in cdata->fifo_data
+		 * would be filled to iio buffer. Otherwise, the function
+		 * st_lsm6ds3_set_fifo_decimators_and_threshold called below
+		 * will first free cdata->fifo_data, then change its length.
+		 * If this happened concurrently, there would be a NULL pointer
+		 * dereference.
+		 */
+		disable_irq(cdata->irq);
+		st_lsm6ds3_flush_works();
+
 		mutex_lock(&cdata->fifo_lock);
 		err = st_lsm6ds3_set_fifo_mode(cdata, BYPASS);
 		if (err < 0)
@@ -3038,6 +3048,10 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 
 	if (cdata->tmp_sensors_enabled & ST_INDIO_DEV_AG_MASK) {
 		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume stay_wake=%d\n", stay_wake);
+		/* If we could come here: first, the irq must be disabled;
+		 * second, we should flush the wq before read fifo.
+		 */
+		st_lsm6ds3_flush_works();
 		mutex_lock(&cdata->fifo_lock);
 		st_lsm6ds3_read_fifo(cdata, true);
 
@@ -3083,6 +3097,8 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 				if (err < 0)
 					goto release_lock;
 			}
+
+			enable_irq(cdata->irq);
 		}
 
 		mutex_unlock(&cdata->fifo_lock);
@@ -3093,6 +3109,9 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 
 release_lock:
 	mutex_unlock(&cdata->fifo_lock);
+	/* Although wake-up sensors would not come here now, just for kind remind. */
+	if (!stay_wake && (cdata->sensors_enabled & ST_INDIO_DEV_AG_MASK))
+		enable_irq(cdata->irq);
 	return err;
 
 }

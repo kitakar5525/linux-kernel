@@ -299,6 +299,9 @@ void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, bool check_fifo_len)
 					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 
+		if (byte_in_pattern == 0)
+			return;
+
 		read_len = (read_len / byte_in_pattern) * byte_in_pattern;
 
 		if (read_len > cdata->fifo_threshold)

@@ -34,6 +34,7 @@
 #include <linux/time.h>
 #include <linux/jiffies.h>
 #include <linux/posix-timers.h>
+#include <linux/pm_runtime.h>
 
 #include <linux/tsl258x_als.h>
 #include <asm/intel-mid.h>
@@ -271,9 +272,44 @@ static void taos_defaults(struct tsl258x_chip *chip)
 	/* Known external ALS reading used for calibration */
 }
 
+/* i2c smbus read access */
+static int toas_i2c_smbus_read(struct i2c_client *client)
+{
+	int ret;
+
+	pm_runtime_get_sync(&client->dev);
+	ret = i2c_smbus_read_byte(client);
+	pm_runtime_put(&client->dev);
+
+	return ret;
+}
+
+/* i2c smbus write access */
+static int toas_i2c_smbus_write(struct i2c_client *client, u8 command)
+{
+	int ret;
+
+	pm_runtime_get_sync(&client->dev);
+	ret = i2c_smbus_write_byte(client, command);
+	pm_runtime_put(&client->dev);
+
+	return ret;
+}
+
+static int toas_i2c_smbus_write_data(struct i2c_client *client, u8 command, u8 value)
+{
+	int ret;
+
+	pm_runtime_get_sync(&client->dev);
+	ret = i2c_smbus_write_byte_data(client, command, value);
+	pm_runtime_put(&client->dev);
+
+	return ret;
+}
+
 /*
  * Read a number of bytes starting at register (reg) location.
- * Return 0, or i2c_smbus_write_byte ERROR code.
+ * Return 0, or toas_i2c_smbus_write ERROR code.
  */
 static int
 taos_i2c_read(struct i2c_client *client, u8 reg, u8 *val, unsigned int len)
@@ -282,14 +318,14 @@ taos_i2c_read(struct i2c_client *client, u8 reg, u8 *val, unsigned int len)
 
 	for (i = 0; i < len; i++) {
 		/* select register to write */
-		ret = i2c_smbus_write_byte(client, (TSL258X_CMD_REG | reg));
+		ret = toas_i2c_smbus_write(client, (TSL258X_CMD_REG | reg));
 		if (ret < 0) {
 			dev_err(&client->dev, "taos_i2c_read failed to write"
 				" register %x\n", reg);
 			return ret;
 		}
 		/* read the data */
-		*val = i2c_smbus_read_byte(client);
+		*val = toas_i2c_smbus_read(client);
 		val++;
 		reg++;
 	}
@@ -305,7 +341,7 @@ static int taos_set_power(struct tsl258x_chip *chip, int on)
 		cntrl = 0x0;
 	else
 		cntrl = TSL258X_CNTL_PWR_ON;
-	ret = i2c_smbus_write_byte_data(chip->client,
+	ret = toas_i2c_smbus_write_data(chip->client,
 					 TSL258X_CMD_REG | TSL258X_CNTRL, cntrl);
 	return ret;
 }
@@ -322,7 +358,7 @@ static int taos_set_enable(struct tsl258x_chip *chip, int en)
 		cntrl = TSL258X_CNTL_PWR_ON | TSL258X_CNTL_ADC_ENBL;
 	}
 
-	ret = i2c_smbus_write_byte_data(chip->client,
+	ret = toas_i2c_smbus_write_data(chip->client,
 					TSL258X_CMD_REG | TSL258X_CNTRL, cntrl);
 	if (!ret && en)
 		chip->als_status = TSL258X_CHIP_WORKING;
@@ -352,7 +388,7 @@ static int taos_set_als_time(struct tsl258x_chip *chip, int ms)
 	/* convert back to time (encompasses overrides) */
 	als_time = ALS_COUNT_TO_TIME(als_count);
 
-	ret = i2c_smbus_write_byte_data(chip->client,
+	ret = toas_i2c_smbus_write_data(chip->client,
 			TSL258X_CMD_REG | TSL258X_ALS_TIME,
 			(256 - als_count));
 
@@ -378,7 +414,7 @@ static int taos_set_gain(struct tsl258x_chip *chip, int gain)
 	if (i >= TSL2584_ALS_GAIN_NUM)
 		return -EINVAL;
 
-	ret = i2c_smbus_write_byte_data(chip->client,
+	ret = toas_i2c_smbus_write_data(chip->client,
 			TSL258X_CMD_REG | TSL258X_GAIN, gain);
 	if (ret < 0)
 		return ret;
@@ -426,7 +462,7 @@ static int taos_read_channel_data(struct tsl258x_chip *chip, int channel, u16 *v
 
 static int taos_chip_clear_interrupt(struct tsl258x_chip *chip)
 {
-	return i2c_smbus_write_byte(chip->client,
+	return toas_i2c_smbus_write(chip->client,
 		TSL258X_CMD_REG | TSL258X_CMD_SPL_FN | TSL258X_CMD_ALS_INT_CLR);
 }
 
@@ -581,7 +617,7 @@ static int taos_als_calibrate(struct tsl258x_chip *chip)
 	int ret;
 	int lux_val;
 
-	ret = i2c_smbus_write_byte(chip->client,
+	ret = toas_i2c_smbus_write(chip->client,
 				   (TSL258X_CMD_REG | TSL258X_CNTRL));
 	if (ret < 0) {
 		dev_err(&chip->client->dev,
@@ -590,7 +626,7 @@ static int taos_als_calibrate(struct tsl258x_chip *chip)
 		return ret;
 	}
 
-	reg_val = i2c_smbus_read_byte(chip->client);
+	reg_val = toas_i2c_smbus_read(chip->client);
 	if ((reg_val & (TSL258X_CNTL_ADC_ENBL | TSL258X_CNTL_PWR_ON))
 			!= (TSL258X_CNTL_ADC_ENBL | TSL258X_CNTL_PWR_ON)) {
 		dev_err(&chip->client->dev,
@@ -598,7 +634,7 @@ static int taos_als_calibrate(struct tsl258x_chip *chip)
 		return -1;
 	}
 
-	ret = i2c_smbus_write_byte(chip->client,
+	ret = toas_i2c_smbus_write(chip->client,
 				   (TSL258X_CMD_REG | TSL258X_CNTRL));
 	if (ret < 0) {
 		dev_err(&chip->client->dev,
@@ -606,7 +642,7 @@ static int taos_als_calibrate(struct tsl258x_chip *chip)
 			ret);
 		return ret;
 	}
-	reg_val = i2c_smbus_read_byte(chip->client);
+	reg_val = toas_i2c_smbus_read(chip->client);
 
 	if ((reg_val & TSL258X_STA_ADC_VALID) != TSL258X_STA_ADC_VALID) {
 		dev_err(&chip->client->dev,
@@ -1124,16 +1160,16 @@ static int taos_probe(struct i2c_client *clientp,
 		((struct tsl258x_platform_data *)chip->pdata)->gpio_conf();
 
 	for (i = 0; i < TSL258X_MAX_DEVICE_REGS; i++) {
-		ret = i2c_smbus_write_byte(clientp,
+		ret = toas_i2c_smbus_write(clientp,
 				(TSL258X_CMD_REG | (TSL258X_CNTRL + i)));
 		if (ret < 0) {
-			dev_err(&clientp->dev, "i2c_smbus_write_bytes() to cmd "
+			dev_err(&clientp->dev, "toas_i2c_smbus_write() to cmd "
 				"reg failed in taos_probe(), err = %d\n", ret);
 			goto err_tsl_hw_failed;
 		}
-		ret = i2c_smbus_read_byte(clientp);
+		ret = toas_i2c_smbus_read(clientp);
 		if (ret < 0) {
-			dev_err(&clientp->dev, "i2c_smbus_read_byte from "
+			dev_err(&clientp->dev, "toas_i2c_smbus_read from "
 				"reg failed in taos_probe(), err = %d\n", ret);
 
 			goto err_tsl_hw_failed;
@@ -1152,9 +1188,9 @@ static int taos_probe(struct i2c_client *clientp,
 	else
 		chip->id = taos_tsl258x_chip_id(buf);
 
-	ret = i2c_smbus_write_byte(clientp, (TSL258X_CMD_REG | TSL258X_CNTRL));
+	ret = toas_i2c_smbus_write(clientp, (TSL258X_CMD_REG | TSL258X_CNTRL));
 	if (ret < 0) {
-		dev_err(&clientp->dev, "i2c_smbus_write_byte() to cmd reg "
+		dev_err(&clientp->dev, "toas_i2c_smbus_write() to cmd reg "
 			"failed in taos_probe(), err = %d\n", ret);
 		goto err_tsl_hw_failed;
 	}
@@ -1166,6 +1202,8 @@ static int taos_probe(struct i2c_client *clientp,
 	ret = taos_init_configure(chip, chip->pdata);
 	if (ret)
 		goto err_tsl_hw_failed;
+
+	pm_runtime_enable(&clientp->dev);
 
 	dev_info(&clientp->dev, "ALS found, %s.\n", tsl2583x_get_name(chip));
 	return 0;
@@ -1214,6 +1252,8 @@ static int taos_resume(struct i2c_client *client)
 static int taos_remove(struct i2c_client *client)
 {
 	struct tsl258x_chip *chip = i2c_get_clientdata(client);
+
+	pm_runtime_disable(&client->dev);
 
 	if (tsl258x_wq)
 		destroy_workqueue(tsl258x_wq);

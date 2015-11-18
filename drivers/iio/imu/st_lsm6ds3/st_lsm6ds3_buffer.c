@@ -108,13 +108,15 @@ static void st_lsm6ds3_push_data_with_timestamp(struct lsm6ds3_data *cdata,
 	iio_push_to_buffers(cdata->indio_dev[index], sdata->buffer_data);
 }
 
-static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len, bool check_fifo_len)
+static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len, bool discard_data)
 {
 	u16 fifo_offset = 0;
 	u8 gyro_sip, accel_sip;
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
 	u8 ext0_sip, ext1_sip;
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
+	u16 byte_in_pattern;
+	u16 pattern_num = 1;
 
 	dev_dbg(cdata->dev, "st_lsm6ds3_parse_fifo_data: sensors_enabled=0x%2x, sensors_pattern_en=0x%2x,"
 				"gyro_sip=%d, accel_sip=%d\n",
@@ -122,15 +124,13 @@ static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len,
 				cdata->gyro_samples_in_pattern, cdata->accel_samples_in_pattern);
 
 	if (fifo_offset < read_len) {
-		if (check_fifo_len) {
+		if (discard_data) {
 			gyro_sip = cdata->gyro_samples_in_pattern;
 			accel_sip = cdata->accel_samples_in_pattern;
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
 			ext0_sip = cdata->ext0_samples_in_pattern;
 			ext1_sip = cdata->ext1_samples_in_pattern;
 #endif
-			u16 byte_in_pattern;
-			u16 pattern_num = 1;
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
 			byte_in_pattern = (gyro_sip + accel_sip + ext0_sip + ext1_sip) *
 					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
@@ -150,7 +150,7 @@ static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len,
 				(s64) pattern_num * (s64) accel_sip * cdata->accel_deltatime;
 
 			dev_dbg(cdata->dev, "st_lsm6ds3_parse_fifo_data [%d] [%d] [%d] [%d][%lld] [%lld] [%lld] [%lld] [%lld]\n",
-					check_fifo_len, gyro_sip, accel_sip, byte_in_pattern,
+					discard_data, gyro_sip, accel_sip, byte_in_pattern,
 					cdata->gyro_deltatime, cdata->accel_deltatime,
 					cdata->gyro_timestamp, cdata->accel_timestamp, cdata->last_timestamp);
 		}
@@ -263,6 +263,7 @@ static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len,
 void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, bool check_fifo_len)
 {
 	bool overrun_flag = false;
+	bool discard_data = false;
 	int err;
 	u16 pattern, offset;
 	u16 read_len = cdata->fifo_threshold, byte_in_pattern;
@@ -273,20 +274,6 @@ void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, bool check_fifo_len)
 	cdata->fifo_data = cdata->fifo;
 
 	if (check_fifo_len) {
-		err = cdata->tf->read(cdata, ST_LSM6DS3_FIFO_DIFF_L,
-						2, (u8 *)&read_len, true);
-		if (err < 0)
-			return;
-
-		if (read_len & ST_LSM6DS3_FIFO_DATA_OVR_2REGS) {
-			overrun_flag = true;
-			dev_err(cdata->dev,
-				"data fifo overrun, failed to read it, read_len=%d.\n", read_len);
-		}
-
-		read_len &= ST_LSM6DS3_FIFO_DIFF_MASK;
-		read_len *= ST_LSM6DS3_BYTE_FOR_CHANNEL;
-
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
 		byte_in_pattern = (cdata->accel_samples_in_pattern +
 					cdata->gyro_samples_in_pattern +
@@ -302,10 +289,24 @@ void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, bool check_fifo_len)
 		if (byte_in_pattern == 0)
 			return;
 
-		read_len = (read_len / byte_in_pattern) * byte_in_pattern;
+		err = cdata->tf->read(cdata, ST_LSM6DS3_FIFO_DIFF_L,
+						2, (u8 *)&read_len, true);
+		if (err < 0)
+			return;
 
-		if (read_len > cdata->fifo_threshold)
-			read_len = cdata->fifo_threshold;
+		if (read_len & ST_LSM6DS3_FIFO_DATA_OVR_2REGS) {
+			overrun_flag = true;
+			discard_data = true;
+			dev_err(cdata->dev,
+				"data fifo overrun, read_len=%d.\n", read_len);
+
+			if ((read_len & ST_LSM6DS3_FIFO_DIFF_MASK) == 0)
+				read_len = ST_LSM6DS3_FIFO_DIFF_MASK;
+		}
+
+		read_len &= ST_LSM6DS3_FIFO_DIFF_MASK;
+		read_len *= ST_LSM6DS3_BYTE_FOR_CHANNEL;
+		read_len = (read_len / byte_in_pattern) * byte_in_pattern;
 
 	}
 
@@ -317,7 +318,7 @@ void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, bool check_fifo_len)
 	if (err < 0)
 		return;
 
-	if (check_fifo_len)
+	if (discard_data)
 		cdata->last_timestamp = ktime_to_ns(ktime_get_boottime());
 
 	if (overrun_flag) {
@@ -338,9 +339,11 @@ void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, bool check_fifo_len)
 			cdata->fifo_data += offset;
 			dev_info(cdata->dev, "FIFO overrun, offset=%d", offset);
 		}
+		st_lsm6ds3_set_fifo_mode(cdata, BYPASS);
+		st_lsm6ds3_set_fifo_mode(cdata, CONTINUOS);
 	}
 
-	st_lsm6ds3_parse_fifo_data(cdata, read_len, check_fifo_len);
+	st_lsm6ds3_parse_fifo_data(cdata, read_len, discard_data);
 }
 
 static irqreturn_t st_lsm6ds3_step_counter_trigger_handler(int irq, void *p)

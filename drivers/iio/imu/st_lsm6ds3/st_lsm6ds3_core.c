@@ -683,16 +683,16 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 		if ((1 << ST_INDIO_DEV_ACCEL) & cdata->sensors_enabled) {
 			if ((1 << ST_INDIO_DEV_ACCEL_WK) & cdata->sensors_enabled) {
 				fifo_len_accel =
-					(indio_dev->buffer->store_length <
-						cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->store_length) ?
-					indio_dev->buffer->store_length :
-					cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->store_length;
+					(indio_dev->buffer->length <
+						cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->length) ?
+					indio_dev->buffer->length :
+					cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->length;
 				fifo_len_accel /= IIO_BUFFER_KFIFO_DEFAULT_LEN;
 			} else
-				fifo_len_accel = (indio_dev->buffer->store_length /
+				fifo_len_accel = (indio_dev->buffer->length /
 							IIO_BUFFER_KFIFO_DEFAULT_LEN);
 		} else
-			fifo_len_accel = (cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->store_length /
+			fifo_len_accel = (cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]->buffer->length /
 						IIO_BUFFER_KFIFO_DEFAULT_LEN);
 	}
 
@@ -708,16 +708,16 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 		if ((1 << ST_INDIO_DEV_GYRO) & cdata->sensors_enabled) {
 			if ((1 << ST_INDIO_DEV_GYRO_WK) & cdata->sensors_enabled) {
 				fifo_len_gyro =
-					(indio_dev->buffer->store_length <
-						cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->store_length) ?
-					indio_dev->buffer->store_length :
-					cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->store_length;
+					(indio_dev->buffer->length <
+						cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->length) ?
+					indio_dev->buffer->length :
+					cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->length;
 				fifo_len_gyro /= IIO_BUFFER_KFIFO_DEFAULT_LEN;
 			} else
-				fifo_len_gyro = (indio_dev->buffer->store_length /
+				fifo_len_gyro = (indio_dev->buffer->length /
 							IIO_BUFFER_KFIFO_DEFAULT_LEN);
 		} else
-			fifo_len_gyro = (cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->store_length /
+			fifo_len_gyro = (cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]->buffer->length /
 						IIO_BUFFER_KFIFO_DEFAULT_LEN);
 	}
 
@@ -734,7 +734,7 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 				max_odr = sdata_ext0->c_odr;
 			}
 
-			fifo_len_ext0 = (indio_dev->buffer->store_length /
+			fifo_len_ext0 = (indio_dev->buffer->length /
 						IIO_BUFFER_KFIFO_DEFAULT_LEN);
 		}
 	}
@@ -751,7 +751,7 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 				max_odr = sdata_ext1->c_odr;
 			}
 
-			fifo_len_ext1 = (indio_dev->buffer->store_length /
+			fifo_len_ext1 = (indio_dev->buffer->length /
 						IIO_BUFFER_KFIFO_DEFAULT_LEN);
 		}
 	}
@@ -2896,81 +2896,28 @@ EXPORT_SYMBOL(st_lsm6ds3_common_remove);
 #ifdef CONFIG_PM
 int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 {
-#define	MIN_BUF_TIMEOUT	2500000000
 	int err, i;
 	struct lsm6ds3_sensor_data *sdata;
-	cdata->tmp_sensors_enabled = cdata->sensors_enabled;
+	u8 tmp_sensors_enabled = cdata->sensors_enabled;
 
-	if (!stay_wake && (cdata->tmp_sensors_enabled & ST_INDIO_DEV_AG_MASK)) {
-		u16 tmp_fifo_len_accel = 0, fifo_len;
-		struct iio_dev *indio_dev = cdata->indio_dev[ST_INDIO_DEV_ACCEL];
-
-		/* We MUST flush wq to ensure that the data in cdata->fifo_data
-		 * would be filled to iio buffer. Otherwise, the function
-		 * st_lsm6ds3_set_fifo_decimators_and_threshold called below
-		 * will first free cdata->fifo_data, then change its length.
-		 * If this happened concurrently, there would be a NULL pointer
-		 * dereference.
-		 */
-		disable_irq(cdata->irq);
-		st_lsm6ds3_flush_works();
-
-		mutex_lock(&cdata->fifo_lock);
-		err = st_lsm6ds3_set_fifo_mode(cdata, BYPASS);
-		if (err < 0)
-			goto release_lock;
-
+	if (!stay_wake && (cdata->sensors_enabled & ST_INDIO_DEV_AG_MASK)) {
 		for (i = 0; i < (ST_INDIO_DEV_GYRO_WK + 1); i++) {
 			sdata = iio_priv(cdata->indio_dev[i]);
-			err = st_lsm6ds3_set_drdy_irq(sdata, false);
-			if (err < 0)
-				goto release_lock;
-
-			if (i == ST_INDIO_DEV_ACCEL) {
-				tmp_fifo_len_accel = indio_dev->buffer->store_length;
-				indio_dev->buffer->store_length = MIN_BUF_TIMEOUT *
-									IIO_BUFFER_KFIFO_DEFAULT_LEN /
-									cdata->accel_deltatime;;
-			}
-
-			if (i == ST_INDIO_DEV_GYRO) {
+			if ((1 << sdata->sindex) & cdata->sensors_enabled) {
 				err = st_lsm6ds3_set_enable(sdata, false);
-				if (err < 0) {
-					if (tmp_fifo_len_accel)
-						indio_dev->buffer->store_length = tmp_fifo_len_accel;
-					goto release_lock;
-				}
+				if (err < 0)
+					return err;
+
+				err = st_lsm6ds3_set_drdy_irq(sdata, false);
+				if (err < 0)
+					return err;
 			}
 		}
-
-		/* Enable FIFO threshold level use */
-		err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
-						ST_LSM6DS3_STOP_ON_FTH_ADDR,
-						ST_LSM6DS3_STOP_ON_FTH_MASK,
-						ST_LSM6DS3_EN_BIT, false);
-		if (err < 0)
-			goto release_lock;
-
-		fifo_len = st_lsm6ds3_set_fifo_decimators_and_threshold(cdata);
-		if (fifo_len < 0) {
-			err = fifo_len;
-			goto release_lock;
-		}
-
-		if (fifo_len > 0) {
-			err = st_lsm6ds3_set_fifo_mode(cdata, CONTINUOS);
-			if (err < 0)
-				goto release_lock;
-		}
-		mutex_unlock(&cdata->fifo_lock);
-
-		if (tmp_fifo_len_accel)
-			indio_dev->buffer->store_length = tmp_fifo_len_accel;
 	}
 
 	/* Disable step detector irq */
 	if (cdata->sensors_enabled & (1 << ST_INDIO_DEV_STEP_DETECTOR)) {
-		dev_dbg(cdata->dev, "st_lsm6ds3_common_suspend disable step_d\n");
+		dev_dbg(cdata->dev, "st_lsm6ds3_common_suspend disable step detector\n");
 		sdata = iio_priv(cdata->indio_dev[ST_INDIO_DEV_STEP_DETECTOR]);
 		err = st_lsm6ds3_set_drdy_irq(sdata, false);
 		if (err < 0)
@@ -2979,7 +2926,7 @@ int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 
 	/* Disable step counter irq*/
 	if (cdata->sensors_enabled & (1 << ST_INDIO_DEV_STEP_COUNTER)) {
-		dev_dbg(cdata->dev, "st_lsm6ds3_common_suspend disable step_c\n");
+		dev_dbg(cdata->dev, "st_lsm6ds3_common_suspend disable step counter\n");
 		sdata = iio_priv(cdata->indio_dev[ST_INDIO_DEV_STEP_COUNTER]);
 		err = st_lsm6ds3_set_drdy_irq(sdata, false);
 		if (err < 0)
@@ -2990,11 +2937,8 @@ int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 		if (device_may_wakeup(cdata->dev))
 			enable_irq_wake(cdata->irq);
 
+	cdata->sensors_enabled = tmp_sensors_enabled;
 	return 0;
-
-release_lock:
-	mutex_unlock(&cdata->fifo_lock);
-	return err;
 }
 EXPORT_SYMBOL(st_lsm6ds3_common_suspend);
 
@@ -3003,14 +2947,28 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 	int err, i;
 	struct lsm6ds3_sensor_data *sdata;
 
-	if (stay_wake)
+	if (stay_wake) {
 		if (device_may_wakeup(cdata->dev))
 			disable_irq_wake(cdata->irq);
+	} else if (cdata->sensors_enabled & ST_INDIO_DEV_AG_MASK) {
+		for (i = 0; i < (ST_INDIO_DEV_GYRO_WK + 1); i++) {
+			sdata = iio_priv(cdata->indio_dev[i]);
+			if ((1 << sdata->sindex) & cdata->sensors_enabled) {
+				err = st_lsm6ds3_set_enable(sdata, true);
+				if (err < 0)
+					return err;
+
+				err = st_lsm6ds3_set_drdy_irq(sdata, true);
+				if (err < 0)
+					return err;
+			}
+		}
+	}
 
 	/* Enable step detector irq */
 	if (cdata->sensors_enabled & (1 << ST_INDIO_DEV_STEP_DETECTOR)) {
 		struct timespec ts;
-		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume enable step_d\n");
+		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume enable step detector\n");
 
 		/* timestamp for step detector should be updated on
 		 * system resume. Otherwise, event will be considered invalid.
@@ -3026,7 +2984,7 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 	/* Enable step counter irq */
 	if (cdata->sensors_enabled & (1 << ST_INDIO_DEV_STEP_COUNTER)) {
 		struct timespec ts;
-		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume enable step_c\n");
+		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume enable step counter\n");
 
 		/* timestamp for step counter should be updated on
 		 * system resume. Otherwise, event will be considered invalid.
@@ -3041,74 +2999,7 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 			return err;
 	}
 
-	if (cdata->tmp_sensors_enabled & ST_INDIO_DEV_AG_MASK) {
-		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume stay_wake=%d\n", stay_wake);
-		/* If we could come here: first, the irq must be disabled;
-		 * second, we should flush the wq before read fifo.
-		 */
-		st_lsm6ds3_flush_works();
-		mutex_lock(&cdata->fifo_lock);
-		st_lsm6ds3_read_fifo(cdata, true);
-
-		if (!stay_wake) {
-			u16 fifo_len;
-			err = st_lsm6ds3_set_fifo_mode(cdata, BYPASS);
-			if (err < 0)
-				goto release_lock;
-
-			for (i = 0; i < (ST_INDIO_DEV_GYRO_WK + 1); i++) {
-				sdata = iio_priv(cdata->indio_dev[i]);
-
-				if ((1 << sdata->sindex) & cdata->tmp_sensors_enabled) {
-					err = st_lsm6ds3_set_drdy_irq(sdata, true);
-					if (err < 0)
-						goto release_lock;
-
-					if (i == ST_INDIO_DEV_GYRO) {
-						err = st_lsm6ds3_set_enable(sdata, true);
-						if (err < 0)
-							goto release_lock;
-
-					}
-				}
-			}
-
-			/* Disable FIFO threshold level use */
-			err = st_lsm6ds3_write_data_with_mask(sdata->cdata,
-							ST_LSM6DS3_STOP_ON_FTH_ADDR,
-							ST_LSM6DS3_STOP_ON_FTH_MASK,
-							ST_LSM6DS3_DIS_BIT, false);
-			if (err < 0)
-				goto release_lock;
-
-			fifo_len = st_lsm6ds3_set_fifo_decimators_and_threshold(cdata);
-			if (fifo_len < 0) {
-				err = fifo_len;
-				goto release_lock;
-			}
-
-			if (fifo_len > 0) {
-				err = st_lsm6ds3_set_fifo_mode(cdata, CONTINUOS);
-				if (err < 0)
-					goto release_lock;
-			}
-
-			enable_irq(cdata->irq);
-		}
-
-		mutex_unlock(&cdata->fifo_lock);
-		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume [%lld]\n", ktime_to_ns(ktime_get_boottime()));
-
-	}
 	return 0;
-
-release_lock:
-	mutex_unlock(&cdata->fifo_lock);
-	/* Although wake-up sensors would not come here now, just for kind remind. */
-	if (!stay_wake && (cdata->sensors_enabled & ST_INDIO_DEV_AG_MASK))
-		enable_irq(cdata->irq);
-	return err;
-
 }
 EXPORT_SYMBOL(st_lsm6ds3_common_resume);
 #endif /* CONFIG_PM */

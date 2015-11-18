@@ -51,6 +51,7 @@ irqreturn_t st_lsm6ds3_save_timestamp(int irq, void *private)
 
 static void st_lsm6ds3_irq_management(struct work_struct *data_work)
 {
+	bool check_fifo_len = false;
 	struct lsm6ds3_data *cdata;
 	u8 src_value = 0x00, src_fifo = 0x00;
 
@@ -64,12 +65,13 @@ static void st_lsm6ds3_irq_management(struct work_struct *data_work)
 	dev_dbg(cdata->dev, "st_lsm6ds3_irq_management src_value=%x, src_fifo=%x\n", src_value, src_fifo);
 	if (src_fifo & ST_LSM6DS3_FIFO_DATA_AVL) {
 		dev_dbg(cdata->dev, "ST_LSM6DS3_FIFO_DATA_AVL\n");
+		mutex_lock(&cdata->fifo_lock);
 		if (src_fifo & ST_LSM6DS3_FIFO_DATA_OVR) {
 			dev_err(cdata->dev,
 				"data fifo overrun, reduce fifo size.\n");
+			check_fifo_len = true;
 		}
-		mutex_lock(&cdata->fifo_lock);
-		st_lsm6ds3_read_fifo(cdata, false);
+		st_lsm6ds3_read_fifo(cdata, check_fifo_len);
 		mutex_unlock(&cdata->fifo_lock);
 
 	}

@@ -3368,7 +3368,7 @@ err_enable_reg:
 
 err_get_reg:
 	kfree(rmi4_data);
-
+	g_rmi4_data = NULL;
 	return retval;
 }
 
@@ -3791,9 +3791,11 @@ static void __exit synaptics_rmi4_exit(void)
 
 	return;
 }
-
+/* this is called by display driver since synaptics_dsx_core doesn't know the display 's state */
 int synaptics_rmi4_palm_enable(void)
 {
+	if (!g_rmi4_data)
+		return -ENODEV;
 	mutex_lock(&(g_rmi4_data->rmi4_report_mutex));
 	g_rmi4_data->ambient_mode = false;
 	mutex_unlock(&(g_rmi4_data->rmi4_report_mutex));
@@ -3801,8 +3803,11 @@ int synaptics_rmi4_palm_enable(void)
 	return 0;
 }
 
+/* this is called by display driver since synaptics_dsx_core doesn't know the display 's state */
 int synaptics_rmi4_palm_disable(void)
 {
+	if (!g_rmi4_data)
+		return -ENODEV;
 	mutex_lock(&(g_rmi4_data->rmi4_report_mutex));
 	g_rmi4_data->ambient_mode = true;
 	mutex_unlock(&(g_rmi4_data->rmi4_report_mutex));

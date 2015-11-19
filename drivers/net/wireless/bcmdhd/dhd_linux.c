@@ -6903,6 +6903,12 @@ dhd_clear(dhd_pub_t *dhdp)
 			}
 		}
 
+		for (i = 0; i < DHD_MAX_IFS; i++) {
+			struct dhd_info *info = dhdp->info;
+			if (info->iflist[i])
+				dhd_if_del_sta_list(info->iflist[i]);
+		}
+
 		dhd_sta_pool_clear(dhdp, DHD_MAX_STA);
 
 		if (dhdp->soc_ram) {

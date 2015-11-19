@@ -108,53 +108,97 @@ static void st_lsm6ds3_push_data_with_timestamp(struct lsm6ds3_data *cdata,
 	iio_push_to_buffers(cdata->indio_dev[index], sdata->buffer_data);
 }
 
-static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len, bool discard_data)
+static int st_lsm6ds3_do_div(struct lsm6ds3_data *cdata,
+					u16 read_len,
+					bool discard_data,
+					int64_t *accel_deltatime, int64_t *gyro_deltatime
+#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
+					, int64_t *ext0_deltatime, int64_t *ext1_deltatime
+#endif
+					)
 {
-	u16 fifo_offset = 0;
 	u8 gyro_sip, accel_sip;
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
 	u8 ext0_sip, ext1_sip;
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
-	u16 byte_in_pattern;
-	u16 pattern_num = 1;
+	u16 byte_in_pattern = cdata->byte_in_pattern;
+	u16 pattern_num;
+	int64_t pattern_timestamp;
 
-	dev_dbg(cdata->dev, "st_lsm6ds3_parse_fifo_data: sensors_enabled=0x%2x, sensors_pattern_en=0x%2x,"
-				"gyro_sip=%d, accel_sip=%d\n",
-				cdata->sensors_enabled, cdata->sensors_pattern_en,
-				cdata->gyro_samples_in_pattern, cdata->accel_samples_in_pattern);
-
-	if (fifo_offset < read_len) {
-		if (discard_data) {
-			gyro_sip = cdata->gyro_samples_in_pattern;
-			accel_sip = cdata->accel_samples_in_pattern;
+	gyro_sip = cdata->gyro_samples_in_pattern;
+	accel_sip = cdata->accel_samples_in_pattern;
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
-			ext0_sip = cdata->ext0_samples_in_pattern;
-			ext1_sip = cdata->ext1_samples_in_pattern;
+	ext0_sip = cdata->ext0_samples_in_pattern;
+	ext1_sip = cdata->ext1_samples_in_pattern;
 #endif
-#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
-			byte_in_pattern = (gyro_sip + accel_sip + ext0_sip + ext1_sip) *
-					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
-			pattern_num = read_len / byte_in_pattern;
-			cdata->ext0_timestamp = cdata->last_timestamp -
-				(s64) byte_in_pattern * (s64) ext0_sip * cdata->ext0_deltatime;
-			cdata->ext1_timestamp = cdata->last_timestamp -
-				(s64) byte_in_pattern * (s64) ext1_sip * cdata->ext1_deltatime;
-#else
-			byte_in_pattern = (gyro_sip + accel_sip) *
-					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
-			pattern_num = read_len / byte_in_pattern;
-#endif
-			cdata->gyro_timestamp = cdata->last_timestamp -
-				(s64) pattern_num * (s64) gyro_sip * cdata->gyro_deltatime;
-			cdata->accel_timestamp = cdata->last_timestamp -
-				(s64) pattern_num * (s64) accel_sip * cdata->accel_deltatime;
 
-			dev_dbg(cdata->dev, "st_lsm6ds3_parse_fifo_data [%d] [%d] [%d] [%d][%lld] [%lld] [%lld] [%lld] [%lld]\n",
-					discard_data, gyro_sip, accel_sip, byte_in_pattern,
-					cdata->gyro_deltatime, cdata->accel_deltatime,
-					cdata->gyro_timestamp, cdata->accel_timestamp, cdata->last_timestamp);
-		}
+	if (byte_in_pattern)
+		pattern_num = read_len / byte_in_pattern;
+	else {
+		dev_err(cdata->dev, "st_lsm6ds3_do_div byte_in_pattern equal 0\n");
+		return -EINVAL;
 	}
+	if (pattern_num) {
+		if (discard_data) {
+			pattern_timestamp = accel_sip ? (*accel_deltatime * accel_sip) :
+						(gyro_sip ? (*gyro_deltatime * gyro_sip) :
+#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
+						(ext0_sip ? (*ext0_deltatime * ext0_sip) :
+						(ext1_sip ? (*ext1_deltatime * ext1_sip) : 0)));
+#else
+						0);
+#endif
+			cdata->last_timestamp = cdata->timestamp - pattern_timestamp * pattern_num;
+		} else {
+			pattern_timestamp = (cdata->timestamp - cdata->last_timestamp) / pattern_num;
+#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
+			if (ext0_sip)
+				*ext0_deltatime = pattern_timestamp / ext0_sip;
+			if (ext1_sip)
+				*ext1_deltatime = pattern_timestamp / ext1_sip;
+#endif
+			if (gyro_sip)
+				*gyro_deltatime = pattern_timestamp / gyro_sip;
+			if (accel_sip)
+				*accel_deltatime = pattern_timestamp / accel_sip;
+		}
+#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
+		cdata->ext0_timestamp = cdata->ext1_timestamp =
+#endif
+				cdata->gyro_timestamp = cdata->accel_timestamp = cdata->last_timestamp;
+
+		dev_dbg(cdata->dev, "st_lsm6ds3_do_div"
+					"[%d] [%d] [%d] [%d] [%d] [%lld] [%lld] [%lld] [%lld]\n",
+					discard_data, gyro_sip, accel_sip, byte_in_pattern, read_len,
+					*gyro_deltatime, *accel_deltatime,
+					cdata->last_timestamp, cdata->timestamp);
+	}
+
+	return 0;
+}
+
+static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len, bool discard_data)
+{
+	u16 fifo_offset = 0;
+	u8 gyro_sip, accel_sip;
+	int64_t accel_deltatime = cdata->accel_deltatime;
+	int64_t gyro_deltatime = cdata->gyro_deltatime;
+#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
+	u8 ext0_sip, ext1_sip;
+	int64_t ext0_deltatime = cdata->ext0_deltatime;
+	int64_t ext1_deltatime = cdata->ext1_deltatime;
+#endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
+
+	dev_dbg(cdata->dev, "st_lsm6ds3_parse_fifo_data: sensors_enabled=0x%2x, sensors_pattern_en=0x%2x\n",
+				cdata->sensors_enabled, cdata->sensors_pattern_en);
+	if (read_len)
+		if (st_lsm6ds3_do_div(cdata, read_len, discard_data,
+				&accel_deltatime, &gyro_deltatime
+#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
+				, &ext0_deltatime, &ext1_deltatime
+#endif
+				) < 0)
+			return;
 
 	while (fifo_offset < read_len) {
 		gyro_sip = cdata->gyro_samples_in_pattern;
@@ -186,7 +230,7 @@ static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len,
 					}
 				}
 
-				cdata->gyro_timestamp += cdata->gyro_deltatime;
+				cdata->gyro_timestamp += gyro_deltatime;
 				fifo_offset += ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
 				gyro_sip--;
 			}
@@ -213,8 +257,7 @@ static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len,
 					}
 				}
 
-				cdata->accel_timestamp +=
-							cdata->accel_deltatime;
+				cdata->accel_timestamp += accel_deltatime;
 				fifo_offset += ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
 				accel_sip--;
 			}
@@ -230,7 +273,7 @@ static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len,
 						cdata->ext0_timestamp);
 				}
 
-				cdata->ext0_timestamp += cdata->ext0_deltatime;
+				cdata->ext0_timestamp += ext0_deltatime;
 				fifo_offset += ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
 				ext0_sip--;
 			}
@@ -245,7 +288,7 @@ static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len,
 						cdata->ext1_timestamp);
 				}
 
-				cdata->ext1_timestamp += cdata->ext1_deltatime;
+				cdata->ext1_timestamp += ext1_deltatime;
 				fifo_offset += ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
 				ext1_sip--;
 			}
@@ -260,35 +303,26 @@ static void st_lsm6ds3_parse_fifo_data(struct lsm6ds3_data *cdata, u16 read_len,
 	return;
 }
 
-void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, bool check_fifo_len)
+void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, int flags)
 {
 	bool overrun_flag = false;
 	bool discard_data = false;
 	int err;
 	u16 pattern, offset;
-	u16 read_len = cdata->fifo_threshold, byte_in_pattern;
+	u16 read_len = cdata->fifo_threshold;
+	u16 byte_in_pattern = cdata->byte_in_pattern;
 	dev_dbg(cdata->dev, "st_lsm6ds3_read_fifo\n");
 
 	if (!cdata->fifo)
 		return;
 	cdata->fifo_data = cdata->fifo;
 
-	if (check_fifo_len) {
-#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
-		byte_in_pattern = (cdata->accel_samples_in_pattern +
-					cdata->gyro_samples_in_pattern +
-					cdata->ext0_samples_in_pattern +
-					cdata->ext1_samples_in_pattern) *
-					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
-#else /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
-		byte_in_pattern = (cdata->accel_samples_in_pattern +
-					cdata->gyro_samples_in_pattern) *
-					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
-#endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
-
+	if (flags != READ_FIFO_IN_INTERRUPT) {
 		if (byte_in_pattern == 0)
 			return;
 
+		cdata->last_timestamp = cdata->timestamp;
+		cdata->timestamp = ktime_to_ns(ktime_get_boottime());
 		err = cdata->tf->read(cdata, ST_LSM6DS3_FIFO_DIFF_L,
 						2, (u8 *)&read_len, true);
 		if (err < 0)
@@ -318,9 +352,6 @@ void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, bool check_fifo_len)
 	if (err < 0)
 		return;
 
-	if (discard_data)
-		cdata->last_timestamp = ktime_to_ns(ktime_get_boottime());
-
 	if (overrun_flag) {
 		err = cdata->tf->read(cdata, ST_LSM6DS3_FIFO_DATA_PATTERN_L,
 					2, (u8 *)&pattern, true);
@@ -349,7 +380,6 @@ void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, bool check_fifo_len)
 static irqreturn_t st_lsm6ds3_step_counter_trigger_handler(int irq, void *p)
 {
 	int err;
-	struct timespec ts;
 	int64_t timestamp = 0;
 	struct iio_poll_func *pf = p;
 	struct iio_dev *indio_dev = pf->indio_dev;
@@ -367,8 +397,7 @@ static irqreturn_t st_lsm6ds3_step_counter_trigger_handler(int irq, void *p)
 		timestamp = sdata->cdata->timestamp;
 	} else {
 		memset(sdata->buffer_data, 0, ST_LSM6DS3_BYTE_FOR_CHANNEL);
-		get_monotonic_boottime(&ts);
-		timestamp = timespec_to_ns(&ts);
+		timestamp = ktime_to_ns(ktime_get_boottime());
 		sdata->cdata->reset_steps = false;
 	}
 

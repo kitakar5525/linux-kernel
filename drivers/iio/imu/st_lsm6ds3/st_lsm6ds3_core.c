@@ -577,7 +577,6 @@ static int st_lsm6ds3_set_fifo_enable(struct lsm6ds3_data *cdata, bool status)
 {
 	int err;
 	u8 reg_value;
-	struct timespec ts;
 
 	if (status)
 		reg_value = ST_LSM6DS3_FIFO_ODR_MAX;
@@ -591,14 +590,7 @@ static int st_lsm6ds3_set_fifo_enable(struct lsm6ds3_data *cdata, bool status)
 	if (err < 0)
 		return err;
 
-	get_monotonic_boottime(&ts);
-	cdata->gyro_timestamp = timespec_to_ns(&ts);
-	cdata->accel_timestamp = cdata->gyro_timestamp;
-#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
-	cdata->ext0_timestamp = cdata->gyro_timestamp;
-	cdata->ext1_timestamp = cdata->gyro_timestamp;
-#endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
-
+	cdata->last_timestamp = cdata->timestamp = ktime_to_ns(ktime_get_boottime());
 	return 0;
 }
 
@@ -883,22 +875,20 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 				cdata->gyro_samples_in_pattern +
 					cdata->ext0_samples_in_pattern +
 					cdata->ext1_samples_in_pattern) > 0) {
-		max_num_pattern = ST_LSM6DS3_MAX_FIFO_SIZE /
-					((cdata->accel_samples_in_pattern +
+		cdata->byte_in_pattern =
+					(cdata->accel_samples_in_pattern +
 					cdata->gyro_samples_in_pattern +
 					cdata->ext0_samples_in_pattern +
 					cdata->ext1_samples_in_pattern) *
-					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE);
+					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
+		max_num_pattern = ST_LSM6DS3_MAX_FIFO_SIZE / cdata->byte_in_pattern;
 
 		if (min_num_pattern > max_num_pattern)
 			min_num_pattern = max_num_pattern;
-	}
+	} else
+		cdata->byte_in_pattern = 0;
 
-	fifo_len = (cdata->accel_samples_in_pattern +
-			cdata->gyro_samples_in_pattern +
-			cdata->ext0_samples_in_pattern +
-			cdata->ext1_samples_in_pattern) *
-			min_num_pattern * ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
+	fifo_len = min_num_pattern * cdata->byte_in_pattern;
 	dev_dbg(cdata->dev, "st_lsm6ds3_set_fifo_decimators_and_threshold: %d-%d-%d-%d-%d-%d\n",
 					cdata->accel_samples_in_pattern,
 					cdata->gyro_samples_in_pattern,
@@ -908,18 +898,18 @@ int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata)
 #else /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 	if ((cdata->accel_samples_in_pattern +
 					cdata->gyro_samples_in_pattern) > 0) {
-		max_num_pattern = ST_LSM6DS3_MAX_FIFO_SIZE /
-					((cdata->accel_samples_in_pattern +
+		cdata->byte_in_pattern =
+					(cdata->accel_samples_in_pattern +
 					cdata->gyro_samples_in_pattern) *
-					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE);
+					ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
+		max_num_pattern = ST_LSM6DS3_MAX_FIFO_SIZE / cdata->byte_in_pattern;
 
 		if (min_num_pattern > max_num_pattern)
 			min_num_pattern = max_num_pattern;
-	}
+	} else
+		cdata->byte_in_pattern = 0;
 
-	fifo_len = (cdata->accel_samples_in_pattern +
-			cdata->gyro_samples_in_pattern) *
-			min_num_pattern * ST_LSM6DS3_FIFO_ELEMENT_LEN_BYTE;
+	fifo_len = min_num_pattern * cdata->byte_in_pattern;
 	dev_dbg(cdata->dev, "st_lsm6ds3_set_fifo_decimators_and_threshold: %d-%d-%d-%d\n",
 					cdata->accel_samples_in_pattern,
 					cdata->gyro_samples_in_pattern,
@@ -962,7 +952,7 @@ int st_lsm6ds3_reconfigure_fifo(struct lsm6ds3_data *cdata,
 
 	mutex_lock(&cdata->fifo_lock);
 
-	st_lsm6ds3_read_fifo(cdata, true);
+	st_lsm6ds3_read_fifo(cdata, READ_FIFO_IN_COF_FIFO);
 
 	err = st_lsm6ds3_set_fifo_mode(cdata, BYPASS);
 	if (err < 0)
@@ -1480,8 +1470,8 @@ static int st_lsm6ds3_disable_sensors(struct lsm6ds3_sensor_data *sdata)
 		if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL_WK)) {
 			sdata_bak = iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_ACCEL_WK]);
 			odr = sdata_bak->odr;
-			goto SET_ODR;
 		}
+		goto SET_ODR;
 
 	case ST_INDIO_DEV_ACCEL_WK:
 		if (!(sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO_WK)))
@@ -1489,23 +1479,23 @@ static int st_lsm6ds3_disable_sensors(struct lsm6ds3_sensor_data *sdata)
 		if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL)) {
 			sdata_bak = iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_ACCEL]);
 			odr = sdata_bak->odr;
-			goto SET_ODR;
 		}
+		goto SET_ODR;
 
 	case ST_INDIO_DEV_GYRO:
 		if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO_WK)) {
 			sdata_bak = iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_GYRO_WK]);
 			odr = sdata_bak->odr;
-			goto SET_ODR;
 		}
+		goto SET_ODR;
 	case ST_INDIO_DEV_GYRO_WK:
 		if (!(sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_ACCEL_WK)))
 			stay_wake = false;
 		if (sdata->cdata->sensors_enabled & (1 << ST_INDIO_DEV_GYRO)) {
 			sdata_bak = iio_priv(sdata->cdata->indio_dev[ST_INDIO_DEV_GYRO]);
 			odr = sdata_bak->odr;
-			goto SET_ODR;
 		}
+		goto SET_ODR;
 
 SET_ODR:
 		if (odr) {
@@ -2500,22 +2490,13 @@ ssize_t st_lsm6ds3_sysfs_flush_fifo(struct device *dev,
 
 	switch (sdata->sindex) {
 	case ST_INDIO_DEV_ACCEL:
-		sensor_last_timestamp = sdata->cdata->accel_timestamp;
-		break;
-
 	case ST_INDIO_DEV_GYRO:
-		sensor_last_timestamp = sdata->cdata->gyro_timestamp;
-		break;
-
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
 	case ST_INDIO_DEV_EXT0:
-		sensor_last_timestamp = sdata->cdata->ext0_timestamp;
-		break;
-
 	case ST_INDIO_DEV_EXT1:
-		sensor_last_timestamp = sdata->cdata->ext1_timestamp;
-		break;
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
+		sensor_last_timestamp = sdata->cdata->timestamp;
+		break;
 
 	default:
 		mutex_unlock(&indio_dev->mlock);
@@ -2526,54 +2507,51 @@ ssize_t st_lsm6ds3_sysfs_flush_fifo(struct device *dev,
 	mutex_unlock(&indio_dev->mlock);
 
 	mutex_lock(&sdata->cdata->fifo_lock);
-	st_lsm6ds3_read_fifo(sdata->cdata, true);
+	st_lsm6ds3_read_fifo(sdata->cdata, READ_FIFO_IN_FLUSH);
 
 	switch (sdata->sindex) {
          case ST_INDIO_DEV_ACCEL:
-                 if (sensor_last_timestamp == sdata->cdata->accel_timestamp)
+                 if (sensor_last_timestamp == sdata->cdata->timestamp)
 			event_dir = IIO_EV_DIR_FIFO_EMPTY;
 		 else
 			event_dir = IIO_EV_DIR_FIFO_DATA;
 
 		stype = IIO_ACCEL;
-		timestamp_flush = sdata->cdata->accel_timestamp;
 		break;
 
          case ST_INDIO_DEV_GYRO:
-                if (sensor_last_timestamp == sdata->cdata->gyro_timestamp)
+                if (sensor_last_timestamp == sdata->cdata->timestamp)
 			event_dir = IIO_EV_DIR_FIFO_EMPTY;
 		 else
 			event_dir = IIO_EV_DIR_FIFO_DATA;
 
 		stype = IIO_ANGL_VEL;
-		timestamp_flush = sdata->cdata->gyro_timestamp;
 		break;
 
 #ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
 	case ST_INDIO_DEV_EXT0:
-		if (sensor_last_timestamp == sdata->cdata->ext0_timestamp)
+		if (sensor_last_timestamp == sdata->cdata->timestamp)
 			event_dir = IIO_EV_DIR_FIFO_EMPTY;
 		 else
 			event_dir = IIO_EV_DIR_FIFO_DATA;
 
 		stype = IIO_MAGN;
-		timestamp_flush = sdata->cdata->ext0_timestamp;
 		break;
 
 	case ST_INDIO_DEV_EXT1:
-		if (sensor_last_timestamp == sdata->cdata->ext1_timestamp)
+		if (sensor_last_timestamp == sdata->cdata->timestamp)
 			event_dir = IIO_EV_DIR_FIFO_EMPTY;
 		 else
 			event_dir = IIO_EV_DIR_FIFO_DATA;
 
 		stype = IIO_PRESSURE;
-		timestamp_flush = sdata->cdata->ext1_timestamp;
 
 		break;
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 
 	}
 
+	timestamp_flush = sdata->cdata->timestamp;
 	iio_push_event(indio_dev, IIO_UNMOD_EVENT_CODE(stype,
 				0, IIO_EV_TYPE_FIFO_FLUSH, event_dir),
 				timestamp_flush);
@@ -3054,14 +3032,12 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 
 	/* Enable step detector irq */
 	if (cdata->sensors_enabled & (1 << ST_INDIO_DEV_STEP_DETECTOR)) {
-		struct timespec ts;
 		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume enable step detector\n");
 
 		/* timestamp for step detector should be updated on
 		 * system resume. Otherwise, event will be considered invalid.
 		 */
-		get_monotonic_boottime(&ts);
-		cdata->timestamp = timespec_to_ns(&ts);
+		cdata->timestamp = ktime_to_ns(ktime_get_boottime());
 		sdata = iio_priv(cdata->indio_dev[ST_INDIO_DEV_STEP_DETECTOR]);
 		err = st_lsm6ds3_set_drdy_irq(sdata, true);
 		if (err < 0)
@@ -3070,14 +3046,12 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 
 	/* Enable step counter irq */
 	if (cdata->sensors_enabled & (1 << ST_INDIO_DEV_STEP_COUNTER)) {
-		struct timespec ts;
 		dev_dbg(cdata->dev, "st_lsm6ds3_common_resume enable step counter\n");
 
 		/* timestamp for step counter should be updated on
 		 * system resume. Otherwise, event will be considered invalid.
 		 */
-		get_monotonic_boottime(&ts);
-		cdata->timestamp = timespec_to_ns(&ts);
+		cdata->timestamp = ktime_to_ns(ktime_get_boottime());
 		iio_trigger_poll_chained(
 			cdata->trig[ST_INDIO_DEV_STEP_COUNTER], 0);
 		sdata = iio_priv(cdata->indio_dev[ST_INDIO_DEV_STEP_COUNTER]);

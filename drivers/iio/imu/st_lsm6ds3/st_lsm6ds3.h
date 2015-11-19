@@ -131,6 +131,12 @@
 #define ST_LSM6DS3_FIFO_FLUSH() \
 	IIO_DEVICE_ATTR(flush, S_IWUSR, NULL, st_lsm6ds3_sysfs_flush_fifo, 0);
 
+#define	READ_FIFO_DISCARD_DATA	(1 << 0)
+#define	READ_FIFO_IN_INTERRUPT	(1 << 1)
+#define	READ_FIFO_IN_RESUME	(1 << 2)
+#define	READ_FIFO_IN_FLUSH	(1 << 3)
+#define	READ_FIFO_IN_COF_FIFO	(1 << 4)
+
 enum fifo_mode {
 	BYPASS = 0,
 	CONTINUOS,
@@ -168,11 +174,12 @@ struct lsm6ds3_data {
 #endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
 
 	u16 fifo_threshold;
+	u16 byte_in_pattern;
 
 	int irq;
 
-	s64 timestamp;
 	s64 last_timestamp;
+	s64 timestamp;
 	int64_t accel_deltatime;
 	int64_t accel_timestamp;
 	int64_t gyro_deltatime;
@@ -244,7 +251,7 @@ ssize_t st_lsm6ds3_sysfs_flush_fifo(struct device *dev,
 int st_lsm6ds3_allocate_rings(struct lsm6ds3_data *cdata);
 void st_lsm6ds3_deallocate_rings(struct lsm6ds3_data *cdata);
 int st_lsm6ds3_trig_set_state(struct iio_trigger *trig, bool state);
-void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, bool check_fifo_len);
+void st_lsm6ds3_read_fifo(struct lsm6ds3_data *cdata, int flags);
 int st_lsm6ds3_set_fifo_decimators_and_threshold(struct lsm6ds3_data *cdata);
 #define ST_LSM6DS3_TRIGGER_SET_STATE (&st_lsm6ds3_trig_set_state)
 #else /* CONFIG_IIO_BUFFER */

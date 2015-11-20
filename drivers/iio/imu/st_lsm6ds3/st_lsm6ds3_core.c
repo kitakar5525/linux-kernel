@@ -371,6 +371,7 @@ static const struct iio_chan_spec st_lsm6ds3_accel_ch[] = {
 				16, 16, ST_LSM6DS3_ACCEL_OUT_Y_L_ADDR, 's'),
 	ST_LSM6DS3_LSM_CHANNELS(IIO_ACCEL, 1, 2, IIO_MOD_Z, IIO_LE,
 				16, 16, ST_LSM6DS3_ACCEL_OUT_Z_L_ADDR, 's'),
+	ST_LSM6DS3_FLUSH_CHANNEL(IIO_ACCEL),
 	IIO_CHAN_SOFT_TIMESTAMP(3)
 };
 
@@ -381,6 +382,7 @@ static const struct iio_chan_spec st_lsm6ds3_gyro_ch[] = {
 				16, 16, ST_LSM6DS3_GYRO_OUT_Y_L_ADDR, 's'),
 	ST_LSM6DS3_LSM_CHANNELS(IIO_ANGL_VEL, 1, 2, IIO_MOD_Z, IIO_LE,
 				16, 16, ST_LSM6DS3_GYRO_OUT_Z_L_ADDR, 's'),
+	ST_LSM6DS3_FLUSH_CHANNEL(IIO_ANGL_VEL),
 	IIO_CHAN_SOFT_TIMESTAMP(3)
 };
 
@@ -2480,18 +2482,103 @@ ssize_t st_lsm6ds3_sysfs_get_hw_fifo_lenght(struct device *dev,
 ssize_t st_lsm6ds3_sysfs_flush_fifo(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
+	u64 sensor_last_timestamp, event_dir = 0;
+	int stype = 0;
+	u64 timestamp_flush = 0;
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct lsm6ds3_sensor_data *sdata = iio_priv(indio_dev);
 
-	disable_irq(sdata->cdata->irq);
-	st_lsm6ds3_flush_works();
+	mutex_lock(&indio_dev->mlock);
+
+	if (indio_dev->currentmode == INDIO_BUFFER_TRIGGERED) {
+		disable_irq(sdata->cdata->irq);
+		st_lsm6ds3_flush_works();
+	} else {
+		mutex_unlock(&indio_dev->mlock);
+		return 0;
+	}
+
+	switch (sdata->sindex) {
+	case ST_INDIO_DEV_ACCEL:
+		sensor_last_timestamp = sdata->cdata->accel_timestamp;
+		break;
+
+	case ST_INDIO_DEV_GYRO:
+		sensor_last_timestamp = sdata->cdata->gyro_timestamp;
+		break;
+
+#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
+	case ST_INDIO_DEV_EXT0:
+		sensor_last_timestamp = sdata->cdata->ext0_timestamp;
+		break;
+
+	case ST_INDIO_DEV_EXT1:
+		sensor_last_timestamp = sdata->cdata->ext1_timestamp;
+		break;
+#endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
+
+	default:
+		mutex_unlock(&indio_dev->mlock);
+		enable_irq(sdata->cdata->irq);
+		return -EINVAL;
+	}
+
+	mutex_unlock(&indio_dev->mlock);
 
 	mutex_lock(&sdata->cdata->fifo_lock);
-
 	st_lsm6ds3_read_fifo(sdata->cdata, true);
 
-	mutex_unlock(&sdata->cdata->fifo_lock);
+	switch (sdata->sindex) {
+         case ST_INDIO_DEV_ACCEL:
+                 if (sensor_last_timestamp == sdata->cdata->accel_timestamp)
+			event_dir = IIO_EV_DIR_FIFO_EMPTY;
+		 else
+			event_dir = IIO_EV_DIR_FIFO_DATA;
 
+		stype = IIO_ACCEL;
+		timestamp_flush = sdata->cdata->accel_timestamp;
+		break;
+
+         case ST_INDIO_DEV_GYRO:
+                if (sensor_last_timestamp == sdata->cdata->gyro_timestamp)
+			event_dir = IIO_EV_DIR_FIFO_EMPTY;
+		 else
+			event_dir = IIO_EV_DIR_FIFO_DATA;
+
+		stype = IIO_ANGL_VEL;
+		timestamp_flush = sdata->cdata->gyro_timestamp;
+		break;
+
+#ifdef CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT
+	case ST_INDIO_DEV_EXT0:
+		if (sensor_last_timestamp == sdata->cdata->ext0_timestamp)
+			event_dir = IIO_EV_DIR_FIFO_EMPTY;
+		 else
+			event_dir = IIO_EV_DIR_FIFO_DATA;
+
+		stype = IIO_MAGN;
+		timestamp_flush = sdata->cdata->ext0_timestamp;
+		break;
+
+	case ST_INDIO_DEV_EXT1:
+		if (sensor_last_timestamp == sdata->cdata->ext1_timestamp)
+			event_dir = IIO_EV_DIR_FIFO_EMPTY;
+		 else
+			event_dir = IIO_EV_DIR_FIFO_DATA;
+
+		stype = IIO_PRESSURE;
+		timestamp_flush = sdata->cdata->ext1_timestamp;
+
+		break;
+#endif /* CONFIG_ST_LSM6DS3_IIO_MASTER_SUPPORT */
+
+	}
+
+	iio_push_event(indio_dev, IIO_UNMOD_EVENT_CODE(stype,
+				0, IIO_EV_TYPE_FIFO_FLUSH, event_dir),
+				timestamp_flush);
+
+	mutex_unlock(&sdata->cdata->fifo_lock);
 	enable_irq(sdata->cdata->irq);
 
 	return size;

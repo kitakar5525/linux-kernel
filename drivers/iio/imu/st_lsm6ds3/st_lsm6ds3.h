@@ -115,6 +115,15 @@
 	}, \
 }
 
+#define ST_LSM6DS3_FLUSH_CHANNEL(device_type) \
+{ \
+	.type = device_type, \
+	.modified = 0, \
+	.scan_index = -1, \
+	.indexed = -1, \
+	.event_mask = IIO_EV_BIT(IIO_EV_TYPE_FIFO_FLUSH, IIO_EV_DIR_EITHER), \
+}
+
 #define ST_LSM6DS3_FIFO_LENGHT() \
 	IIO_DEVICE_ATTR(hw_fifo_lenght, S_IRUGO, \
 				st_lsm6ds3_sysfs_get_hw_fifo_lenght, NULL, 0);

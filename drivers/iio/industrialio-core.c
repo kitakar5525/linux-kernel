@@ -67,10 +67,19 @@ static const char * const iio_chan_type_name_spec[] = {
 	[IIO_CCT] = "cct",
 	[IIO_PRESSURE] = "pressure",
 	[IIO_RESISTANCE] = "resistance",
+	[IIO_HUMIDITYRELATIVE] = "humidityrelative",
 	[IIO_SIGN_MOTION] = "sign_motion",
-	[IIO_STEP_COUNTER] = "step_counter",
-	[IIO_TILT] = "tilt",
+	[IIO_QUATERNION] = "quaternion",
 	[IIO_STEP_DETECTOR] = "step_detector",
+	[IIO_STEP_COUNTER] = "step_counter",
+	[IIO_EULER_ANGLES] = "euler_angles",
+	[IIO_LINEAR_ACCEL] = "linear_accel",
+	[IIO_GRAVITY] = "gravity",
+	[IIO_TAP] = "tap",
+	[IIO_TAP_TAP] = "tap_tap",
+	[IIO_TILT] = "tilt",
+	[IIO_ACTIVITY] = "activity",
+	[IIO_FACEUP_FACEDOWN] = "faceup_facedown",
 };
 
 static const char * const iio_modifier_names[] = {

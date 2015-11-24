@@ -53,6 +53,7 @@ static void st_lsm6ds3_irq_management(struct work_struct *data_work)
 {
 	struct lsm6ds3_data *cdata;
 	u8 src_value = 0x00, src_fifo = 0x00;
+	int flags = READ_FIFO_IN_INTERRUPT;
 
 	cdata = container_of((struct work_struct *)data_work,
 						struct lsm6ds3_data, data_work);
@@ -64,11 +65,17 @@ static void st_lsm6ds3_irq_management(struct work_struct *data_work)
 	dev_dbg(cdata->dev, "st_lsm6ds3_irq_management src_value=%x, src_fifo=%x\n", src_value, src_fifo);
 	if (src_fifo & ST_LSM6DS3_FIFO_DATA_AVL) {
 		dev_dbg(cdata->dev, "ST_LSM6DS3_FIFO_DATA_AVL\n");
-		mutex_lock(&cdata->fifo_lock);
-		if (src_fifo & ST_LSM6DS3_FIFO_DATA_OVR) {
+		if (src_fifo & ST_LSM6DS3_FIFO_DATA_OVR)
 			dev_err(cdata->dev, "data fifo overrun.\n");
+
+		mutex_lock(&cdata->fifo_lock);
+		if (cdata->system_state & SF_RESUME) {
+			flags |= READ_FIFO_IN_RESUME;
+			if(!(cdata->system_state & SF_WAKEUP_SENSOR_ENABLED))
+				flags |= READ_FIFO_DISCARD_DATA;
+			cdata->system_state = SF_NORMAL;
 		}
-		st_lsm6ds3_read_fifo(cdata, READ_FIFO_IN_INTERRUPT);
+		st_lsm6ds3_read_fifo(cdata, flags);
 		mutex_unlock(&cdata->fifo_lock);
 
 	}

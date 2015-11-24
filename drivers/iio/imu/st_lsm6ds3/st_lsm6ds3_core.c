@@ -1863,6 +1863,7 @@ static int st_lsm6ds3_init_sensor(struct lsm6ds3_data *cdata)
 	cdata->sensors_enabled = 0;
 	cdata->reset_steps = false;
 	cdata->sign_motion_event_ready = false;
+	cdata->system_state = SF_NORMAL;
 
 	err = st_lsm6ds3_write_data_with_mask(cdata, ST_LSM6DS3_RESET_ADDR,
 				ST_LSM6DS3_RESET_MASK, ST_LSM6DS3_EN_BIT, true);
@@ -2474,6 +2475,7 @@ ssize_t st_lsm6ds3_sysfs_flush_fifo(struct device *dev,
 {
 	u64 sensor_last_timestamp, event_dir = 0;
 	int stype = 0;
+	int flags = READ_FIFO_IN_FLUSH;
 	u64 timestamp_flush = 0;
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct lsm6ds3_sensor_data *sdata = iio_priv(indio_dev);
@@ -2507,7 +2509,10 @@ ssize_t st_lsm6ds3_sysfs_flush_fifo(struct device *dev,
 	mutex_unlock(&indio_dev->mlock);
 
 	mutex_lock(&sdata->cdata->fifo_lock);
-	st_lsm6ds3_read_fifo(sdata->cdata, READ_FIFO_IN_FLUSH);
+	if (sdata->cdata->system_state & SF_RESUME)
+		flags |= READ_FIFO_DISCARD_DATA;
+	sdata->cdata->system_state = SF_NORMAL;
+	st_lsm6ds3_read_fifo(sdata->cdata, flags);
 
 	switch (sdata->sindex) {
          case ST_INDIO_DEV_ACCEL:
@@ -2963,16 +2968,11 @@ int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 {
 	int err, i;
 	struct lsm6ds3_sensor_data *sdata;
-	u8 tmp_sensors_enabled = cdata->sensors_enabled;
 
 	if (!stay_wake && (cdata->sensors_enabled & ST_INDIO_DEV_AG_MASK)) {
 		for (i = 0; i < (ST_INDIO_DEV_GYRO_WK + 1); i++) {
 			sdata = iio_priv(cdata->indio_dev[i]);
 			if ((1 << sdata->sindex) & cdata->sensors_enabled) {
-				err = st_lsm6ds3_set_enable(sdata, false);
-				if (err < 0)
-					return err;
-
 				err = st_lsm6ds3_set_drdy_irq(sdata, false);
 				if (err < 0)
 					return err;
@@ -3002,7 +3002,7 @@ int st_lsm6ds3_common_suspend(struct lsm6ds3_data *cdata)
 		if (device_may_wakeup(cdata->dev))
 			enable_irq_wake(cdata->irq);
 
-	cdata->sensors_enabled = tmp_sensors_enabled;
+	cdata->system_state = SF_SUSPEND;
 	return 0;
 }
 EXPORT_SYMBOL(st_lsm6ds3_common_suspend);
@@ -3012,17 +3012,15 @@ int st_lsm6ds3_common_resume(struct lsm6ds3_data *cdata)
 	int err, i;
 	struct lsm6ds3_sensor_data *sdata;
 
+	cdata->system_state = SF_RESUME;
 	if (stay_wake) {
+		cdata->system_state |= SF_WAKEUP_SENSOR_ENABLED;
 		if (device_may_wakeup(cdata->dev))
 			disable_irq_wake(cdata->irq);
 	} else if (cdata->sensors_enabled & ST_INDIO_DEV_AG_MASK) {
 		for (i = 0; i < (ST_INDIO_DEV_GYRO_WK + 1); i++) {
 			sdata = iio_priv(cdata->indio_dev[i]);
 			if ((1 << sdata->sindex) & cdata->sensors_enabled) {
-				err = st_lsm6ds3_set_enable(sdata, true);
-				if (err < 0)
-					return err;
-
 				err = st_lsm6ds3_set_drdy_irq(sdata, true);
 				if (err < 0)
 					return err;

@@ -177,6 +177,11 @@ struct lsm6ds3_data {
 	u16 byte_in_pattern;
 
 	int irq;
+#define	SF_WAKEUP_SENSOR_ENABLED	(1 << 0)
+#define	SF_SUSPEND			(1 << 1)
+#define	SF_RESUME			(1 << 2)
+#define	SF_NORMAL			(1 << 3)
+	int system_state;
 
 	s64 last_timestamp;
 	s64 timestamp;

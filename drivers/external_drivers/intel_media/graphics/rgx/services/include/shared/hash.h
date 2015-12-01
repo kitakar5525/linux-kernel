@@ -61,51 +61,6 @@ extern "C" {
 typedef IMG_UINT32 HASH_FUNC(IMG_SIZE_T uKeySize, IMG_VOID *pKey, IMG_UINT32 uHashTabLen);
 typedef IMG_BOOL HASH_KEY_COMP(IMG_SIZE_T uKeySize, IMG_VOID *pKey1, IMG_VOID *pKey2);
 
-/* Each entry in a hash table is placed into a bucket */
-struct _BUCKET_
-{
-	/* the next bucket on the same chain */
-	struct _BUCKET_ *pNext;
-
-	/* entry value */
-	IMG_UINTPTR_T v;
-
-	/* entry key */
-#if defined (WIN32)
-	IMG_UINTPTR_T k[1];
-#else
-	IMG_UINTPTR_T k[];		/* PRQA S 0642 */ /* override dynamic array declaration warning */
-#endif
-};
-typedef struct _BUCKET_ BUCKET;
-
-struct _HASH_TABLE_
-{
-	/* current size of the hash table */
-	IMG_UINT32 uSize;
-
-	/* number of entries currently in the hash table */
-	IMG_UINT32 uCount;
-
-	/* the minimum size that the hash table should be re-sized to */
-	IMG_UINT32 uMinimumSize;
-
-	/* size of key in bytes */
-	IMG_UINT32 uKeySize;
-
-	/* hash function */
-	HASH_FUNC *pfnHashFunc;
-
-	/* key comparison function */
-	HASH_KEY_COMP *pfnKeyComp;
-
-	/* the hash table array */
-	BUCKET **ppBucketTable;
-
-	/* hashtable guard */
-	spinlock_t hash_spinlock;
-};
-
 typedef struct _HASH_TABLE_ HASH_TABLE;
 
 typedef PVRSRV_ERROR (*HASH_pfnCallback) (

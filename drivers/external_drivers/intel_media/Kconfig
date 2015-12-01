@@ -104,6 +104,15 @@ config SUPPORT_HDMI
         help
           Choose this option to support HDMI.
 
+config SUPPORT_HDMI_NO_DISPLAY
+        bool "SUPPORT_HDMI_NO_DISPLAY"
+        depends on SUPPORT_HDMI
+        default n
+        help
+          Choose this option to support HDMI without DISPLAY.
+	  Brighon Shores platform does not have display but use
+	  HDMI port only on CDB HW.
+
 config CTP_DPST
         bool "CTP_DPST"
         depends on DRM_MDFLD || DRM_CTP

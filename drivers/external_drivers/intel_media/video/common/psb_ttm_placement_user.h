@@ -73,8 +73,10 @@ struct ttm_pl_create_req {
 struct ttm_pl_create_ub_req {
 	uint64_t size;
 	uint64_t user_address;
+	int32_t  fd;
 	uint32_t placement;
 	uint32_t page_alignment;
+	uint32_t pad64;
 };
 
 /**
@@ -181,10 +183,9 @@ struct ttm_pl_reference_req {
 struct ttm_pl_synccpu_arg {
 	uint32_t handle;
 	uint32_t access_mode;
-	enum {
-		TTM_PL_SYNCCPU_OP_GRAB,
-		TTM_PL_SYNCCPU_OP_RELEASE
-	} op;
+#define TTM_PL_SYNCCPU_OP_GRAB 0
+#define TTM_PL_SYNCCPU_OP_RELEASE 1
+	uint32_t op;
 	uint32_t pad64;
 };
 

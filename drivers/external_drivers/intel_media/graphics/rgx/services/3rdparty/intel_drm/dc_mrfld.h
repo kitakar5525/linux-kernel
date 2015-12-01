@@ -128,6 +128,7 @@ typedef struct {
 	/* Timer to retire blocked flips */
         struct timer_list sFlipTimer;
         struct work_struct flip_retire_work;
+	int timestamp;
 
 } DC_MRFLD_DEVICE;
 

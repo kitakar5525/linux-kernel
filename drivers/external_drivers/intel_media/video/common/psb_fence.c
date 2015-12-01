@@ -70,6 +70,7 @@ int psb_fence_emit_sequence(struct ttm_fence_device *fdev,
 		spin_lock(&dev_priv->sequence_lock);
 		seq = dev_priv->sequence[fence_class]++;
 		spin_unlock(&dev_priv->sequence_lock);
+		PSB_DEBUG_TOPAZ("TOPAZ: emit a sequence, next sequence %08x\n", dev_priv->sequence[fence_class]);
 		break;
 #ifdef SUPPORT_VSP
 	case VSP_ENGINE_VPP:

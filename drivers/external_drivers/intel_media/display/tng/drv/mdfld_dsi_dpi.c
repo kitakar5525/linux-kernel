@@ -611,7 +611,7 @@ static int __dpi_panel_power_off(struct mdfld_dsi_config *dsi_config,
 	  pipe synchronization plus , only avaiable when
 	  timer generator is working*/
 	if (REG_READ(regs->mipi_reg) & BIT31) {
-		retry = 100000;
+		retry = 10000;
 		while (--retry && (REG_READ(regs->pipeconf_reg) & BIT30))
 			udelay(5);
 
@@ -1233,6 +1233,10 @@ struct mdfld_dsi_encoder *mdfld_dsi_dpi_init(struct drm_device *dev,
 	dpi_output->dev = dev;
 	dpi_output->p_funcs = p_funcs;
 	dpi_output->first_boot = 1;
+
+	if (pipe == 0)
+		dev_priv->dpi_output = dpi_output;
+
 	/*get fixed mode*/
 	fixed_mode = dsi_config->fixed_mode;
 
@@ -1269,4 +1273,58 @@ struct mdfld_dsi_encoder *mdfld_dsi_dpi_init(struct drm_device *dev,
 	PSB_DEBUG_ENTRY("successfully\n");
 
 	return &dpi_output->base;
+}
+
+void mdfld_reset_dpi_panel(struct drm_psb_private *dev_priv)
+{
+	struct mdfld_dsi_config *dsi_config = NULL;
+	struct mdfld_dsi_dpi_output *dpi_output = NULL;
+	struct panel_funcs *p_funcs = NULL;
+	struct drm_device *dev;
+
+	dpi_output = dev_priv->dpi_output;
+	dsi_config = dev_priv->dsi_configs[0];
+
+	if (!dsi_config || !dpi_output)
+		return;
+
+	dev = dsi_config->dev;
+
+	/*disable ESD when HDMI connected*/
+	if (hdmi_state)
+		return;
+
+	PSB_DEBUG_ENTRY("\n");
+	p_funcs = dpi_output->p_funcs;
+	if (p_funcs) {
+		mutex_lock(&dsi_config->context_lock);
+
+                if (!dsi_config->dsi_hw_context.panel_on) {
+			DRM_INFO("don't reset panel when panel is off\n");
+			mutex_unlock(&dsi_config->context_lock);
+			return;
+		}
+
+		DRM_INFO("Starts ESD panel reset\n");
+		/*
+		* since panel is in abnormal state,
+		* we do a power off/on first
+		*/
+		if (__dpi_panel_power_off(dsi_config, p_funcs))
+			DRM_INFO("failed to power off dpi panel\n");
+
+		if (p_funcs && p_funcs->reset)
+			p_funcs->reset(dsi_config);
+
+		if (__dpi_panel_power_on(dsi_config, p_funcs, dpi_output->first_boot)) {
+			DRM_ERROR("failed to power on dbi panel\n");
+			mutex_unlock(&dsi_config->context_lock);
+			return;
+		}
+		mutex_unlock(&dsi_config->context_lock);
+
+		DRM_INFO("%s: End panel reset\n", __func__);
+	} else {
+		DRM_INFO("%s invalid panel init\n", __func__);
+	}
 }

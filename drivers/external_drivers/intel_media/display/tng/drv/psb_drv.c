@@ -52,6 +52,7 @@
 #include <asm/intel-mid.h>
 
 #include "mdfld_dsi_dbi.h"
+#include "mdfld_dsi_dpi.h"
 #ifdef CONFIG_MID_DSI_DPU
 #include "mdfld_dsi_dbi_dpu.h"
 #endif
@@ -1139,7 +1140,7 @@ bool mrst_get_vbt_data(struct drm_psb_private *dev_priv)
 	if (is_dual_dsi(dev) && IS_ANN(dev)) {
 		dev_priv->bUseHFPLL = false;
 		dev_priv->bRereadZero = false;
-	} else if (IS_TNG_B0(dev) || IS_ANN_A0(dev)) {
+	} else if (IS_TNG(dev) || IS_ANN_A0(dev)) {
 		if (dev_priv->mipi_encoder_type == MDFLD_DSI_ENCODER_DBI) {
 			if (IS_ANN(dev))
 				dev_priv->bUseHFPLL = false;
@@ -1829,7 +1830,7 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 		goto out_err;
 	}
 
-	dev_priv->power_wq = alloc_ordered_workqueue("power_wq", WQ_HIGHPRI);
+	dev_priv->power_wq = alloc_ordered_workqueue("power_wq", 0);
 	if (!dev_priv->power_wq) {
 		DRM_ERROR("failed to create vsync workqueue\n");
 		ret = -ENOMEM;
@@ -2929,6 +2930,25 @@ static void vsync_state_dump(struct drm_device *dev, int pipe)
 	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 }
 
+void psb_enable_esd(struct drm_device *dev, int pipe)
+{
+	struct drm_psb_private *dev_priv = psb_priv(dev);
+	struct mdfld_dsi_config *dsi_config = NULL;
+	if (!pipe)
+		dsi_config = dev_priv->dsi_configs[0];
+	else if (pipe == 2)
+		dsi_config = dev_priv->dsi_configs[1];
+
+	if (IS_ANN(dev)) {
+		if (pipe != 1 &&
+			is_panel_vid_or_cmd(dev) == MDFLD_DSI_ENCODER_DPI &&
+			dsi_config &&
+			dsi_config->dsi_hw_context.panel_on) {
+			mdfld_reset_dpi_panel(dev_priv);
+		}
+	}
+}
+
 static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv)
 {
@@ -3003,7 +3023,6 @@ static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 				DRM_INFO("request VSYNC on pipe(%d) when vsync_enabled=%d.\n",
 						 pipe, dev_priv->vsync_enabled[pipe]);
 			}
-
 			nsecs = timespec_to_ns(&time_vsync_irq);
 			arg->vsync.timestamp = (uint64_t)nsecs;
 			return ret;
@@ -4515,6 +4534,7 @@ typedef struct drm_psb_mem_alloc {
 typedef struct pvrsrv_bridge_package_32
 {
 	u32	ui32BridgeID;		/*!< ioctl/drvesc index */
+	u32	ui32FunctionID;			/*! bridge function ID */
 	u32	ui32Size;			/*!< size of structure */
 	u32	pvParamIn;			/*!< input data buffer */
 	u32	ui32InBufferSize;		/*!< size of input data buf */
@@ -4533,10 +4553,10 @@ int compat_PVRSRV_BridgeDispatchKM2(struct file *filp, unsigned int cmd,
 		printk(KERN_ERR "%s: copy_from_user failed\n", __func__);
 		return -EFAULT;
 	}
-
 	request = compat_alloc_user_space(sizeof(*request));
 	if (!access_ok(VERIFY_WRITE, request, sizeof(*request))
 		|| __put_user(req32.ui32BridgeID, &request->ui32BridgeID)
+		|| __put_user(req32.ui32FunctionID, &request->ui32FunctionID)
 		|| __put_user(req32.ui32Size, &request->ui32Size)
 		|| __put_user((void __user *)(unsigned long)req32.pvParamIn, &request->pvParamIn)
 		|| __put_user(req32.ui32InBufferSize, &request->ui32InBufferSize)

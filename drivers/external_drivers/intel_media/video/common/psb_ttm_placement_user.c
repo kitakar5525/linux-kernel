@@ -36,7 +36,10 @@
 #else
 #include <uapi/drm/drm.h>
 #endif
-
+#ifdef CONFIG_ION
+#include "psb_drv.h"
+#include "psb_msvdx.h"
+#endif
 
 struct ttm_bo_user_object {
 	struct ttm_base_object base;
@@ -117,6 +120,7 @@ static void ttm_bo_user_destroy(struct ttm_buffer_object *bo)
 	kfree(user_bo);
 }
 
+#ifndef CONFIG_ION
 /* This is used for sg_table which is derived from user-pointer */
 static void ttm_tt_free_user_pages(struct ttm_buffer_object *bo)
 {
@@ -170,6 +174,7 @@ static void ttm_tt_free_user_pages(struct ttm_buffer_object *bo)
 	/* kfree(pages_to_wb); */
 	kfree(pages);
 }
+#endif
 
 /* This is used for sg_table which is derived from user-pointer */
 static void ttm_ub_bo_user_destroy(struct ttm_buffer_object *bo)
@@ -178,12 +183,43 @@ static void ttm_ub_bo_user_destroy(struct ttm_buffer_object *bo)
 		container_of(bo, struct ttm_bo_user_object, bo);
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 3, 0))
+#ifdef CONFIG_ION
+	struct list_head *list, *next;
+	struct psb_ion_buffer *pIonBuf;
+	struct drm_psb_private *dev_priv;
+	struct msvdx_private *msvdx_priv;
+	struct ttm_bo_device *bdev = bo->bdev;
+
+	dev_priv = container_of(bdev, struct drm_psb_private, bdev);
+	if (dev_priv == NULL)
+		printk(KERN_ERR "failed to get valid dev_priv\n");
+	msvdx_priv = dev_priv->msvdx_private;
+	if (msvdx_priv == NULL)
+		printk(KERN_ERR "failed to get valid msvdx_priv\n");
+
+	list_for_each_safe(list, next, &msvdx_priv->ion_buffers_list) {
+		pIonBuf = list_entry(list, struct psb_ion_buffer, head);
+		if (pIonBuf->sg == bo->sg) {
+			list_del(list);
+			dma_buf_unmap_attachment(pIonBuf->psAttachment,
+						pIonBuf->sg, DMA_NONE);
+			dma_buf_detach(pIonBuf->psDmaBuf,
+					pIonBuf->psAttachment);
+			dma_buf_put(pIonBuf->psDmaBuf);
+			kfree(pIonBuf);
+			pIonBuf = NULL;
+			break;
+		}
+	}
+	bo->sg = NULL;
+#else
 	if (bo->sg) {
 		ttm_tt_free_user_pages(bo);
 		sg_free_table(bo->sg);
 		kfree(bo->sg);
 		bo->sg = NULL;
 	}
+#endif
 #endif
 
 	ttm_mem_global_free(bo->glob->mem_glob, bo->acc_size);
@@ -472,6 +508,14 @@ int ttm_pl_ub_create_ioctl(struct ttm_object_file *tfile,
 	struct ttm_buffer_object *bo;
 	struct ttm_buffer_object *tmp;
 	struct ttm_bo_user_object *user_bo;
+#ifdef CONFIG_ION
+	struct drm_psb_private *dev_priv;
+	struct msvdx_private *msvdx_priv;
+	struct dma_buf *psDmaBuf;
+	struct dma_buf_attachment *psAttachment;
+	int32_t fd = req->fd;
+	struct psb_ion_buffer *psIonBuf;
+#endif
 	uint32_t flags;
 	int ret = 0;
 	struct ttm_mem_global *mem_glob = bdev->glob->mem_glob;
@@ -518,74 +562,97 @@ int ttm_pl_ub_create_ioctl(struct ttm_object_file *tfile,
 	placement.num_placement = 1;
 	placement.placement = &flags;
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0))
-
-/*  For kernel 3.0, use the desired type. */
-#define TTM_HACK_WORKAROUND_ttm_bo_type_user ttm_bo_type_user
-
-#else
-/*  TTM_HACK_WORKAROUND_ttm_bo_type_user -- Hack for porting,
-    as ttm_bo_type_user is no longer implemented.
-    This will not result in working code.
-    FIXME - to be removed. */
-
-#warning warning: ttm_bo_type_user no longer supported
-
-/*  For kernel 3.3+, use the wrong type, which will compile but not work. */
-#define TTM_HACK_WORKAROUND_ttm_bo_type_user ttm_bo_type_kernel
-
-#endif
-
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 3, 0))
-		/* Handle frame buffer allocated in user space, Convert
-		  user space virtual address into pages list */
-		num_pages = (req->size + PAGE_SIZE - 1) >> PAGE_SHIFT;
-		pages = kzalloc(num_pages * sizeof(struct page *), GFP_KERNEL);
-		if (unlikely(pages == NULL)) {
-			printk(KERN_ERR "kzalloc pages failed\n");
-			ttm_mem_global_free(mem_glob, acc_size);
-			kfree(user_bo);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0))
+#ifdef CONFIG_ION
+	if (fd >= 0) {
+		dev_priv = container_of(bdev, struct drm_psb_private, bdev);
+		if ((dev_priv == NULL) && (dev_priv->dev == NULL)) {
+			printk(KERN_ERR "failed to get dev_priv\n");
 			return -ENOMEM;
 		}
 
-		down_read(&current->mm->mmap_sem);
-		vma = find_vma(current->mm, req->user_address);
-		if (unlikely(vma == NULL)) {
-			up_read(&current->mm->mmap_sem);
-			kfree(pages);
-			printk(KERN_ERR "find_vma failed\n");
-			ttm_mem_global_free(mem_glob, acc_size);
-			kfree(user_bo);
-			return -EFAULT;
-		}
-		before_flags = vma->vm_flags;
-		if (vma->vm_flags & (VM_IO | VM_PFNMAP))
-			vma->vm_flags = vma->vm_flags & ((~VM_IO) & (~VM_PFNMAP));
-		page_nr = get_user_pages(current, current->mm,
-					 req->user_address,
-					 (int)(num_pages), 1, 0, pages,
-					 NULL);
-		vma->vm_flags = before_flags;
-		up_read(&current->mm->mmap_sem);
-
-		/* can be written by caller, not forced */
-		if (unlikely(page_nr < num_pages)) {
-			kfree(pages);
-			pages = 0;
-			printk(KERN_ERR "get_user_pages err.\n");
-			ttm_mem_global_free(mem_glob, acc_size);
-			kfree(user_bo);
+		msvdx_priv = dev_priv->msvdx_private;
+		if (msvdx_priv == NULL) {
+			printk(KERN_ERR "failed to get msvdx_priv\n");
 			return -ENOMEM;
 		}
-		sg = drm_prime_pages_to_sg(pages, num_pages);
+		psDmaBuf = dma_buf_get(fd);
+		if (unlikely(psDmaBuf == NULL)) {
+			printk(KERN_ERR "failed to get DMA_BUF from Fd\n");
+			return -ENOMEM;
+		}
+		psAttachment = dma_buf_attach(psDmaBuf, dev_priv->dev->dev);
+		if (unlikely(psAttachment == NULL)) {
+			printk(KERN_ERR "failed to get attachment from dma_buf\n");
+			return -ENOMEM;
+		}
+		sg = dma_buf_map_attachment(psAttachment, DMA_NONE);
 		if (unlikely(sg == NULL)) {
-			kfree(pages);
-			printk(KERN_ERR "drm_prime_pages_to_sg err.\n");
-			ttm_mem_global_free(mem_glob, acc_size);
-			kfree(user_bo);
+			printk(KERN_ERR "failed to get sg from DMA_BUF\n");
 			return -ENOMEM;
 		}
+
+		psIonBuf = kzalloc(sizeof(struct psb_ion_buffer), GFP_KERNEL);
+		psIonBuf->psDmaBuf = psDmaBuf;
+		psIonBuf->psAttachment = psAttachment;
+		psIonBuf->fd = fd;
+		psIonBuf->sg = sg;
+
+		mutex_lock(&msvdx_priv->ion_buf_list_lock);
+		list_add_tail(&psIonBuf->head, &msvdx_priv->ion_buffers_list);
+		mutex_unlock(&msvdx_priv->ion_buf_list_lock);
+	}
+	else
+#endif
+{
+	num_pages = (req->size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	pages = kzalloc(num_pages * sizeof(struct page *), GFP_KERNEL);
+	if (unlikely(pages == NULL)) {
+		printk(KERN_ERR "kzalloc pages failed\n");
+		ttm_mem_global_free(mem_glob, acc_size);
+		kfree(user_bo);
+		return -ENOMEM;
+	}
+
+	down_read(&current->mm->mmap_sem);
+	vma = find_vma(current->mm, req->user_address);
+	if (unlikely(vma == NULL)) {
+		up_read(&current->mm->mmap_sem);
 		kfree(pages);
+		printk(KERN_ERR "find_vma failed\n");
+		ttm_mem_global_free(mem_glob, acc_size);
+		kfree(user_bo);
+		return -EFAULT;
+	}
+	before_flags = vma->vm_flags;
+	if (vma->vm_flags & (VM_IO | VM_PFNMAP))
+		vma->vm_flags = vma->vm_flags & ((~VM_IO) & (~VM_PFNMAP));
+	page_nr = get_user_pages(current, current->mm,
+				 req->user_address,
+				 (int)(num_pages), 1, 0, pages,
+				 NULL);
+	vma->vm_flags = before_flags;
+	up_read(&current->mm->mmap_sem);
+
+	/* can be written by caller, not forced */
+	if (unlikely(page_nr < num_pages)) {
+		kfree(pages);
+		pages = 0;
+		printk(KERN_ERR "get_user_pages err.\n");
+		ttm_mem_global_free(mem_glob, acc_size);
+		kfree(user_bo);
+		return -ENOMEM;
+	}
+	sg = drm_prime_pages_to_sg(pages, num_pages);
+	if (unlikely(sg == NULL)) {
+		kfree(pages);
+		printk(KERN_ERR "drm_prime_pages_to_sg err.\n");
+		ttm_mem_global_free(mem_glob, acc_size);
+		kfree(user_bo);
+		return -ENOMEM;
+	}
+	kfree(pages);
+}
 #endif
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0))

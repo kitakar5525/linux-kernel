@@ -332,16 +332,100 @@ static int osip_shutdown_notifier_call(struct notifier_block *notifier,
 	return NOTIFY_DONE;
 }
 
+static const char const *bootdev = "mmcblk0";
+static const int partno = 7;
+
+static int match_misc_part(struct device *dev, const void *data)
+{
+
+	(void) data;
+	if (strcmp(dev_name(dev), bootdev) == 0)
+		return 1;
+	return 0;
+}
+
+static u64 last_lba(struct block_device *bdev)
+{
+	if (!bdev || !bdev->bd_inode)
+		return 0;
+	return div_u64(bdev->bd_inode->i_size,
+			bdev_logical_block_size(bdev)) - 1ULL;
+}
+
+static size_t write_lba(struct block_device *bdev,
+				       u64 lba, u8 *buffer, size_t count)
+{
+	size_t totalwritecount = 0;
+	sector_t n = lba * (bdev_logical_block_size(bdev) / 512);
+
+	if (!buffer || lba > last_lba(bdev))
+		return 0;
+
+	while (count) {
+		int copied = 512;
+		Sector sect;
+		unsigned char *data = read_dev_sector(bdev, n++, &sect);
+		if (!data)
+			break;
+		if (copied > count)
+			copied = count;
+		lock_page(sect.v);
+		memcpy(data, buffer, copied);
+		set_page_dirty(sect.v);
+		unlock_page(sect.v);
+		put_dev_sector(sect);
+		buffer += copied;
+		totalwritecount += copied;
+		count -= copied;
+	}
+	sync_blockdev(bdev);
+	return totalwritecount;
+}
+
+static int write_bcb_target(const char *target) {
+
+	struct device *disk_device;
+	struct block_device *bdev = NULL;
+	int ret = -ENODEV;
+
+	disk_device = class_find_device(&block_class, NULL, NULL, match_misc_part);
+	if (!disk_device) {
+		pr_err("bcb: device %s not found!\n", bootdev);
+		goto out;
+	}
+	bdev = bdget_disk(dev_to_disk(disk_device), partno);
+
+	if (!bdev) {
+		dev_err(disk_device, "bcb: unable to get disk (%s,%d)\n",
+				bootdev, partno);
+		goto out;
+	}
+
+	/* make sure the block device is open rw */
+	if (blkdev_get(bdev, FMODE_READ | FMODE_WRITE, NULL) < 0) {
+		pr_err("bcb: blk_dev_get failed!\n");
+		goto out;
+	}
+
+	if (write_lba(bdev, 0, (u8 *)target, strlen(target)) != strlen(target)) {
+		pr_err("bcb: couldn't write bootloader control block\n");
+		goto out;
+	}
+
+	ret = 0;
+
+out:
+	if (bdev)
+		blkdev_put(bdev, FMODE_READ | FMODE_WRITE);
+
+	return ret;
+}
+
 static int osip_reboot_target_call(const char *target, int id)
 {
 	int ret_ipc;
 
-	struct file *filep = NULL;
-	char *misc_block = "/dev/block/mmcblk0p7";
 	const char string_recovery[] = "boot-recovery";
-	ssize_t n;
-	loff_t pos = 0;
-	mm_segment_t old_fs;
 #ifdef DEBUG
 	u8 rbt_reason;
 #endif
@@ -377,14 +461,7 @@ static int osip_reboot_target_call(const char *target, int id)
 
 		if (INTEL_MID_BOARD(2, PHONE, MRFL, MVN, PRO) ||
 			INTEL_MID_BOARD(2, PHONE, MRFL, MVN, ENG)) {
-			old_fs = get_fs();
-			set_fs(KERNEL_DS);
-			filep = filp_open(misc_block, O_WRONLY, 0644);
-			vfs_write(filep, string_recovery, sizeof(string_recovery), &pos);
-			vfs_fsync(filep, 0);
-
-			filp_close(filep, NULL);
-			set_fs(old_fs);
+			BUG_ON(write_bcb_target(string_recovery));
 		}
 	}
 	return NOTIFY_DONE;

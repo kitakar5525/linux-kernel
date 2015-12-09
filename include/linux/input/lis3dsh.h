@@ -49,8 +49,9 @@ INPUT subsystem: NOTE-> output data INCLUDE the sensitivity in accelerometer.
 /* Poll Interval */
 #define	LIS3DSH_ACC_MIN_POLL_PERIOD_MS		1
 
-/* Poll Interval with ODR 50Hz */
+/* Poll Interval */
 #define LIS3DSH_ACC_POLL_PERIOD_MS_ODR50       20
+#define LIS3DSH_ACC_POLL_PERIOD_MS_ODR100      10
 
 #ifdef	__KERNEL__
 

@@ -20,7 +20,7 @@ void *lis3dsh_platform_data(void *info)
 	static struct lis3dsh_acc_platform_data lis3dsh_pdata;
 
 	lis3dsh_pdata.fs_range = LIS3DSH_ACC_G_2G;
-	lis3dsh_pdata.poll_interval = LIS3DSH_ACC_POLL_PERIOD_MS_ODR50;
+	lis3dsh_pdata.poll_interval = LIS3DSH_ACC_POLL_PERIOD_MS_ODR100;
 	lis3dsh_pdata.negate_x = 0;
 	lis3dsh_pdata.negate_y = 0;
 	lis3dsh_pdata.negate_z = 0;

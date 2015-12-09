@@ -392,7 +392,7 @@ static void lis3dsh_acc_set_init_register_values(struct lis3dsh_acc_data *acc)
 
 	acc->resume_state[LIS3DSH_RES_CTRL_REG2] = 0x01;
 	acc->resume_state[LIS3DSH_RES_CTRL_REG1] = 0x57;
-	acc->resume_state[LIS3DSH_RES_CTRL_REG4] = 0x58;
+	acc->resume_state[LIS3DSH_RES_CTRL_REG4] = 0x68;
 	acc->resume_state[LIS3DSH_RES_CTRL_REG3] = 0x00;
 	acc->resume_state[LIS3DSH_RES_CTRL_REG5] = 0x00;
 }

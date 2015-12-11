@@ -982,6 +982,40 @@ reconfigure_fifo_irq_restore:
 }
 EXPORT_SYMBOL(st_lsm6ds3_reconfigure_fifo);
 
+static int st_lsm6ds3_reset_steps(struct lsm6ds3_data *cdata)
+{
+	int err;
+	u8 reg_value = 0x00;
+
+	err = cdata->tf->read(cdata,
+			ST_LSM6DS3_STEP_COUNTER_RES_ADDR, 1, &reg_value, true);
+	if (err < 0)
+		return err;
+
+	if (reg_value & ST_LSM6DS3_FUNC_EN_MASK)
+		reg_value = ST_LSM6DS3_STEP_COUNTER_RES_FUNC_EN;
+	else
+		reg_value = ST_LSM6DS3_DIS_BIT;
+
+	err = st_lsm6ds3_write_data_with_mask(cdata,
+				ST_LSM6DS3_STEP_COUNTER_RES_ADDR,
+				ST_LSM6DS3_STEP_COUNTER_RES_MASK,
+				ST_LSM6DS3_STEP_COUNTER_RES_ALL_EN, true);
+	if (err < 0)
+		return err;
+
+	err = st_lsm6ds3_write_data_with_mask(cdata,
+				ST_LSM6DS3_STEP_COUNTER_RES_ADDR,
+				ST_LSM6DS3_STEP_COUNTER_RES_MASK,
+				reg_value, true);
+	if (err < 0)
+		return err;
+
+	cdata->reset_steps = true;
+
+	return 0;
+}
+
 int st_lsm6ds3_set_drdy_irq(struct lsm6ds3_sensor_data *sdata, bool state)
 {
 	u8 reg_addr, mask, value;
@@ -1552,6 +1586,10 @@ SET_ODR:
 		if (err < 0)
 			return err;
 
+		err = st_lsm6ds3_reset_steps(sdata->cdata);
+		if (err < 0)
+			return err;
+
 	case ST_INDIO_DEV_STEP_DETECTOR:
 		err = st_lsm6ds3_enable_pedometer(sdata, false);
 		if (err < 0)
@@ -1819,40 +1857,6 @@ static int st_lsm6ds3_write_raw(struct iio_dev *indio_dev,
 	return err;
 }
 
-static int st_lsm6ds3_reset_steps(struct lsm6ds3_data *cdata)
-{
-	int err;
-	u8 reg_value = 0x00;
-
-	err = cdata->tf->read(cdata,
-			ST_LSM6DS3_STEP_COUNTER_RES_ADDR, 1, &reg_value, true);
-	if (err < 0)
-		return err;
-
-	if (reg_value & ST_LSM6DS3_FUNC_EN_MASK)
-		reg_value = ST_LSM6DS3_STEP_COUNTER_RES_FUNC_EN;
-	else
-		reg_value = ST_LSM6DS3_DIS_BIT;
-
-	err = st_lsm6ds3_write_data_with_mask(cdata,
-				ST_LSM6DS3_STEP_COUNTER_RES_ADDR,
-				ST_LSM6DS3_STEP_COUNTER_RES_MASK,
-				ST_LSM6DS3_STEP_COUNTER_RES_ALL_EN, true);
-	if (err < 0)
-		return err;
-
-	err = st_lsm6ds3_write_data_with_mask(cdata,
-				ST_LSM6DS3_STEP_COUNTER_RES_ADDR,
-				ST_LSM6DS3_STEP_COUNTER_RES_MASK,
-				reg_value, true);
-	if (err < 0)
-		return err;
-
-	cdata->reset_steps = true;
-
-	return 0;
-}
-
 static int st_lsm6ds3_init_sensor(struct lsm6ds3_data *cdata)
 {
 	int err, i;
@@ -2015,6 +2019,7 @@ static int st_lsm6ds3_set_selftest(struct lsm6ds3_sensor_data *sdata, int index)
 static ssize_t st_lsm6ds3_sysfs_set_max_delivery_rate(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
+#define	MAX_DELIVERY_RATE_MS	7000
 	u8 duration;
 	int err, err2;
 	unsigned int max_delivery_rate;
@@ -2027,6 +2032,10 @@ static ssize_t st_lsm6ds3_sysfs_set_max_delivery_rate(struct device *dev,
 
 	if (max_delivery_rate == sdata->c_odr)
 		return size;
+
+	if (sdata->sindex == ST_INDIO_DEV_STEP_COUNTER)
+		if (max_delivery_rate > MAX_DELIVERY_RATE_MS)
+			max_delivery_rate = MAX_DELIVERY_RATE_MS;
 
 	duration = max_delivery_rate / ST_LSM6DS3_MIN_DURATION_MS;
 

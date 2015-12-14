@@ -27,7 +27,7 @@
 
 /* Board files use the following if they are ok with 16M start defaults */
 #define PSTORE_RAM_START_DEFAULT	SZ_16M
-#define PSTORE_RAM_SIZE_DEFAULT		SZ_2_1M
+#define PSTORE_RAM_SIZE_DEFAULT		2*SZ_2_1M
 
 #ifdef CONFIG_X86_32
 #define RAM_MAX_MEM (max_low_pfn << PAGE_SHIFT)
@@ -41,6 +41,7 @@ static struct ramoops_platform_data pstore_ram_data = {
 	.record_size	= SZ_4K,
 	.console_size	= SZ_2M,
 	.ftrace_size	= 2*SZ_4K,
+	.pmsg_size	= SZ_2M,
 	.dump_oops	= 1,
 };
 

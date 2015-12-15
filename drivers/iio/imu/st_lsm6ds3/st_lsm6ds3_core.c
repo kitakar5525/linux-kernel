@@ -2489,8 +2489,17 @@ ssize_t st_lsm6ds3_sysfs_flush_fifo(struct device *dev,
 	u64 timestamp_flush = 0;
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct lsm6ds3_sensor_data *sdata = iio_priv(indio_dev);
+	int err;
+	unsigned int sensor_handle;
 
 	mutex_lock(&indio_dev->mlock);
+
+	err = kstrtouint(buf, 10, &sensor_handle);
+	if (err < 0) {
+		mutex_unlock(&indio_dev->mlock);
+		return -EINVAL;
+	}
+	dev_info(dev, "sensor_handle = %d", sensor_handle);
 
 	if (indio_dev->currentmode == INDIO_BUFFER_TRIGGERED) {
 		disable_irq(sdata->cdata->irq);
@@ -2568,7 +2577,7 @@ ssize_t st_lsm6ds3_sysfs_flush_fifo(struct device *dev,
 
 	timestamp_flush = sdata->cdata->timestamp;
 	iio_push_event(indio_dev, IIO_UNMOD_EVENT_CODE(stype,
-				0, IIO_EV_TYPE_FIFO_FLUSH, event_dir),
+				sensor_handle, IIO_EV_TYPE_FIFO_FLUSH, event_dir),
 				timestamp_flush);
 
 	mutex_unlock(&sdata->cdata->fifo_lock);

@@ -81,10 +81,10 @@
 #define ISL_BRIGHTNESS_LEVEL_MAX	100
 #define ISL_BRIGHTNESS_LEVEL_INIT	50
 
-/* Default config:  PWMI x I2C, Enable Fault(OPCP, OTP), Enable VSC,
+/* Default config:  I2C, Enable Fault(OPCP, OTP), Enable VSC,
  * Use 16V OVP, Disable dither, enable channel0, disable channel 1.
  */
-#define ISL_CONF_DEF		0xB5
+#define ISL_CONF_DEF		0x35
 
 /* PFM peak current: 296mA, Average inductor current to enter PFM mode: 93mA. */
 #define ISL_PFM_MODE_DEF	0x83

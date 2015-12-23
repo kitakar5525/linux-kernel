@@ -67,5 +67,12 @@ static struct synaptics_dsx_board_data dsx_board_data = {
 
 void *s1222_platform_data(void *info)
 {
+	dsx_board_data.irq_gpio = get_gpio_by_name("touch_int");
+	if (dsx_board_data.irq_gpio < 0) {
+		pr_err("%s: failed to get from sfi table, use default GP183\n",
+			 __func__);
+		dsx_board_data.irq_gpio = DSX_ATTN_GPIO;
+	}
+
 	return &dsx_board_data;
 }

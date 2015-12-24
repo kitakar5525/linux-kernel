@@ -232,6 +232,7 @@ void tianma_cmd_controller_init(
 		hw_ctx->mipi = PASS_FROM_SPHY_TO_AFE |
 			BANDGAP_CHICKEN_BIT |
 			TE_TRIGGER_GPIO_PIN;
+	hw_ctx->panel_on = true;
 }
 
 static
@@ -696,7 +697,7 @@ void tianma_cmd_init(struct drm_device *dev,
 				this should not be necessary as already done in IFWI */
 
 	PSB_DEBUG_ENTRY("\n");
-	p_funcs->reset = tianma_cmd_panel_reset;
+	p_funcs->reset = NULL;
 	p_funcs->power_on = tianma_cmd_power_on;
 	p_funcs->power_off = tianma_cmd_power_off;
 	p_funcs->drv_ic_init = (select_init_code) ? tianma_cmd_drv_ic_fullinit : tianma_cmd_drv_ic_init;

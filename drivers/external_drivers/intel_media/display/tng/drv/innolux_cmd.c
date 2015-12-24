@@ -238,6 +238,7 @@ void innolux_cmd_controller_init(
 		hw_ctx->mipi = PASS_FROM_SPHY_TO_AFE |
 			BANDGAP_CHICKEN_BIT |
 			TE_TRIGGER_GPIO_PIN;
+	hw_ctx->panel_on = true;
 }
 
 static
@@ -590,7 +591,7 @@ void innolux_cmd_init(struct drm_device *dev,
 				this should not be necessary as already done in IFWI */
 
 	PSB_DEBUG_ENTRY("\n");
-	p_funcs->reset = innolux_cmd_panel_reset;
+	p_funcs->reset = NULL;
 	p_funcs->power_on = innolux_cmd_power_on;
 	p_funcs->power_off = innolux_cmd_power_off;
 	p_funcs->drv_ic_init = (select_init_code) ? innolux_cmd_drv_ic_fullinit : innolux_cmd_drv_ic_init;

@@ -115,7 +115,7 @@ enum bq24232_chrgrate_type {
 	BQ24232_BOOST_CHARGE,
 };
 
-static enum {
+enum {
 	OTG_EVENT,
 	SYSFS_EVENT,
 	PMIC_EVENT,
@@ -487,6 +487,8 @@ static int bq24232_charger_property_is_writeable(struct power_supply *psy,
 #endif
 	case POWER_SUPPLY_PROP_ENABLE_CHARGING:
 		return 1;
+	default:
+		return -1;
 	}
 	return 0;
 }
@@ -506,10 +508,12 @@ int bq24232_get_charger_status(void)
 
 void bq24232_set_charging_status(bool chg_stat)
 {
+	struct bq24232_event *evt;
+
 	if (!bq24232_charger)
 		return;
 
-	struct bq24232_event *evt = kzalloc(sizeof(*evt), GFP_ATOMIC);
+	evt = kzalloc(sizeof(*evt), GFP_ATOMIC);
 	if (!evt) {
 		dev_err(bq24232_charger->dev,"failed to allocate memory for charger_set_charging_status_event\n");
 		return;
@@ -560,6 +564,8 @@ static int psly_handle_notification(struct notifier_block *nb,
 			return NOTIFY_OK;
 		}
 	}
+
+	return NOTIFY_DONE;
 }
 
 static int otg_handle_notification(struct notifier_block *nb,
@@ -691,6 +697,9 @@ static void bq24232_evt_worker(struct work_struct *work)
 				} else
 					schedule_delayed_work(&chip->bat_temp_mon_work,BAT_TEMP_MONITOR_DELAY);
 				break;
+			default:
+				dev_err(chip->dev, "Unhandled evt prop: %d\n", evt->psp);
+				goto exit;
 			}
 			break;
 		case PMIC_EVENT:
@@ -700,6 +709,9 @@ static void bq24232_evt_worker(struct work_struct *work)
 			break;
 		case UPDATE_EVENT:
 			break;
+		default:
+			dev_err(chip->dev, "Unhandled evt type: %d\n", evt->type);
+			goto exit;
 		}
 
 		bq24232_update_charging_status(chip);

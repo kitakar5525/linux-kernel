@@ -23,6 +23,7 @@
 #include <linux/gpio.h>
 #include <linux/backlight.h>
 #include <linux/isl97698.h>
+#include <linux/reboot.h>
 
 #define BACKLIGHT_NAME		"i2c-bl"
 
@@ -104,6 +105,8 @@ struct isl97698_st {
 	int isl_brightness_val_max;
 	int enable;
 };
+
+static struct isl97698_st *isl97698_st_chip = NULL;
 
 static int isl97698_i2c_write(struct i2c_client *client, u8 addr, u8 val)
 {
@@ -284,6 +287,22 @@ static void isl97698_backlight_unregister(struct isl97698_st *chip)
 		backlight_device_unregister(chip->bl);
 }
 
+static int isl_reboot_notify_sys(struct notifier_block *this, unsigned long code,
+							void *unused)
+{
+	if (isl97698_st_chip)
+		isl97698_i2c_write(isl97698_st_chip->client, ISL97698_REG_CONF, 0xff);
+	return NOTIFY_OK;
+}
+
+/*
+ *	The backlight needs to learn about soft shutdowns to
+ *	reset the register.
+ */
+
+static struct notifier_block isl_reboot_notifier = {
+	.notifier_call = isl_reboot_notify_sys,
+};
 static int  isl97698_probe(struct i2c_client *client,
 					const struct i2c_device_id *id)
 {
@@ -306,6 +325,7 @@ static int  isl97698_probe(struct i2c_client *client,
 		dev_err(&client->dev, "struct isl97698_st allocation failed\n");
 		return -ENOMEM;
 	}
+	isl97698_st_chip = chip;
 	chip->client = client;
 	chip->dev = &client->dev;
 	chip->bias_en = pdata->bias_en;
@@ -338,6 +358,11 @@ static int  isl97698_probe(struct i2c_client *client,
 	}
 	dev_info(&client->dev, "Brightness isl97698_probe successed\n");
 
+	res = register_reboot_notifier(&isl_reboot_notifier);
+	if (res != 0) {
+		pr_err("cannot register reboot notifier (err=%d)\n", res);
+		goto isl_probe_fail;
+	}
 	return res;
 
 isl_probe_fail:
@@ -351,6 +376,7 @@ static int isl97698_remove(struct i2c_client *client)
 	struct isl97698_st *isl = i2c_get_clientdata(client);
 
 	isl97698_backlight_unregister(isl);
+	unregister_reboot_notifier(&isl_reboot_notifier);
 	return 0;
 }
 

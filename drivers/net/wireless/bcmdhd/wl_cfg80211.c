@@ -909,6 +909,7 @@ static void wl_add_remove_pm_enable_work(struct bcm_cfg80211 *cfg, bool add_remo
 
 	if (cfg->pm_enable_work_on) {
 		if (add_remove) {
+			DHD_OS_WAKE_LOCK(cfg->pub);
 			schedule_delayed_work(&cfg->pm_enable_work,
 				msecs_to_jiffies(WL_PM_ENABLE_TIMEOUT));
 		} else {
@@ -925,6 +926,7 @@ static void wl_add_remove_pm_enable_work(struct bcm_cfg80211 *cfg, bool add_remo
 				case WL_HANDLER_DEL:
 				default:
 					cfg->pm_enable_work_on = false;
+					DHD_OS_WAKE_UNLOCK(cfg->pub);
 					break;
 			}
 		}
@@ -14026,6 +14028,7 @@ static void wl_cfg80211_work_handler(struct work_struct * work)
 					wl_cfg80211_update_power_mode(iter->ndev);
 			}
 		}
+		DHD_OS_WAKE_UNLOCK(cfg->pub);
 	}
 }
 

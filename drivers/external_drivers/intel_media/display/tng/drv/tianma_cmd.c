@@ -39,6 +39,8 @@
 
 static int select_init_code;
 
+static bool reset_enable = false;
+
 static int __init parse_panel_init_code(char *arg)
 {
 	sscanf(arg, "%d", &select_init_code);
@@ -233,6 +235,9 @@ void tianma_cmd_controller_init(
 			BANDGAP_CHICKEN_BIT |
 			TE_TRIGGER_GPIO_PIN;
 	hw_ctx->panel_on = true;
+
+/* re-enable reset function*/
+	reset_enable = true;
 }
 
 static
@@ -381,6 +386,10 @@ int tianma_cmd_panel_reset(
 		struct mdfld_dsi_config *dsi_config)
 {
 	u8 value;
+
+/*we don't want to reset the display. During the boot it is already on*/
+	if (reset_enable == false)
+		return 0;
 
 	PSB_DEBUG_ENTRY("\n");
 
@@ -697,7 +706,7 @@ void tianma_cmd_init(struct drm_device *dev,
 				this should not be necessary as already done in IFWI */
 
 	PSB_DEBUG_ENTRY("\n");
-	p_funcs->reset = NULL;
+	p_funcs->reset = tianma_cmd_panel_reset;
 	p_funcs->power_on = tianma_cmd_power_on;
 	p_funcs->power_off = tianma_cmd_power_off;
 	p_funcs->drv_ic_init = (select_init_code) ? tianma_cmd_drv_ic_fullinit : tianma_cmd_drv_ic_init;

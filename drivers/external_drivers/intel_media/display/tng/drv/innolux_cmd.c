@@ -39,6 +39,8 @@
 
 static int select_init_code;
 
+static bool reset_enable = false;
+
 static int __init parse_panel_init_code(char *arg)
 {
 	sscanf(arg, "%d", &select_init_code);
@@ -239,6 +241,9 @@ void innolux_cmd_controller_init(
 			BANDGAP_CHICKEN_BIT |
 			TE_TRIGGER_GPIO_PIN;
 	hw_ctx->panel_on = true;
+
+/*re-enable reset fuction*/
+	reset_enable = true;
 }
 
 static
@@ -441,6 +446,10 @@ int innolux_cmd_panel_reset(
 {
 	u8 value;
 
+/*we don't want to reset the display. During the boot it is already on*/
+	if (reset_enable == false)
+		return 0;
+
 	PSB_DEBUG_ENTRY("\n");
 
 	if (dbgfs_dsi_config == NULL)
@@ -591,7 +600,7 @@ void innolux_cmd_init(struct drm_device *dev,
 				this should not be necessary as already done in IFWI */
 
 	PSB_DEBUG_ENTRY("\n");
-	p_funcs->reset = NULL;
+	p_funcs->reset = innolux_cmd_panel_reset;
 	p_funcs->power_on = innolux_cmd_power_on;
 	p_funcs->power_off = innolux_cmd_power_off;
 	p_funcs->drv_ic_init = (select_init_code) ? innolux_cmd_drv_ic_fullinit : innolux_cmd_drv_ic_init;

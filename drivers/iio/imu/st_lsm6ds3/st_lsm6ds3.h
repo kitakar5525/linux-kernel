@@ -118,10 +118,13 @@
 #define ST_LSM6DS3_FLUSH_CHANNEL(device_type) \
 { \
 	.type = device_type, \
-	.modified = 0, \
 	.scan_index = -1, \
 	.indexed = -1, \
-	.event_mask = IIO_EV_BIT(IIO_EV_TYPE_FIFO_FLUSH, IIO_EV_DIR_EITHER), \
+	.channel = 0, \
+	.modified = 0, \
+	.event_spec = st_lsm6ds3_event_spec, \
+	.num_event_specs = 1, \
+	.event_mask = 0, \
 }
 
 #define ST_LSM6DS3_FIFO_LENGHT() \

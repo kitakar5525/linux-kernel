@@ -365,6 +365,10 @@ static struct st_lsm6ds3_fs_table {
 	}
 };
 
+const struct iio_event_spec st_lsm6ds3_event_spec[] = {
+	{}
+};
+
 static const struct iio_chan_spec st_lsm6ds3_accel_ch[] = {
 	ST_LSM6DS3_LSM_CHANNELS(IIO_ACCEL, 1, 0, IIO_MOD_X, IIO_LE,
 				16, 16, ST_LSM6DS3_ACCEL_OUT_X_L_ADDR, 's'),
@@ -385,10 +389,6 @@ static const struct iio_chan_spec st_lsm6ds3_gyro_ch[] = {
 				16, 16, ST_LSM6DS3_GYRO_OUT_Z_L_ADDR, 's'),
 	ST_LSM6DS3_FLUSH_CHANNEL(IIO_ANGL_VEL),
 	IIO_CHAN_SOFT_TIMESTAMP(3)
-};
-
-struct iio_event_spec st_lsm6ds3_event_spec[] = {
-	{}
 };
 
 static const struct iio_chan_spec st_lsm6ds3_sign_motion_ch[] = {

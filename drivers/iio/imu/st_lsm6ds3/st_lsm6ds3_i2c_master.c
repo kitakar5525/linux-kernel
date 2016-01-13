@@ -181,6 +181,8 @@ struct st_lsm6ds3_i2c_master_odr_table {
 static int st_lsm6ds3_i2c_master_read_raw(struct iio_dev *indio_dev,
 		struct iio_chan_spec const *ch, int *val, int *val2, long mask);
 
+extern struct iio_event_spec st_lsm6ds3_event_spec;
+
 static const struct iio_chan_spec st_lsm6ds3_ext0_ch[] = {
 	ST_LSM6DS3_LSM_CHANNELS(IIO_MAGN, 1, 0, IIO_MOD_X, IIO_LE,
 				16, 16, ST_LSM6DS3_EXT0_OUT_X_L_ADDR, 's'),

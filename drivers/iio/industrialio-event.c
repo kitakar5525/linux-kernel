@@ -383,7 +383,7 @@ static bool iio_check_for_dynamic_events(struct iio_dev *indio_dev)
 	int j;
 
 	for (j = 0; j < indio_dev->num_channels; j++)
-		if (indio_dev->channels[j].event_mask != 0)
+		if (indio_dev->channels[j].num_event_specs != 0)
 			return true;
 	return false;
 }

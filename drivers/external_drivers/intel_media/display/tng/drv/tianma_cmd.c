@@ -963,7 +963,7 @@ static ssize_t dbgfs_addr_write(struct file *file, const char __user *buff,
 
 	err = dbgfs_write(buff, count, ADDR);
 	if (err < 0)
-		ret = 0;
+		return err;
 
 	*ppos += ret;
 
@@ -983,7 +983,7 @@ static ssize_t dbgfs_send_hs_write(struct file *file, const char __user *buff,
 
 	err = dbgfs_write(buff, count, HIGH_SPEED);
 	if (err < 0)
-		ret = 0;
+		return err;
 
 	*ppos += ret;
 
@@ -1003,7 +1003,7 @@ static ssize_t dbgfs_send_lp_write(struct file *file, const char __user *buff,
 
 	err = dbgfs_write(buff, count, LOW_POWER);
 	if (err < 0)
-		ret = 0;
+		return err;
 
 	*ppos += ret;
 

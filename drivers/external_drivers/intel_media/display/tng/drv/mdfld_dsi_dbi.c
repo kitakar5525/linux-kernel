@@ -1044,6 +1044,7 @@ void mdfld_generic_dsi_dbi_dpms(struct drm_encoder *encoder, int mode)
 	struct mdfld_dsi_config *dsi_config;
 	struct drm_psb_private *dev_priv;
 	struct panel_funcs *p_funcs;
+	u32    power_island;
 #ifdef CONFIG_BACKLIGHT_CLASS_DEVICE
 	struct mdfld_dsi_hw_context *ctx;
 	struct backlight_device bd;
@@ -1061,6 +1062,11 @@ void mdfld_generic_dsi_dbi_dpms(struct drm_encoder *encoder, int mode)
 
 	PSB_DEBUG_ENTRY("%s\n", (mode == DRM_MODE_DPMS_ON ? "on" :
 		DRM_MODE_DPMS_STANDBY == mode ? "standby" : "off"));
+
+	power_island = pipe_to_island(dsi_config->pipe);
+
+	if (!power_island_get(power_island))
+		return;
 
 	mutex_lock(&dev_priv->dpms_mutex);
 	DCLockMutex();
@@ -1104,6 +1110,8 @@ void mdfld_generic_dsi_dbi_dpms(struct drm_encoder *encoder, int mode)
 
 	DCUnLockMutex();
 	mutex_unlock(&dev_priv->dpms_mutex);
+
+	power_island_put(power_island);
 }
 
 static

@@ -958,3 +958,7 @@ config SURFACE_PRO3_BUTTON
 	---help---
 	  This driver handles the power/home/volume buttons on the Microsoft Surface Pro 3/4 tablet.
 endif # X86_PLATFORM_DEVICES
+
+config PMC_ATOM
+       def_bool y
+       depends on PCI

@@ -18,6 +18,7 @@
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/clk-lpss.h>
+#include <linux/platform_data/x86/pmc_atom.h>
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
 
@@ -29,7 +30,6 @@ ACPI_MODULE_NAME("acpi_lpss");
 
 #include <asm/cpu_device_id.h>
 #include <asm/iosf_mbi.h>
-#include <asm/pmc_atom.h>
 
 #define LPSS_ADDR(desc) ((unsigned long)&desc)
 

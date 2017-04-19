@@ -508,6 +508,12 @@ config XPOWER_PMIC_OPREGION
 	help
 	  This config adds ACPI operation region support for XPower AXP288 PMIC.
 
+config CHT_WC_PMIC_OPREGION
+	bool "ACPI operation region support for CHT Whiskey Cove PMIC"
+	depends on INTEL_SOC_PMIC_CHTWC
+	help
+	  This config adds ACPI operation region support for CHT Whiskey Cove PMIC.
+
 endif
 
 endif	# ACPI

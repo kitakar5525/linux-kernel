@@ -19,6 +19,7 @@
 #define HID_PRODUCT_ID_U1_PTP_2		0x120A
 #define HID_PRODUCT_ID_U1_DUAL		0x120B
 #define HID_PRODUCT_ID_T4_BTNLESS	0x120C
+#define HID_PRODUCT_ID_T4_USB		0x120D
 
 #define DEV_SINGLEPOINT				0x01
 #define DEV_DUALPOINT				0x02
@@ -439,6 +440,7 @@ static int alps_raw_event(struct hid_device *hdev,
 
 	switch (hdev->product) {
 	case HID_PRODUCT_ID_T4_BTNLESS:
+	case HID_PRODUCT_ID_T4_USB:
 		ret = t4_raw_event(hdata, data, size);
 		break;
 	default:
@@ -611,13 +613,29 @@ static int T4_init(struct hid_device *hdev, struct alps_dev *pri_data)
 	int ret;
 	u8 tmp, sen_line_num_x, sen_line_num_y;
 
-	ret = t4_read_write_register(hdev, T4_PRM_ID_CONFIG_3, &tmp, 0, true);
-	if (ret < 0) {
-		dev_err(&hdev->dev, "failed T4_PRM_ID_CONFIG_3 (%d)\n", ret);
-		goto exit;
+	if (hdev->product == HID_PRODUCT_ID_T4_BTNLESS) {
+		ret = t4_read_write_register(hdev,
+			T4_PRM_ID_CONFIG_3, &tmp, 0, true);
+		if (ret < 0) {
+			dev_err(&hdev->dev,
+			"failed T4_PRM_ID_CONFIG_3 (%d)\n", ret);
+			goto exit;
+		}
+		sen_line_num_x =
+			16 + ((tmp & 0x0F) | (tmp & 0x08 ? 0xF0 : 0));
+		sen_line_num_y =
+			12 + (((tmp & 0xF0) >> 4) | (tmp & 0x80 ? 0xF0 : 0));
+		ret = t4_read_write_register(hdev,
+			PRM_SYS_CONFIG_1, &tmp, 0, true);
+		if (ret < 0) {
+			dev_err(&hdev->dev,
+			"failed PRM_SYS_CONFIG_1 (%d)\n", ret);
+			goto exit;
+		}
+	} else {
+		sen_line_num_x = 20;
+		sen_line_num_y = 12;
 	}
-	sen_line_num_x = 16 + ((tmp & 0x0F)  | (tmp & 0x08 ? 0xF0 : 0));
-	sen_line_num_y = 12 + (((tmp & 0xF0) >> 4)  | (tmp & 0x80 ? 0xF0 : 0));
 
 	pri_data->x_max = sen_line_num_x * T4_COUNT_PER_ELECTRODE;
 	pri_data->x_min = T4_COUNT_PER_ELECTRODE;
@@ -626,11 +644,6 @@ static int T4_init(struct hid_device *hdev, struct alps_dev *pri_data)
 	pri_data->x_active_len_mm = pri_data->y_active_len_mm = 0;
 	pri_data->btn_cnt = 1;
 
-	ret = t4_read_write_register(hdev, PRM_SYS_CONFIG_1, &tmp, 0, true);
-	if (ret < 0) {
-		dev_err(&hdev->dev, "failed PRM_SYS_CONFIG_1 (%d)\n", ret);
-		goto exit;
-	}
 	tmp |= 0x02;
 	ret = t4_read_write_register(hdev, PRM_SYS_CONFIG_1, NULL, tmp, false);
 	if (ret < 0) {
@@ -800,6 +813,7 @@ static int alps_probe(struct hid_device *hdev, const struct hid_device_id *id)
 
 	switch (hdev->product) {
 	case HID_DEVICE_ID_ALPS_T4_BTNLESS:
+	case HID_DEVICE_ID_ALPS_T4_USB:
 		data->dev_type = T4;
 		break;
 	case HID_DEVICE_ID_ALPS_U1_DUAL:
@@ -832,6 +846,8 @@ static const struct hid_device_id alps_id[] = {
 		USB_VENDOR_ID_ALPS_JP, HID_DEVICE_ID_ALPS_U1) },
 	{ HID_DEVICE(HID_BUS_ANY, HID_GROUP_ANY,
 		USB_VENDOR_ID_ALPS_JP, HID_DEVICE_ID_ALPS_T4_BTNLESS) },
+	{ HID_DEVICE(HID_BUS_ANY, HID_GROUP_ANY,
+		USB_VENDOR_ID_ALPS_JP, HID_DEVICE_ID_ALPS_T4_USB) },
 	{ }
 };
 MODULE_DEVICE_TABLE(hid, alps_id);

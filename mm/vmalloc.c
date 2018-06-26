@@ -1261,6 +1261,7 @@ overflow:
 	kmem_cache_free(vmap_area_cachep, va);
 	return ERR_PTR(-EBUSY);
 }
+EXPORT_SYMBOL_GPL(map_kernel_range_noflush);
 
 int register_vmap_purge_notifier(struct notifier_block *nb)
 {
@@ -2115,6 +2116,7 @@ struct vm_struct *get_vm_area(unsigned long size, unsigned long flags)
 				  NUMA_NO_NODE, GFP_KERNEL,
 				  __builtin_return_address(0));
 }
+EXPORT_SYMBOL_GPL(get_vm_area);
 
 struct vm_struct *get_vm_area_caller(unsigned long size, unsigned long flags,
 				const void *caller)

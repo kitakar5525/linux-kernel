@@ -133,4 +133,7 @@ int intel_soc_pmic_update(int reg, u8 val, u8 mask);
 int intel_soc_pmic_set_pdata(const char *name, void *data, int len, int id);
 struct device *intel_soc_pmic_dev(void);
 
+int intel_soc_pmic_exec_mipi_pmic_seq_element(u16 i2c_address, u32 reg_address,
+					      u32 value, u32 mask);
+
 #endif	/* __INTEL_SOC_PMIC_H__ */

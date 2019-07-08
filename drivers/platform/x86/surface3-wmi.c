@@ -41,6 +41,12 @@ static const struct dmi_system_id surface3_dmi_table[] = {
 			DMI_MATCH(DMI_PRODUCT_NAME, "Surface 3"),
 		},
 	},
+	{
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "OEMB"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "OEMB"),
+		},
+	},
 #endif
 	{ }
 };

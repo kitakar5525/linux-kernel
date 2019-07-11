@@ -587,3 +587,10 @@ config X86_PM_TIMER
 
 	  You should nearly always say Y here because many modern
 	  systems require this timer.
+
+config 5525_ACPI_CALL
+	tristate "acpi_call"
+	help
+	  A linux kernel module that enables calls to
+	  ACPI methods through /proc/acpi/call.
+	  Now with support for Integer, String and Buffer parameters.

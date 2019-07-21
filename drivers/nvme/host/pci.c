@@ -33,6 +33,7 @@
 #include <linux/io-64-nonatomic-lo-hi.h>
 #include <asm/unaligned.h>
 #include <linux/sed-opal.h>
+#include <linux/suspend.h>
 
 #include "nvme.h"
 
@@ -2484,8 +2485,11 @@ static int nvme_suspend(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct nvme_dev *ndev = pci_get_drvdata(pdev);
+	struct nvme_ctrl *ctrl = &ndev->ctrl;
 
-	nvme_dev_disable(ndev, true);
+	if (!(pm_suspend_via_s2idle() && (ctrl->quirks & NVME_QUIRK_NO_DISABLE)))
+		nvme_dev_disable(ndev, true);
+
 	return 0;
 }
 
@@ -2587,6 +2591,10 @@ static const struct pci_device_id nvme_id_table[] = {
 		.driver_data = NVME_QUIRK_LIGHTNVM, },
 	{ PCI_DEVICE(0x1d1d, 0x2601),	/* CNEX Granby */
 		.driver_data = NVME_QUIRK_LIGHTNVM, },
+	{ PCI_VDEVICE(SK_HYNIX, 0x1527),   /* Sk Hynix */
+		.driver_data = NVME_QUIRK_NO_DISABLE, },
+	{ PCI_VDEVICE(TOSHIBA, 0x010f),   /* TOSHIBA NVMe found on Surface Book with Performance Base */
+		.driver_data = NVME_QUIRK_NO_DISABLE, },
 	{ PCI_DEVICE_CLASS(PCI_CLASS_STORAGE_EXPRESS, 0xffffff) },
 	{ PCI_DEVICE(0x2646, 0x2263),   /* KINGSTON A2000 NVMe SSD  */
 		.driver_data = NVME_QUIRK_NO_DEEPEST_PS, },

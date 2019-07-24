@@ -1627,6 +1627,14 @@ static int mwifiex_pcie_process_cmd_complete(struct mwifiex_adapter *adapter)
 
 	pkt_len = *((__le16 *)skb->data);
 	rx_len = le16_to_cpu(pkt_len);
+
+	if (rx_len == 0) {
+		mwifiex_dbg(adapter, ERROR, "0 byte cmdrsp\n");
+		mwifiex_map_pci_memory(adapter, skb, MWIFIEX_UPLD_SIZE,
+				       PCI_DMA_FROMDEVICE);
+		return 0;
+	}
+
 	skb_trim(skb, rx_len);
 	skb_pull(skb, INTF_HEADER_LEN);
 

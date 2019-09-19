@@ -1339,6 +1339,8 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 	case V4L2_META_FMT_MTISP_LMV:	descr = "Local Motion Vector Histogram"; break;
 	case V4L2_META_FMT_MTISP_PARAMS: descr = "MTK ISP Tuning Metadata"; break;
 	case V4L2_PIX_FMT_MM21:		descr = "Mediatek 8-bit block format"; break;
+	case V4L2_META_FMT_IPU3_PARAMS:	descr = "IPU3 processing parameters"; break;
+	case V4L2_META_FMT_IPU3_STAT_3A:	descr = "IPU3 3A statistics"; break;
 
 	default:
 		/* Compressed formats */

@@ -476,6 +476,12 @@ static int sensor_hub_raw_event(struct hid_device *hdev,
 	void *priv = NULL;
 	struct hid_sensor_hub_device *hsdev = NULL;
 
+	if (report->application != 2097153) {
+		hid_info(hdev, "sam_raw_event\n");
+		hid_info(hdev, "  report: id=%u, type=%u, application=%u\n", report->id, report->type, report->application);
+		print_hex_dump(KERN_INFO, "raw_data: ", DUMP_PREFIX_OFFSET, 16, 1, raw_data, size, false);
+	}
+
 	hid_dbg(hdev, "sensor_hub_raw_event report id:0x%x size:%d type:%d\n",
 			 report->id, size, report->type);
 	hid_dbg(hdev, "maxfield:%d\n", report->maxfield);
@@ -745,6 +751,25 @@ static void sensor_hub_remove(struct hid_device *hdev)
 	mutex_destroy(&data->mutex);
 }
 
+static int sam_event(struct hid_device *hdev, struct hid_field *field, struct hid_usage *usage, __s32 value)
+{
+	if (field->application != 2097153) {
+		hid_info(hdev, "sam_event\n");
+		hid_info(hdev, " field: physical=%u, logical=%u, application=%u\n", field->physical, field->logical, field->application);
+		hid_info(hdev, " usage: hid=%u, c_idx=%u, u_idx=%u\n", usage->hid, usage->collection_index, usage->usage_index);
+		hid_info(hdev, " value: %d\n", value);
+	}
+	return 1;
+}
+
+static void sam_report(struct hid_device *hdev, struct hid_report *report)
+{
+	if (report->application != 2097153) {
+		hid_info(hdev, "sam_report: \n");
+		hid_info(hdev, "  report: id=%u, type=%u, application=%u\n", report->id, report->type, report->application);
+	}
+}
+
 static const struct hid_device_id sensor_hub_devices[] = {
 	{ HID_DEVICE(HID_BUS_ANY, HID_GROUP_SENSOR_HUB, HID_ANY_ID,
 		     HID_ANY_ID) },
@@ -758,6 +783,8 @@ static struct hid_driver sensor_hub_driver = {
 	.probe = sensor_hub_probe,
 	.remove = sensor_hub_remove,
 	.raw_event = sensor_hub_raw_event,
+	.event = sam_event,
+	.report = sam_report,
 	.report_fixup = sensor_hub_report_fixup,
 #ifdef CONFIG_PM
 	.suspend = sensor_hub_suspend,

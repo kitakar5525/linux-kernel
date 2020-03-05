@@ -26,9 +26,7 @@
 
 #define MSHW0040_DSM_REVISION		0x01
 #define MSHW0040_DSM_GET_OMPR		0x02	// get OEM Platform Revision
-static const guid_t MSHW0040_DSM_UUID =
-	GUID_INIT(0x6fd05c69, 0xcde3, 0x49f4, 0x95, 0xed, 0xab, 0x16, 0x65,
-		  0x49, 0x80, 0x35);
+#define MSHW0040_DSM_UUID		"dfbcf3c5-e7a5-44e6-9c1f-29c76f6e059c"
 
 #define SURFACE_BUTTON_NOTIFY_TABLET_MODE	0xc8
 
@@ -165,9 +163,11 @@ static bool surface_button_check_MSHW0040(struct acpi_device *dev)
 	acpi_handle handle = dev->handle;
 	union acpi_object *result;
 	u64 oem_platform_rev = 0;	// valid revisions are nonzero
+	u8 uuid[16];
 
 	// get OEM platform revision
-	result = acpi_evaluate_dsm_typed(handle, &MSHW0040_DSM_UUID,
+	acpi_str_to_uuid(MSHW0040_DSM_UUID, uuid);
+	result = acpi_evaluate_dsm_typed(handle, uuid,
 					 MSHW0040_DSM_REVISION,
 					 MSHW0040_DSM_GET_OMPR,
 					 NULL, ACPI_TYPE_INTEGER);

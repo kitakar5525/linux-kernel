@@ -856,4 +856,13 @@ config INPUT_SC27XX_VIBRA
 	  To compile this driver as a module, choose M here. The module will
 	  be called sc27xx_vibra.
 
+config INPUT_TABLET_MODE_SWITCH
+	tristate "Tablet mode switch sysfs trigger"
+	default m
+	help
+	  Tablet mode switch sysfs trigger.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tablet_mode_switch.
+
 endif

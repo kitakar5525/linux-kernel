@@ -167,7 +167,7 @@ int atomisp_video_register(struct atomisp_video_pipe *video,
 
 	video->vdev.v4l2_dev = vdev;
 
-	ret = video_register_device(&video->vdev, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(&video->vdev, VFL_TYPE_VIDEO, -1);
 	if (ret < 0)
 		dev_err(vdev->dev, "%s: could not register video device (%d)\n",
 			__func__, ret);
@@ -182,7 +182,7 @@ int atomisp_acc_register(struct atomisp_acc_pipe *video,
 
 	video->vdev.v4l2_dev = vdev;
 
-	ret = video_register_device(&video->vdev, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(&video->vdev, VFL_TYPE_VIDEO, -1);
 	if (ret < 0)
 		dev_err(vdev->dev, "%s: could not register video device (%d)\n",
 			__func__, ret);

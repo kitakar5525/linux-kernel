@@ -202,7 +202,7 @@ static const struct atomisp_dfs_config dfs_config_merr_1179 = {
 	.dfs_table_size = ARRAY_SIZE(dfs_rules_merr_1179),
 };
 
-static struct atomisp_freq_scaling_rule dfs_rules_merr_117a[] = {
+static const struct atomisp_freq_scaling_rule dfs_rules_merr_117a[] = {
 	{
 		.width = 1920,
 		.height = 1080,
@@ -214,11 +214,7 @@ static struct atomisp_freq_scaling_rule dfs_rules_merr_117a[] = {
 		.width = 1080,
 		.height = 1920,
 		.fps = 30,
-		/*
-		 * FIXME: this is weird, but .isp_freq depends on
-		 * the chip being ISP2400 or ISP2401. So, this should be
-		 * initialized on runtime.
-		 */
+		.isp_freq = ISP_FREQ_266MHZ,
 		.run_mode = ATOMISP_RUN_MODE_VIDEO,
 	},
 	{
@@ -1561,12 +1557,6 @@ static int atomisp_pci_probe(struct pci_dev *dev,
 			isp->dfs = &dfs_config_merr_1179;
 			break;
 		case ATOMISP_PCI_DEVICE_SOC_MRFLD_117A:
-			/*
-			 * FIXME: This should likely be uneeded. Either one
-			 * value is likely the correct one for this resolution
-			 */
-			dfs_rules_merr_117a[1].isp_freq = ISP_FREQ_266MHZ;
-
 			isp->dfs = &dfs_config_merr_117a;
 
 			break;

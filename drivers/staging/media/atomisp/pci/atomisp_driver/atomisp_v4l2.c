@@ -55,6 +55,10 @@
 #include <linux/intel_mid_pm.h>
 #include <asm/intel-mid.h>
 
+/* Timeouts to wait for all subdevs to be registered */
+#define SUBDEV_WAIT_TIMEOUT		50 /* ms */
+#define SUBDEV_WAIT_TIMEOUT_MAX_COUNT	40 /* up to 2 seconds */
+
 #ifdef CONFIG_INTEL_MID_ISP
 /* G-Min addition: pull this in from intel_mid_pm.h */
 #define CSTATE_EXIT_LATENCY_C1  1
@@ -772,7 +776,7 @@ static int atomisp_subdev_probe(struct atomisp_device *isp)
 	const struct atomisp_platform_data *pdata;
 	struct intel_v4l2_subdev_table *subdevs;
 #ifdef CONFIG_INTEL_MID_ISP
-	int ret, raw_index = -1;
+	int ret, raw_index = -1, count;
 #else
 	int raw_index = -1;
 #endif
@@ -783,6 +787,8 @@ static int atomisp_subdev_probe(struct atomisp_device *isp)
 		return 0;
 	}
 
+	/* FIXME: should, instead, use I2C probe */
+
 	for (subdevs = pdata->subdevs; subdevs->type; ++subdevs) {
 		struct v4l2_subdev *subdev;
 		struct i2c_board_info *board_info =
@@ -791,6 +797,8 @@ static int atomisp_subdev_probe(struct atomisp_device *isp)
 			i2c_get_adapter(subdevs->v4l2_subdev.i2c_adapter_id);
 		struct camera_sensor_platform_data *sensor_pdata;
 		int sensor_num, i;
+
+		dev_info(isp->dev, "Probing Subdev %s\n", board_info->type);
 
 		if (adapter == NULL) {
 			dev_err(isp->dev,
@@ -883,6 +891,16 @@ static int atomisp_subdev_probe(struct atomisp_device *isp)
 
 	}
 
+	/* FIXME: should return -EPROBE_DEFER if not all subdevs were probed */
+	for (count = 0; count < SUBDEV_WAIT_TIMEOUT_MAX_COUNT; count++) {
+		if (isp->input_cnt)
+			break;
+		msleep(SUBDEV_WAIT_TIMEOUT);
+		count++;
+	}
+	/* Wait more time to give more time for subdev init code */
+	msleep(5 * SUBDEV_WAIT_TIMEOUT);
+
 	/*
 	 * HACK: Currently VCM belongs to primary sensor only, but correct
 	 * approach must be to acquire from platform code which sensor
@@ -892,8 +910,11 @@ static int atomisp_subdev_probe(struct atomisp_device *isp)
 		isp->inputs[raw_index].motor = isp->motor;
 
 	/* Proceed even if no modules detected. For COS mode and no modules. */
-	if (!isp->inputs[0].camera)
+	if (!isp->input_cnt)
 		dev_warn(isp->dev, "no camera attached or fail to detect\n");
+	else
+		dev_info(isp->dev, "detected %d camera sensors\n",
+			 isp->input_cnt);
 
 	return atomisp_csi_lane_config(isp);
 }

@@ -432,8 +432,11 @@ static int __shps_dgpu_rp_set_power_unlocked(struct platform_device *pdev, enum 
 
 		pci_restore_state(rp);
 
-		if (!pci_is_enabled(rp))
-			pci_enable_device(rp);
+		if (!pci_is_enabled(rp)) {
+			status = pci_enable_device(rp);
+			if (status)
+				return status;
+		}
 
 		pci_set_master(rp);
 		clear_bit(SHPS_STATE_BIT_RPPWRON_SYNC, &drvdata->state);
@@ -836,8 +839,11 @@ static int shps_dgpu_powered_on(struct platform_device *pdev)
 	if (drvdata->dgpu_root_port_state)
 		pci_load_and_free_saved_state(rp, &drvdata->dgpu_root_port_state);
 	pci_restore_state(rp);
-	if (!pci_is_enabled(rp))
-		pci_enable_device(rp);
+	if (!pci_is_enabled(rp)) {
+		status = pci_enable_device(rp);
+		if (status)
+			return status;
+	}
 	pci_set_master(rp);
 	dbg_dump_drvsta(pdev, "shps_dgpu_powered_on.2");
 	dbg_dump_power_states(pdev, "shps_dgpu_powered_on.2");

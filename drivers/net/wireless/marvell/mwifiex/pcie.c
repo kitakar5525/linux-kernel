@@ -17,6 +17,7 @@
  * this warranty disclaimer.
  */
 
+#include <linux/acpi.h>
 #include <linux/dmi.h>
 #include <linux/firmware.h>
 
@@ -32,8 +33,15 @@
 #define PCIE_VERSION	"1.0"
 #define DRV_NAME        "Marvell mwifiex PCIe"
 
+#define ACPI_WSID_PATH			"\\_SB.WSID"
+#define WSID_DSM_UUID	"534ea3bf-fcc2-4e7a-908f-a13978f0c7ef"
+#define WSID_REV		0x0
+#define WSID_FUNC_WIFI_PWR_OFF		0x1
+#define WSID_FUNC_WIFI_PWR_ON		0x2
+
 static const struct dmi_system_id flr_surface_dmi_table[];
 static bool reset_d3cold;
+static bool reset_wsid;
 
 static struct mwifiex_if_ops pcie_ops;
 
@@ -325,6 +333,15 @@ static int dmi_reset_d3cold(const struct dmi_system_id *d)
 	return 0;
 }
 
+static int dmi_reset_wsid(const struct dmi_system_id *d)
+{
+	reset_wsid = true;
+	pr_info("%s detected: will use reset_wsid quirk on card_reset\n",
+			d->ident);
+
+	return 0;
+}
+
 /*
  * Surface devices need special handling on FLR.
  */
@@ -396,6 +413,24 @@ static const struct dmi_system_id flr_surface_dmi_table[] = {
 			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "Surface Laptop 2"),
 		},
 	},
+	/* Surface 3 uses WSID to reset fw */
+	{
+		.callback = dmi_reset_wsid,
+		.ident = "Surface 3",
+		.matches = {
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "Microsoft Corporation"),
+			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "Surface 3"),
+		},
+	},
+	{
+		.callback = dmi_reset_wsid,
+		.ident = "Surface 3",
+		.matches = {
+			DMI_MATCH(DMI_BIOS_VENDOR, "American Megatrends Inc."),
+			DMI_MATCH(DMI_SYS_VENDOR, "OEMB"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "OEMB"),
+		},
+	},
 	{}
 };
 
@@ -420,6 +455,59 @@ static int mwifiex_pcie_reset_d3cold_quirk(struct pci_dev *pdev)
 	mwifiex_pcie_set_power_d0(parent_pdev);
 	dev_info(&pdev->dev, "putting into D0...\n");
 	mwifiex_pcie_set_power_d0(pdev);
+
+	return 0;
+}
+
+static int mwifiex_pcie_reset_wsid_quirk(struct pci_dev *pdev)
+{
+	char *path = ACPI_WSID_PATH;
+	static guid_t wsid_dsm_guid;
+	acpi_handle handle;
+	union acpi_object *obj;
+	acpi_status status;
+
+	guid_parse(WSID_DSM_UUID, &wsid_dsm_guid);
+
+	status = acpi_get_handle(NULL, path, &handle);
+	if (ACPI_FAILURE(status)) {
+		dev_err(&pdev->dev, "No ACPI handle for path %s\n", path);
+		return -ENODEV;
+	}
+
+	if (!acpi_has_method(handle, "_DSM")) {
+		dev_err(&pdev->dev, "_DSM method not found\n");
+		return -ENODEV;
+	}
+
+	if (!acpi_check_dsm(handle, &wsid_dsm_guid,
+						WSID_REV, WSID_FUNC_WIFI_PWR_OFF)) {
+		dev_err(&pdev->dev, "_DSM method does not support requested "
+							  "function\n");
+		return -ENODEV;
+	}
+
+	/* For Surface 3, use _DSM method to power-cycle */
+	dev_info(&pdev->dev, "turning wifi off...\n");
+	obj = acpi_evaluate_dsm(handle, &wsid_dsm_guid,
+								  WSID_REV, WSID_FUNC_WIFI_PWR_OFF,
+								  NULL);
+	if (!obj) {
+		dev_err(&pdev->dev, "device _DSM execution failed for turning "
+							"wifi off\n");
+		return -ENODEV;
+	}
+
+	/* card will be probed immediately after this */
+	dev_info(&pdev->dev, "turning wifi on...\n");
+	obj = acpi_evaluate_dsm(handle, &wsid_dsm_guid,
+								  WSID_REV, WSID_FUNC_WIFI_PWR_ON,
+								  NULL);
+	if (!obj) {
+		dev_err(&pdev->dev, "device _DSM execution failed for turning "
+							"wifi on\n");
+		return -ENODEV;
+	}
 
 	return 0;
 }
@@ -2962,6 +3050,13 @@ static void mwifiex_pcie_device_dump_work(struct mwifiex_adapter *adapter)
 static void mwifiex_pcie_card_reset_work(struct mwifiex_adapter *adapter)
 {
 	struct pcie_service_card *card = adapter->card;
+
+	/* reset_wsid method probes card itself on Surface 3. So, need to
+	 * place it before actually performing FLR. */
+	if (reset_wsid) {
+		mwifiex_pcie_reset_wsid_quirk(card->dev);
+		return;
+	}
 
 	/* We can't afford to wait here; remove() might be waiting on us. If we
 	 * can't grab the device lock, maybe we'll get another chance later.

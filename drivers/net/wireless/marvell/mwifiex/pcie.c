@@ -286,6 +286,54 @@ static int mwifiex_pcie_probe(struct pci_dev *pdev,
 	return 0;
 }
 
+static void mwifiex_pcie_set_power_d3cold(struct pci_dev *pdev)
+{
+	pci_save_state(pdev);
+	if (pci_is_enabled(pdev))
+		pci_disable_device(pdev);
+	pci_set_power_state(pdev, PCI_D3cold);
+}
+
+static int mwifiex_pcie_set_power_d0(struct pci_dev *pdev)
+{
+	int ret;
+
+	pci_set_power_state(pdev, PCI_D0);
+	ret = pci_enable_device(pdev);
+	if (ret) {
+		dev_err(&pdev->dev, "pci_enable_device failed\n");
+		return ret;
+	}
+	pci_restore_state(pdev);
+
+	return 0;
+}
+
+static int mwifiex_pcie_reset_d3cold_quirk(struct pci_dev *pdev)
+{
+	struct pci_dev *parent_pdev = pci_upstream_bridge(pdev);
+
+	/* Power-cycle (put into D3cold then D0) */
+	dev_info(&pdev->dev, "Using reset_d3cold quirk to perform FW reset\n");
+
+	/* We need to perform power-cycle also for bridge of wifi because
+	 * on some devices (at least on SB1), OS can't know the real power
+	 * state of the bridge.
+	 * When I tried to power-cycle only wifi, resetting failed saying
+	 * that "Cannot transition to power state D0 for parent in D3hot". */
+	dev_info(&pdev->dev, "putting into D3cold...\n");
+	mwifiex_pcie_set_power_d3cold(pdev);
+	dev_info(&parent_pdev->dev, "putting into D3cold...\n");
+	mwifiex_pcie_set_power_d3cold(parent_pdev);
+
+	dev_info(&parent_pdev->dev, "putting into D0...\n");
+	mwifiex_pcie_set_power_d0(parent_pdev);
+	dev_info(&pdev->dev, "putting into D0...\n");
+	mwifiex_pcie_set_power_d0(pdev);
+
+	return 0;
+}
+
 /*
  * This function removes the interface and frees up the card structure.
  */
@@ -393,6 +441,8 @@ static void mwifiex_pcie_reset_prepare(struct pci_dev *pdev)
 	clear_bit(MWIFIEX_IFACE_WORK_DEVICE_DUMP, &card->work_flags);
 	clear_bit(MWIFIEX_IFACE_WORK_CARD_RESET, &card->work_flags);
 	mwifiex_dbg(adapter, INFO, "%s, successful\n", __func__);
+
+	mwifiex_pcie_reset_d3cold_quirk(pdev);
 
 	adapter->pci_reset_ongoing = true;
 }

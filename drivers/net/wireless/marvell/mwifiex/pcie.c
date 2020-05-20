@@ -17,6 +17,7 @@
  * this warranty disclaimer.
  */
 
+#include <linux/dmi.h>
 #include <linux/firmware.h>
 
 #include "decl.h"
@@ -30,6 +31,9 @@
 
 #define PCIE_VERSION	"1.0"
 #define DRV_NAME        "Marvell mwifiex PCIe"
+
+static const struct dmi_system_id flr_surface_dmi_table[];
+static bool reset_d3cold;
 
 static struct mwifiex_if_ops pcie_ops;
 
@@ -247,6 +251,9 @@ static int mwifiex_pcie_probe(struct pci_dev *pdev,
 	 * Surface devices */
 	parent_pdev->bridge_d3 = false;
 
+	/* check if quirk is needed to reset properly */
+	dmi_check_system(flr_surface_dmi_table);
+
 	pr_debug("info: vendor=0x%4.04X device=0x%4.04X rev=%d\n",
 		 pdev->vendor, pdev->device, pdev->revision);
 
@@ -308,6 +315,89 @@ static int mwifiex_pcie_set_power_d0(struct pci_dev *pdev)
 
 	return 0;
 }
+
+static int dmi_reset_d3cold(const struct dmi_system_id *d)
+{
+	reset_d3cold = true;
+	pr_info("%s detected: will use reset_d3cold quirk on card_reset\n",
+			d->ident);
+
+	return 0;
+}
+
+/*
+ * Surface devices need special handling on FLR.
+ */
+static const struct dmi_system_id flr_surface_dmi_table[] = {
+	/* Gen4+ Surface devices need reset_d3cold quirk */
+	{
+		.callback = dmi_reset_d3cold,
+		.ident = "Surface Pro 4",
+		.matches = {
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "Microsoft Corporation"),
+			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "Surface Pro 4"),
+		},
+	},
+	{
+		.callback = dmi_reset_d3cold,
+		.ident = "Surface Pro 5",
+		.matches = {
+			/* match for SKU here due to generic product name "Surface Pro" */
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "Microsoft Corporation"),
+			DMI_EXACT_MATCH(DMI_PRODUCT_SKU, "Surface_Pro_1796"),
+		},
+	},
+	{
+		.callback = dmi_reset_d3cold,
+		.ident = "Surface Pro 5 (LTE)",
+		.matches = {
+			/* match for SKU here due to generic product name "Surface Pro" */
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "Microsoft Corporation"),
+			DMI_EXACT_MATCH(DMI_PRODUCT_SKU, "Surface_Pro_1807"),
+		},
+	},
+	{
+		.callback = dmi_reset_d3cold,
+		.ident = "Surface Pro 6",
+		.matches = {
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "Microsoft Corporation"),
+			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "Surface Pro 6"),
+		},
+	},
+	{
+		.callback = dmi_reset_d3cold,
+		.ident = "Surface Book 1",
+		.matches = {
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "Microsoft Corporation"),
+			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "Surface Book"),
+		},
+	},
+	{
+		.callback = dmi_reset_d3cold,
+		.ident = "Surface Book 2",
+		.matches = {
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "Microsoft Corporation"),
+			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "Surface Book 2"),
+		},
+	},
+	{
+		.callback = dmi_reset_d3cold,
+		.ident = "Surface Laptop 1",
+		.matches = {
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "Microsoft Corporation"),
+			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "Surface Laptop"),
+		},
+	},
+	{
+		.callback = dmi_reset_d3cold,
+		.ident = "Surface Laptop 2",
+		.matches = {
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "Microsoft Corporation"),
+			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "Surface Laptop 2"),
+		},
+	},
+	{}
+};
 
 static int mwifiex_pcie_reset_d3cold_quirk(struct pci_dev *pdev)
 {
@@ -442,7 +532,8 @@ static void mwifiex_pcie_reset_prepare(struct pci_dev *pdev)
 	clear_bit(MWIFIEX_IFACE_WORK_CARD_RESET, &card->work_flags);
 	mwifiex_dbg(adapter, INFO, "%s, successful\n", __func__);
 
-	mwifiex_pcie_reset_d3cold_quirk(pdev);
+	if (reset_d3cold)
+		mwifiex_pcie_reset_d3cold_quirk(pdev);
 
 	adapter->pci_reset_ongoing = true;
 }

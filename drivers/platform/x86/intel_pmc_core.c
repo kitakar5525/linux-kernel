@@ -15,7 +15,6 @@
 #include <linux/bitfield.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
-#include <linux/dmi.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/pci.h>
@@ -1175,10 +1174,12 @@ static const struct pci_device_id pmc_pci_ids[] = {
  * the platform BIOS enforces 24Mhz crystal to shutdown
  * before PMC can assert SLP_S0#.
  */
-static int quirk_xtal_ignore(const struct dmi_system_id *id)
+static int quirk_xtal_ignore(void)
 {
 	struct pmc_dev *pmcdev = &pmc;
 	u32 value;
+
+	pr_info("DEBUG: quirk_xtal_ignore called\n");
 
 	value = pmc_core_reg_read(pmcdev, pmcdev->map->pm_vric1_offset);
 	/* 24MHz Crystal Shutdown Qualification Disable */
@@ -1188,18 +1189,6 @@ static int quirk_xtal_ignore(const struct dmi_system_id *id)
 	pmc_core_reg_write(pmcdev, pmcdev->map->pm_vric1_offset, value);
 	return 0;
 }
-
-static const struct dmi_system_id pmc_core_dmi_table[]  = {
-	{
-	.callback = quirk_xtal_ignore,
-	.ident = "HP Elite x2 1013 G3",
-	.matches = {
-		DMI_MATCH(DMI_SYS_VENDOR, "HP"),
-		DMI_MATCH(DMI_PRODUCT_NAME, "HP Elite x2 1013 G3"),
-		},
-	},
-	{}
-};
 
 static int pmc_core_probe(struct platform_device *pdev)
 {
@@ -1242,7 +1231,7 @@ static int pmc_core_probe(struct platform_device *pdev)
 	mutex_init(&pmcdev->lock);
 	platform_set_drvdata(pdev, pmcdev);
 	pmcdev->pmc_xram_read_bit = pmc_core_check_read_lock_bit();
-	dmi_check_system(pmc_core_dmi_table);
+	quirk_xtal_ignore();
 
 	pmc_core_dbgfs_register(pmcdev);
 

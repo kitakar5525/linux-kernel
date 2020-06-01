@@ -260,52 +260,6 @@ static const struct atomisp_dfs_config dfs_config_byt = {
 	.dfs_table_size = ARRAY_SIZE(dfs_rules_byt),
 };
 
-static const struct atomisp_freq_scaling_rule dfs_rules_byt_cr[] = {
-	{
-		.width = ISP_FREQ_RULE_ANY,
-		.height = ISP_FREQ_RULE_ANY,
-		.fps = ISP_FREQ_RULE_ANY,
-		.isp_freq = ISP_FREQ_320MHZ,
-		.run_mode = ATOMISP_RUN_MODE_VIDEO,
-	},
-	{
-		.width = ISP_FREQ_RULE_ANY,
-		.height = ISP_FREQ_RULE_ANY,
-		.fps = ISP_FREQ_RULE_ANY,
-		.isp_freq = ISP_FREQ_320MHZ,
-		.run_mode = ATOMISP_RUN_MODE_STILL_CAPTURE,
-	},
-	{
-		.width = ISP_FREQ_RULE_ANY,
-		.height = ISP_FREQ_RULE_ANY,
-		.fps = ISP_FREQ_RULE_ANY,
-		.isp_freq = ISP_FREQ_320MHZ,
-		.run_mode = ATOMISP_RUN_MODE_CONTINUOUS_CAPTURE,
-	},
-	{
-		.width = ISP_FREQ_RULE_ANY,
-		.height = ISP_FREQ_RULE_ANY,
-		.fps = ISP_FREQ_RULE_ANY,
-		.isp_freq = ISP_FREQ_320MHZ,
-		.run_mode = ATOMISP_RUN_MODE_PREVIEW,
-	},
-	{
-		.width = ISP_FREQ_RULE_ANY,
-		.height = ISP_FREQ_RULE_ANY,
-		.fps = ISP_FREQ_RULE_ANY,
-		.isp_freq = ISP_FREQ_320MHZ,
-		.run_mode = ATOMISP_RUN_MODE_SDV,
-	},
-};
-
-static const struct atomisp_dfs_config dfs_config_byt_cr = {
-	.lowest_freq = ISP_FREQ_200MHZ,
-	.max_freq_at_vmin = ISP_FREQ_320MHZ,
-	.highest_freq = ISP_FREQ_320MHZ,
-	.dfs_table = dfs_rules_byt_cr,
-	.dfs_table_size = ARRAY_SIZE(dfs_rules_byt_cr),
-};
-
 static const struct atomisp_freq_scaling_rule dfs_rules_cht[] = {
 	{
 		.width = ISP_FREQ_RULE_ANY,

@@ -551,9 +551,22 @@ static int gmin_subdev_add(struct gmin_subdev *gs)
 
 	dev_info(dev, "%s: ACPI path is %pfw\n", __func__, dev_fwnode(dev));
 
-	/*WA:CHT requires XTAL clock as PLL is not stable.*/
+	/*
+	 * FIXME:
+	 * 	WA:CHT requires XTAL clock as PLL is not stable.
+	 *
+	 * However, such data doesn't seem to be present at the _DSM
+	 * table under the GUID dc2f6c4f-045b-4f1d-97b9-882a6860a4be.
+	 * So, let's change the default according with the ISP version,
+	 * but allowing it to be overridden by BIOS or by DMI match tables.
+	 */
+	if (IS_ISP2401)
+		gs->clock_src = VLV2_CLK_XTAL_25_0MHz;
+	else
+		gs->clock_src = VLV2_CLK_PLL_19P2MHZ;
+
 	gs->clock_src = gmin_get_var_int(dev, false, "ClkSrc",
-				         VLV2_CLK_PLL_19P2MHZ);
+				         gs->clock_src);
 
 	gs->csi_port = gmin_get_var_int(dev, false, "CsiPort", 0);
 	gs->csi_lanes = gmin_get_var_int(dev, false, "CsiLanes", 1);

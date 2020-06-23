@@ -855,6 +855,62 @@ out_unlock:
 }
 DEFINE_SHOW_ATTRIBUTE(pmc_core_mphy_pg);
 
+/* Copied from pmc_core_mphy_pg_show() with the following changes:
+   - remove any arguments
+   - print message into dmesg instead */
+static int pmc_core_mphy_pg_show_dmesg(void)
+{
+	struct pmc_dev *pmcdev = &pmc;
+	const struct pmc_bit_map *map = pmcdev->map->mphy_sts;
+	u32 mphy_core_reg_low, mphy_core_reg_high;
+	u32 val_low, val_high;
+	int index, err = 0;
+
+	if (pmcdev->pmc_xram_read_bit) {
+		pr_err("Access denied: please disable PMC_READ_DISABLE setting in BIOS.");
+		return 0;
+	}
+
+	mphy_core_reg_low  = (SPT_PMC_MPHY_CORE_STS_0 << 16);
+	mphy_core_reg_high = (SPT_PMC_MPHY_CORE_STS_1 << 16);
+
+	mutex_lock(&pmcdev->lock);
+
+	if (pmc_core_send_msg(&mphy_core_reg_low) != 0) {
+		err = -EBUSY;
+		goto out_unlock;
+	}
+
+	msleep(10);
+	val_low = pmc_core_reg_read(pmcdev, SPT_PMC_MFPMC_OFFSET);
+
+	if (pmc_core_send_msg(&mphy_core_reg_high) != 0) {
+		err = -EBUSY;
+		goto out_unlock;
+	}
+
+	msleep(10);
+	val_high = pmc_core_reg_read(pmcdev, SPT_PMC_MFPMC_OFFSET);
+
+	for (index = 0; map[index].name && index < 8; index++) {
+		pr_warn("%-32s\tState: %s\n",
+			   map[index].name,
+			   map[index].bit_mask & val_low ? "Not power gated" :
+			   "Power gated");
+	}
+
+	for (index = 8; map[index].name; index++) {
+		pr_warn("%-32s\tState: %s\n",
+			   map[index].name,
+			   map[index].bit_mask & val_high ? "Not power gated" :
+			   "Power gated");
+	}
+
+out_unlock:
+	mutex_unlock(&pmcdev->lock);
+	return err;
+}
+
 static int pmc_core_pll_show(struct seq_file *s, void *unused)
 {
 	struct pmc_dev *pmcdev = s->private;
@@ -1412,6 +1468,7 @@ static int pmc_core_resume(struct device *dev)
 		dev_info(dev, "CPU did not enter PC10!!! (PC10 cnt=0x%llx)\n",
 			 pmcdev->pc10_counter);
 		pmc_core_ltr_show_dmesg();
+		pmc_core_mphy_pg_show_dmesg();
 		pmc_core_ppfear_show_dmesg();
 		return 0;
 	}
@@ -1424,6 +1481,7 @@ static int pmc_core_resume(struct device *dev)
 	if (pmcdev->map->lpm_sts)
 		pmc_core_lpm_display(pmcdev, dev, NULL, offset, "STATUS", maps);
 	pmc_core_ltr_show_dmesg();
+	pmc_core_mphy_pg_show_dmesg();
 	pmc_core_ppfear_show_dmesg();
 
 	return 0;

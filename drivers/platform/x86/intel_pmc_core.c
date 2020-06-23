@@ -650,6 +650,44 @@ out_unlock:
 }
 DEFINE_SHOW_ATTRIBUTE(pmc_core_pll);
 
+/* Copied from pmc_core_pll() with the following changes:
+   - remove any arguments
+   - print message into dmesg instead */
+static int pmc_core_pll_dmesg(void)
+{
+	struct pmc_dev *pmcdev = &pmc;
+	const struct pmc_bit_map *map = pmcdev->map->pll_sts;
+	u32 mphy_common_reg, val;
+	int index, err = 0;
+
+	if (pmcdev->pmc_xram_read_bit) {
+		pr_err("Access denied: please disable PMC_READ_DISABLE setting in BIOS.");
+		return 0;
+	}
+
+	mphy_common_reg  = (SPT_PMC_MPHY_COM_STS_0 << 16);
+	mutex_lock(&pmcdev->lock);
+
+	if (pmc_core_send_msg(&mphy_common_reg) != 0) {
+		err = -EBUSY;
+		goto out_unlock;
+	}
+
+	/* Observed PMC HW response latency for MTPMC-MFPMC is ~10 ms */
+	msleep(10);
+	val = pmc_core_reg_read(pmcdev, SPT_PMC_MFPMC_OFFSET);
+
+	for (index = 0; map[index].name ; index++) {
+		pr_warn("%-32s\tState: %s\n",
+			   map[index].name,
+			   map[index].bit_mask & val ? "Active" : "Idle");
+	}
+
+out_unlock:
+	mutex_unlock(&pmcdev->lock);
+	return err;
+}
+
 static ssize_t pmc_core_ltr_ignore_write(struct file *file, const char __user
 *userbuf, size_t count, loff_t *ppos)
 {
@@ -1142,6 +1180,7 @@ static int pmc_core_resume(struct device *dev)
 		pmc_core_ltr_show_dmesg();
 		pmc_core_mphy_pg_show_dmesg();
 		pmc_core_ppfear_show_dmesg();
+		pmc_core_pll_dmesg();
 		return 0;
 	}
 
@@ -1153,6 +1192,7 @@ static int pmc_core_resume(struct device *dev)
 	pmc_core_ltr_show_dmesg();
 	pmc_core_mphy_pg_show_dmesg();
 	pmc_core_ppfear_show_dmesg();
+	pmc_core_pll_dmesg();
 
 	return 0;
 }

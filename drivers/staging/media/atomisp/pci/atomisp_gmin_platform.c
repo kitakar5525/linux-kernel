@@ -1192,7 +1192,7 @@ static int gmin_get_config_dsm_var(struct device *dev,
 #endif
 
 	/* Seek for the desired var */
-	for (i = 0; i < obj->package.count - 1; i += 2) {
+	for (i = 0; (i + 1) < obj->package.count; i += 2) {
 		if (obj->package.elements[i].type == ACPI_TYPE_STRING &&
 		    !strcmp(obj->package.elements[i].string.pointer, var)) {
 			/* Next element should be the required value */

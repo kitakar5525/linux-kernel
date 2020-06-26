@@ -39,8 +39,6 @@
 
 #include "hrt/hive_isp_css_mm_hrt.h"
 
-#include <asm/intel-mid.h>
-
 #include "ia_css_debug.h"
 #include "ia_css_isp_param.h"
 #include "sh_css_hrt.h"
@@ -2113,8 +2111,7 @@ void atomisp_css_input_set_mode(struct atomisp_sub_device *asd,
 					true,
 					0x13000,
 					&size_mem_words) != IA_CSS_SUCCESS) {
-			if (intel_mid_identify_cpu() ==
-				INTEL_MID_CPU_CHIP_TANGIER)
+			if (IS_MRFD)
 				size_mem_words = CSS_MIPI_FRAME_BUFFER_SIZE_2;
 			else
 				size_mem_words = CSS_MIPI_FRAME_BUFFER_SIZE_1;

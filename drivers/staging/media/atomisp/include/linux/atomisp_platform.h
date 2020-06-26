@@ -262,6 +262,7 @@ extern const struct atomisp_camera_caps *atomisp_get_default_camera_caps(void);
 #define IS_MFLD	__IS_SOC(INTEL_FAM6_ATOM_SALTWELL_MID)
 #define IS_BYT	__IS_SOC(INTEL_FAM6_ATOM_SILVERMONT)
 #define IS_CHT	__IS_SOC(INTEL_FAM6_ATOM_AIRMONT)
+#define IS_MRFD	__IS_SOC(INTEL_FAM6_ATOM_SILVERMONT_MID)
 #define IS_MOFD	__IS_SOC(INTEL_FAM6_ATOM_AIRMONT_MID)
 
 const struct atomisp_camera_caps *atomisp_get_default_camera_caps(void);

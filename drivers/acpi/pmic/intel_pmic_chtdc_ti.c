@@ -111,9 +111,12 @@ static int chtdc_ti_pmic_opregion_probe(struct platform_device *pdev)
 	struct intel_soc_pmic *pmic = dev_get_drvdata(pdev->dev.parent);
 	int err;
 
+	pr_alert("DEBUG: %s() called\n",__FUNCTION__);
+
 	err = intel_pmic_install_opregion_handler(&pdev->dev,
 			ACPI_HANDLE(pdev->dev.parent), pmic->regmap,
 			&chtdc_ti_pmic_opregion_data);
+	pr_alert("DEBUG: %s: ret: %d\n",__FUNCTION__, err);
 	if (err < 0)
 		return err;
 

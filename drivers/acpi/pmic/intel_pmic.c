@@ -29,6 +29,11 @@ struct intel_pmic_opregion {
 	struct intel_pmic_regs_handler_ctx ctx;
 };
 
+bool override_pmic_i2c_address;
+module_param(override_pmic_i2c_address, bool, 0400);
+int override_pmic_i2c_address_value;
+module_param(override_pmic_i2c_address_value, int, 0400);
+
 static struct intel_pmic_opregion *intel_pmic_opregion;
 
 static int pmic_get_reg_bit(int address, struct pmic_table *table,
@@ -297,6 +302,9 @@ int intel_pmic_install_opregion_handler(struct device *dev, acpi_handle handle,
 		ret = -ENODEV;
 		goto out_remove_thermal_handler;
 	}
+
+	if (override_pmic_i2c_address)
+		d->pmic_i2c_address = override_pmic_i2c_address_value;
 
 	opregion->data = d;
 	intel_pmic_opregion = opregion;

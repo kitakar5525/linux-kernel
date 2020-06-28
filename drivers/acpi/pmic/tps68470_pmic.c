@@ -376,6 +376,8 @@ static int tps68470_pmic_opregion_probe(struct platform_device *pdev)
 	struct tps68470_pmic_opregion *opregion;
 	acpi_status status;
 
+	pr_alert("DEBUG: %s() called\n",__FUNCTION__);
+
 	if (!dev || !tps68470_regmap) {
 		dev_warn(dev, "dev or regmap is NULL\n");
 		return -EINVAL;

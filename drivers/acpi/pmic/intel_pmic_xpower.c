@@ -282,6 +282,8 @@ static int intel_xpower_pmic_opregion_probe(struct platform_device *pdev)
 	acpi_status status;
 	int result;
 
+	pr_alert("DEBUG: %s() called\n",__FUNCTION__);
+
 	status = acpi_install_address_space_handler(ACPI_HANDLE(parent),
 			ACPI_ADR_SPACE_GPIO, intel_xpower_pmic_gpio_handler,
 			NULL, NULL);
@@ -291,6 +293,7 @@ static int intel_xpower_pmic_opregion_probe(struct platform_device *pdev)
 	result = intel_pmic_install_opregion_handler(&pdev->dev,
 					ACPI_HANDLE(parent), axp20x->regmap,
 					&intel_xpower_pmic_opregion_data);
+	pr_alert("DEBUG: %s: ret: %d\n",__FUNCTION__, result);
 	if (result)
 		acpi_remove_address_space_handler(ACPI_HANDLE(parent),
 						  ACPI_ADR_SPACE_GPIO,

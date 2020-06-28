@@ -28,6 +28,11 @@ static struct pwm_lookup crc_pwm_lookup[] = {
 	PWM_LOOKUP("crystal_cove_pwm", 0, "0000:00:02.0", "pwm_pmic_backlight", 0, PWM_POLARITY_NORMAL),
 };
 
+bool override_hrv;
+module_param(override_hrv, bool, 0400);
+int override_hrv_value;
+module_param(override_hrv_value, int, 0400);
+
 static int intel_soc_pmic_i2c_probe(struct i2c_client *i2c,
 				    const struct i2c_device_id *i2c_id)
 {
@@ -47,6 +52,9 @@ static int intel_soc_pmic_i2c_probe(struct i2c_client *i2c,
 		dev_err(dev, "Failed to get PMIC hardware revision\n");
 		return -ENODEV;
 	}
+
+	if (override_hrv)
+		hrv = override_hrv_value;
 
 	switch (hrv) {
 	case BYT_CRC_HRV:

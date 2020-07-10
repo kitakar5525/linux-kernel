@@ -2230,7 +2230,7 @@ static const struct ssh_packet_ops ssh_flush_packet_ops =  {
  * layer has been shut down before this call. May also return -EINTR if the
  * packet transmission has been interrupted.
  */
-static int ssh_ptl_flush(struct ssh_ptl *ptl, unsigned long timeout)
+static int __maybe_unused ssh_ptl_flush(struct ssh_ptl *ptl, unsigned long timeout)
 {
 	struct ssh_flush_packet packet;
 	struct ssh_packet_args args;
@@ -3763,7 +3763,7 @@ static void ssam_nf_call(struct ssam_nf *nf, struct device *dev, u16 rqid,
 	}
 }
 
-static int ssam_nf_register(struct ssam_nf *nf, struct ssam_event_notifier *n)
+static int __maybe_unused ssam_nf_register(struct ssam_nf *nf, struct ssam_event_notifier *n)
 {
 	u16 rqid = ssh_tc_to_rqid(n->event.id.target_category);
 	struct ssam_nf_head *nf_head;
@@ -3790,7 +3790,7 @@ static int ssam_nf_register(struct ssam_nf *nf, struct ssam_event_notifier *n)
 	return status;
 }
 
-static int ssam_nf_unregister(struct ssam_nf *nf, struct ssam_event_notifier *n)
+static int __maybe_unused ssam_nf_unregister(struct ssam_nf *nf, struct ssam_event_notifier *n)
 {
 	u16 rqid = ssh_tc_to_rqid(n->event.id.target_category);
 	struct ssam_nf_head *nf_head;

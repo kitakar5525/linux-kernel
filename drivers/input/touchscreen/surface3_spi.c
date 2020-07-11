@@ -29,6 +29,11 @@
 #define SURFACE3_REPORT_TOUCH	0xd2
 #define SURFACE3_REPORT_PEN	0x16
 
+bool use_dma = true;
+module_param(use_dma, bool, 0644);
+MODULE_PARM_DESC(use_dma,
+				"Toggle DMA usage. (default: true.)");
+
 struct surface3_ts_data {
 	struct spi_device *spi;
 	struct gpio_desc *gpiod_rst[2];
@@ -330,6 +335,13 @@ static int surface3_spi_create_pen_input(struct surface3_ts_data *data)
 	return 0;
 }
 
+static bool surface3_spi_can_dma(struct spi_controller *ctlr,
+				struct spi_device *spi,
+				struct spi_transfer *tfr)
+{
+	return use_dma;
+}
+
 static int surface3_spi_probe(struct spi_device *spi)
 {
 	struct surface3_ts_data *data;
@@ -371,6 +383,11 @@ static int surface3_spi_probe(struct spi_device *spi)
 					  "Surface3-irq", data);
 	if (error)
 		return error;
+
+	/*
+	 * Set up DMA
+	 */
+	spi->controller->can_dma = surface3_spi_can_dma;
 
 	return 0;
 }

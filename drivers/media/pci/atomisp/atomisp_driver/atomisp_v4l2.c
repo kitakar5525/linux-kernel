@@ -1343,6 +1343,7 @@ static int atomisp_pci_probe(struct pci_dev *dev,
 	isp->saved_regs.ispmmadr = start;
 
 	rt_mutex_init(&isp->mutex);
+	rt_mutex_init(&isp->loading);
 	mutex_init(&isp->streamoff_mutex);
 	spin_lock_init(&isp->lock);
 
@@ -1524,6 +1525,8 @@ static int atomisp_pci_probe(struct pci_dev *dev,
 				      csi_afe_trim);
 	}
 
+	rt_mutex_lock(&isp->loading);
+
 	err = atomisp_initialize_modules(isp);
 	if (err < 0) {
 		dev_err(&dev->dev, "atomisp_initialize_modules (%d)\n", err);
@@ -1579,6 +1582,8 @@ static int atomisp_pci_probe(struct pci_dev *dev,
 	release_firmware(isp->firmware);
 	isp->firmware = NULL;
 	isp->css_env.isp_css_fw.data = NULL;
+	isp->ready = true;
+	rt_mutex_unlock(&isp->loading);
 
 	atomisp_drvfs_init(&atomisp_pci_driver, isp);
 
@@ -1597,6 +1602,7 @@ wdt_work_queue_fail:
 register_entities_fail:
 	atomisp_uninitialize_modules(isp);
 initialize_modules_fail:
+	rt_mutex_unlock(&isp->loading);
 	pm_qos_remove_request(&isp->pm_qos);
 	atomisp_msi_irq_uninit(isp, dev);
 enable_msi_fail:

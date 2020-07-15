@@ -320,8 +320,6 @@ void sh_css_unload_firmware(void)
 		for (i = 0; i < sh_css_num_binaries; i++) {
 			if (fw_minibuffer[i].name)
 				sh_css_free((void *)fw_minibuffer[i].name);
-			if (fw_minibuffer[i].buffer)
-				sh_css_free((void *)fw_minibuffer[i].buffer);
 		}
 		sh_css_free(fw_minibuffer);
 		fw_minibuffer = NULL;

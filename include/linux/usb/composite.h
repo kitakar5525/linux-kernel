@@ -394,6 +394,9 @@ struct usb_composite_dev {
 
 	/* protects deactivations and delayed_status counts*/
 	spinlock_t			lock;
+
+	/* OTG support */
+	struct usb_otg_descriptor	*otg_desc;
 };
 
 extern int usb_string_id(struct usb_composite_dev *c);
@@ -403,7 +406,8 @@ extern struct usb_string *usb_gstrings_attach(struct usb_composite_dev *cdev,
 		struct usb_gadget_strings **sp, unsigned n_strings);
 
 extern int usb_string_ids_n(struct usb_composite_dev *c, unsigned n);
-
+extern void composite_setup_complete(struct usb_ep *ep,
+					struct usb_request *req);
 extern void composite_disconnect(struct usb_gadget *gadget);
 extern int composite_setup(struct usb_gadget *gadget,
 		const struct usb_ctrlrequest *ctrl);
@@ -462,12 +466,14 @@ struct usb_function_driver {
 	struct list_head list;
 	struct usb_function_instance *(*alloc_inst)(void);
 	struct usb_function *(*alloc_func)(struct usb_function_instance *inst);
+	struct kobject *parent;
 };
 
 struct usb_function_instance {
 	struct config_group group;
 	struct list_head cfs_list;
 	struct usb_function_driver *fd;
+	struct usb_function *f;
 	int (*set_inst_name)(struct usb_function_instance *inst,
 			      const char *name);
 	void (*free_func_inst)(struct usb_function_instance *inst);

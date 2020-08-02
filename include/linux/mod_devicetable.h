@@ -412,6 +412,17 @@ struct rpmsg_device_id {
 	char name[RPMSG_NAME_SIZE];
 };
 
+/*HDA Devide*/
+#define HDA_NAME_SIZE      20
+#define HDA_MODULE_PREFIX  "hda:"
+
+struct snd_soc_hda_device_id {
+	__u32 id;
+	__u8 addr;
+	char name[HDA_NAME_SIZE];
+	kernel_ulong_t driver_data;
+};
+
 /* i2c */
 
 #define I2C_NAME_SIZE	20
@@ -453,6 +464,7 @@ enum dmi_field {
 	DMI_CHASSIS_VERSION,
 	DMI_CHASSIS_SERIAL,
 	DMI_CHASSIS_ASSET_TAG,
+	DMI_MEMORY_MANUFACTURER_ID,
 	DMI_STRING_MAX,
 };
 
@@ -563,6 +575,15 @@ struct x86_cpu_id {
 #define X86_FAMILY_ANY 0
 #define X86_MODEL_ANY  0
 #define X86_FEATURE_ANY 0	/* Same as FPU, you can't test for that */
+
+/*
+ * Generic table type for matching CPU features.
+ * @feature:	the bit number of the feature (0 - 65535)
+ */
+
+struct cpu_feature {
+	__u16	feature;
+};
 
 #define IPACK_ANY_FORMAT 0xff
 #define IPACK_ANY_ID (~0)

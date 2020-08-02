@@ -161,8 +161,8 @@ struct snd_ctl_elem_value32 {
 	struct snd_ctl_elem_id id;
 	unsigned int indirect;	/* bit-field causes misalignment */
         union {
-		s32 integer[128];
-		unsigned char data[512];
+		s32 integer[256];
+		unsigned char data[4096];
 #ifndef CONFIG_X86_64
 		s64 integer64[64];
 #endif
@@ -209,7 +209,7 @@ static int get_elem_size(int type, int count)
 	case SNDRV_CTL_ELEM_TYPE_ENUMERATED:
 		return sizeof(int) * count;
 	case SNDRV_CTL_ELEM_TYPE_BYTES:
-		return 512;
+		return 4096;
 	case SNDRV_CTL_ELEM_TYPE_IEC958:
 		return sizeof(struct snd_aes_iec958);
 	default:
@@ -247,7 +247,6 @@ static int copy_ctl_value_from_user(struct snd_card *card,
 	} else {
 		size = get_elem_size(type, count);
 		if (size < 0) {
-			printk(KERN_ERR "snd_ioctl32_ctl_elem_value: unknown type %d\n", type);
 			return -EINVAL;
 		}
 		if (copy_from_user(data->value.bytes.data,
@@ -405,7 +404,6 @@ static inline long snd_ctl_ioctl_compat(struct file *file, unsigned int cmd, uns
 	ctl = file->private_data;
 	if (snd_BUG_ON(!ctl || !ctl->card))
 		return -ENXIO;
-
 	switch (cmd) {
 	case SNDRV_CTL_IOCTL_PVERSION:
 	case SNDRV_CTL_IOCTL_CARD_INFO:

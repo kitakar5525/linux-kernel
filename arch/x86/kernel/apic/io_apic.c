@@ -2522,6 +2522,7 @@ static struct irq_chip ioapic_chip __read_mostly = {
 	.irq_eoi		= ack_apic_level,
 	.irq_set_affinity	= native_ioapic_set_affinity,
 	.irq_retrigger		= ioapic_retrigger_irq,
+	.flags			= IRQCHIP_SKIP_SET_WAKE,
 };
 
 static inline void init_IO_APIC_traps(void)
@@ -3423,6 +3424,11 @@ static void __init probe_nr_irqs_gsi(void)
 int get_nr_irqs_gsi(void)
 {
 	return nr_irqs_gsi;
+}
+
+unsigned int arch_dynirq_lower_bound(unsigned int from)
+{
+	return from < nr_irqs_gsi ? nr_irqs_gsi : from;
 }
 
 int __init arch_probe_nr_irqs(void)

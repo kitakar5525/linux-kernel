@@ -23,9 +23,11 @@
 #include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 
 #include "xhci.h"
 #include "xhci-trace.h"
+#include "xhci-intel-cap.h"
 
 /* Device for a quirk */
 #define PCI_VENDOR_ID_FRESCO_LOGIC	0x1b73
@@ -38,6 +40,8 @@
 #define PCI_DEVICE_ID_INTEL_LYNXPOINT_XHCI	0x8c31
 #define PCI_DEVICE_ID_INTEL_LYNXPOINT_LP_XHCI	0x9c31
 
+#define PCI_DEVICE_ID_INTEL_CHT_XHCI	0x22b5
+
 static const char hcd_name[] = "xhci_hcd";
 
 /* called after powerup, by probe or system-pm "wakeup" */
@@ -48,6 +52,12 @@ static int xhci_pci_reinit(struct xhci_hcd *xhci, struct pci_dev *pdev)
 	 * TODO: see if there are any quirks that need to be added to handle
 	 * new extended capabilities.
 	 */
+
+	/* Init Intel vendor defined extended capability */
+	if (pdev->vendor == PCI_VENDOR_ID_INTEL) {
+		if (!xhci_intel_vendor_cap_init(xhci))
+			xhci_dbg(xhci, "Intel Vendor Capability init done\n");
+	}
 
 	/* PCI Memory-Write-Invalidate cycle support is optional (uncommon) */
 	if (!pci_set_mwi(pdev))
@@ -141,6 +151,12 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 
 		xhci->quirks |= XHCI_SPURIOUS_REBOOT;
 	}
+	if (pdev->vendor == PCI_VENDOR_ID_INTEL &&
+			pdev->device == PCI_DEVICE_ID_INTEL_CHT_XHCI) {
+		xhci->quirks |= XHCI_SPURIOUS_PME;
+		xhci_disable_usb3_lpm_quirk(xhci, 5);
+	}
+
 	if (pdev->vendor == PCI_VENDOR_ID_ETRON &&
 			pdev->device == PCI_DEVICE_ID_ASROCK_P67) {
 		xhci->quirks |= XHCI_RESET_ON_RESUME;
@@ -153,6 +169,14 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 		xhci->quirks |= XHCI_RESET_ON_RESUME;
 	if (pdev->vendor == PCI_VENDOR_ID_VIA)
 		xhci->quirks |= XHCI_RESET_ON_RESUME;
+
+	if (pdev->vendor == PCI_VENDOR_ID_INTEL &&
+			pdev->device == PCI_DEVICE_ID_INTEL_CHT_XHCI) {
+		xhci->ext_dev = platform_device_alloc("xhci-cht",
+						PLATFORM_DEVID_AUTO);
+		if (!xhci->ext_dev)
+			xhci_err(xhci, "can't create xhci-cht\n");
+	}
 }
 
 /* called during probe() after chip reset completes */
@@ -273,6 +297,7 @@ static int xhci_pci_suspend(struct usb_hcd *hcd, bool do_wakeup)
 {
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
 	struct pci_dev		*pdev = to_pci_dev(hcd->self.controller);
+	int			retval = 0;
 
 	/*
 	 * Systems with the TI redriver that loses port status change events
@@ -281,7 +306,15 @@ static int xhci_pci_suspend(struct usb_hcd *hcd, bool do_wakeup)
 	if (xhci_compliance_mode_recovery_timer_quirk_check())
 		pdev->no_d3cold = true;
 
-	return xhci_suspend(xhci, do_wakeup);
+	retval = xhci_suspend(xhci, do_wakeup);
+
+	/* This is SW workaround for spurious PME issue and HCRST hang problem
+	 * It required to set anc clear SSIC_PORT_UNUSED bit in D3 entry and
+	 * D3 exit. */
+	if (!retval && xhci->quirks & XHCI_SPURIOUS_PME)
+		xhci_intel_ssic_port_unused(xhci, 1);
+
+	return retval;
 }
 
 static int xhci_pci_resume(struct usb_hcd *hcd, bool hibernated)
@@ -289,6 +322,14 @@ static int xhci_pci_resume(struct usb_hcd *hcd, bool hibernated)
 	struct xhci_hcd		*xhci = hcd_to_xhci(hcd);
 	struct pci_dev		*pdev = to_pci_dev(hcd->self.controller);
 	int			retval = 0;
+
+	/* Due to one HW bug, XHCI will keep generating PME wakeups and fail
+	 * to stay in runtime suspended state, so required to clear the internal
+	 * PME flag once it is back to D0 as the software workaround */
+	if (xhci->quirks & XHCI_SPURIOUS_PME) {
+		xhci_intel_clr_internal_pme_flag(xhci);
+		xhci_intel_ssic_port_unused(xhci, 0);
+	}
 
 	/* The BIOS on systems with the Intel Panther Point chipset may or may
 	 * not support xHCI natively.  That means that during system resume, it

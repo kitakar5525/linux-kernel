@@ -2,6 +2,7 @@
  * Atmel maXTouch Touchscreen driver
  *
  * Copyright (C) 2010 Samsung Electronics Co.Ltd
+ * Copyright (C) 2016 XiaoMi, Inc.
  * Author: Joonyoung Shim <jy0922.shim@samsung.com>
  *
  * This program is free software; you can redistribute  it and/or modify it
@@ -14,9 +15,14 @@
 #define __LINUX_ATMEL_MXT_TS_H
 
 #include <linux/types.h>
+#include <linux/pinctrl/consumer.h>
 
-/* For key_map array */
-#define MXT_NUM_GPIO		4
+#define MXT224_I2C_ADDR1        0x4A
+#define MXT224_I2C_ADDR2        0x4B
+#define MXT1386_I2C_ADDR1       0x4C
+#define MXT1386_I2C_ADDR2       0x4D
+#define MXT1386_I2C_ADDR3       0x5A
+#define MXT1386_I2C_ADDR4       0x5B
 
 /* Orient */
 #define MXT_NORMAL		0x0
@@ -28,22 +34,55 @@
 #define MXT_ROTATED_180		0x6
 #define MXT_DIAGONAL_COUNTER	0x7
 
-/* The platform data for the Atmel maXTouch touchscreen driver */
-struct mxt_platform_data {
-	const u8 *config;
-	size_t config_length;
+#define CFG_NAME_SIZE		64
 
-	unsigned int x_line;
-	unsigned int y_line;
-	unsigned int x_size;
-	unsigned int y_size;
-	unsigned int blen;
-	unsigned int threshold;
-	unsigned int voltage;
-	unsigned char orient;
-	unsigned long irqflags;
-	bool is_tp;
-	const unsigned int key_map[MXT_NUM_GPIO];
+#define MXT_KEYARRAY_MAX_KEYS		32
+
+struct mxt_config_info {
+	u8 family_id;
+	u8 variant_id;
+	u8 version;
+	u8 build;
+	u8 bootldr_id;
+	int lcd_id;
+	u8 vendor_id;
+	u8 panel_id;
+	u8 rev_id;
+	/* Points to the firmware name to be upgraded to */
+	const char *mxt_cfg_name;
+	int *key_codes;
+	int key_num;
+	u8 selfintthr_stylus;
+	u8 t71_tchthr_pos;
+	u8 self_chgtime_min;
+	u8 self_chgtime_max;
+	u8 mult_intthr_sensitive;
+	u8 mult_intthr_not_sensitive;
+	u8 atchthr_sensitive;
+	u8 mult_tchthr_sensitive;
+	u8 mult_tchthr_not_sensitive;
+	u8 wake_up_self_adcx;
 };
 
-#endif /* __LINUX_ATMEL_MXT_TS_H */
+/* The platform data for the Atmel maXTouch touchscreen driver */
+struct mxt_platform_data {
+	struct mxt_config_info *config_array;
+	const char *mxt_fw_name;
+	size_t config_array_size;
+	unsigned long irqflags;
+	int power_ldo_gpio;
+	int power_ts_gpio;
+	int reset_gpio;
+	int irq_gpio;
+	u8(*read_chg) (void);
+	const char *input_name;
+	u32 reset_gpio_flags;
+	u32 irq_gpio_flags;
+	u32 power_ldo_gpio_flags;
+	u32 power_ts_gpio_flags;
+	u8 gpio_mask;
+	int default_config;
+};
+
+#endif /* __LINUX_ATMEL_MXT_TS_336T_H */
+

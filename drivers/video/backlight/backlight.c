@@ -2,6 +2,7 @@
  * Backlight Lowlevel Control Abstraction
  *
  * Copyright (C) 2003,2004 Hewlett-Packard Company
+ * Copyright (C) 2016 XiaoMi, Inc.
  *
  */
 
@@ -16,6 +17,7 @@
 #include <linux/err.h>
 #include <linux/fb.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 
 #ifdef CONFIG_PMAC_BACKLIGHT
 #include <asm/backlight.h>
@@ -23,6 +25,7 @@
 
 static struct list_head backlight_dev_list;
 static struct mutex backlight_dev_list_mutex;
+static struct blocking_notifier_head backlight_notifier;
 
 static const char *const backlight_types[] = {
 	[BACKLIGHT_RAW] = "raw",
@@ -52,8 +55,13 @@ static int fb_notifier_callback(struct notifier_block *self,
 		if (!bd->ops->check_fb ||
 		    bd->ops->check_fb(bd, evdata->info)) {
 			bd->props.fb_blank = *(int *)evdata->data;
-			if (bd->props.fb_blank == FB_BLANK_UNBLANK)
+			if (bd->props.fb_blank == FB_BLANK_UNBLANK) {
 				bd->props.state &= ~BL_CORE_FBBLANK;
+				bd->props.brightness = 35 ;
+				if (strcmp(dev_name(&bd->dev), "lcd-backlight") == 0) {
+					msleep(120);
+				}
+			}
 			else
 				bd->props.state |= BL_CORE_FBBLANK;
 			backlight_update_status(bd);
@@ -144,9 +152,15 @@ static DEVICE_ATTR_RW(bl_power);
 static ssize_t brightness_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
+	int rc = -ENXIO;
 	struct backlight_device *bd = to_backlight_device(dev);
 
-	return sprintf(buf, "%d\n", bd->props.brightness);
+	mutex_lock(&bd->ops_lock);
+	if (bd->ops && bd->ops->get_brightness)
+		rc = sprintf(buf, "%d\n", bd->ops->get_brightness(bd));
+	mutex_unlock(&bd->ops_lock);
+
+	return rc;
 }
 
 static ssize_t brightness_store(struct device *dev,
@@ -333,7 +347,7 @@ struct backlight_device *backlight_device_register(const char *name,
 
 	rc = device_register(&new_bd->dev);
 	if (rc) {
-		kfree(new_bd);
+		put_device(&new_bd->dev);
 		return ERR_PTR(rc);
 	}
 
@@ -355,6 +369,9 @@ struct backlight_device *backlight_device_register(const char *name,
 	mutex_lock(&backlight_dev_list_mutex);
 	list_add(&new_bd->entry, &backlight_dev_list);
 	mutex_unlock(&backlight_dev_list_mutex);
+
+	blocking_notifier_call_chain(&backlight_notifier,
+				     BACKLIGHT_REGISTERED, new_bd);
 
 	return new_bd;
 }
@@ -399,6 +416,10 @@ void backlight_device_unregister(struct backlight_device *bd)
 		pmac_backlight = NULL;
 	mutex_unlock(&pmac_backlight_mutex);
 #endif
+
+	blocking_notifier_call_chain(&backlight_notifier,
+				     BACKLIGHT_UNREGISTERED, bd);
+
 	mutex_lock(&bd->ops_lock);
 	bd->ops = NULL;
 	mutex_unlock(&bd->ops_lock);
@@ -422,6 +443,36 @@ static int devm_backlight_device_match(struct device *dev, void *res,
 
 	return *r == data;
 }
+
+/**
+ * backlight_register_notifier - get notified of backlight (un)registration
+ * @nb: notifier block with the notifier to call on backlight (un)registration
+ *
+ * @return 0 on success, otherwise a negative error code
+ *
+ * Register a notifier to get notified when backlight devices get registered
+ * or unregistered.
+ */
+int backlight_register_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&backlight_notifier, nb);
+}
+EXPORT_SYMBOL(backlight_register_notifier);
+
+/**
+ * backlight_unregister_notifier - unregister a backlight notifier
+ * @nb: notifier block to unregister
+ *
+ * @return 0 on success, otherwise a negative error code
+ *
+ * Register a notifier to get notified when backlight devices get registered
+ * or unregistered.
+ */
+int backlight_unregister_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&backlight_notifier, nb);
+}
+EXPORT_SYMBOL(backlight_unregister_notifier);
 
 /**
  * devm_backlight_device_register - resource managed backlight_device_register()
@@ -530,6 +581,8 @@ static int __init backlight_class_init(void)
 	backlight_class->pm = &backlight_class_dev_pm_ops;
 	INIT_LIST_HEAD(&backlight_dev_list);
 	mutex_init(&backlight_dev_list_mutex);
+	BLOCKING_INIT_NOTIFIER_HEAD(&backlight_notifier);
+
 	return 0;
 }
 

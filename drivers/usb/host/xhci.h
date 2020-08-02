@@ -285,6 +285,7 @@ struct xhci_op_regs {
 #define XDEV_U0		(0x0 << 5)
 #define XDEV_U2		(0x2 << 5)
 #define XDEV_U3		(0x3 << 5)
+#define XDEV_INACTIVE	(0x6 << 5)
 #define XDEV_RESUME	(0xf << 5)
 /* true: port has power (see HCC_PPC) */
 #define PORT_POWER	(1 << 9)
@@ -1421,6 +1422,7 @@ struct xhci_bus_state {
 	unsigned long		resume_done[USB_MAXCHILDREN];
 	/* which ports have started to resume */
 	unsigned long		resuming_ports;
+	unsigned long		resume_pending;
 	/* Which ports are waiting on RExit to U0 transition. */
 	unsigned long		rexit_ports;
 	struct completion	rexit_done[USB_MAXCHILDREN];
@@ -1530,6 +1532,10 @@ struct xhci_hcd {
 #define XHCI_STATE_HALTED	(1 << 1)
 	/* Statistics */
 	int			error_bitmask;
+	/* xHCI may want to disable a port's u1 u2 due to the connected device
+	 * doesn't support them. One bit for one port to disable.
+	 */
+	unsigned long		usb3_no_lpm;
 	unsigned int		quirks;
 #define	XHCI_LINK_TRB_QUIRK	(1 << 0)
 #define XHCI_RESET_EP_QUIRK	(1 << 1)
@@ -1559,6 +1565,7 @@ struct xhci_hcd {
 #define XHCI_PLAT		(1 << 16)
 #define XHCI_SLOW_SUSPEND	(1 << 17)
 #define XHCI_SPURIOUS_WAKEUP	(1 << 18)
+#define XHCI_SPURIOUS_PME	(1 << 19)
 	unsigned int		num_active_eps;
 	unsigned int		limit_active_eps;
 	/* There are two roothubs to keep track of bus suspend info for */
@@ -1578,11 +1585,14 @@ struct xhci_hcd {
 	/* cached usb2 extened protocol capabilites */
 	u32                     *ext_caps;
 	unsigned int            num_ext_caps;
+	/* support dual role switch per vendor extended capability */
+	void __iomem		*phy_mux_regs;
 	/* Compliance Mode Recovery Data */
 	struct timer_list	comp_mode_recovery_timer;
 	u32			port_status_u0;
 /* Compliance Mode Timer Triggered every 2 seconds */
 #define COMP_MODE_RCVRY_MSECS 2000
+	struct platform_device	*ext_dev;
 };
 
 /* convert between an HCD pointer and the corresponding EHCI_HCD */
@@ -1885,5 +1895,6 @@ struct xhci_ep_ctx *xhci_get_ep_ctx(struct xhci_hcd *xhci, struct xhci_container
 
 /* xHCI quirks */
 bool xhci_compliance_mode_recovery_timer_quirk_check(void);
+void xhci_disable_usb3_lpm_quirk(struct xhci_hcd *xhci, int port1);
 
 #endif /* __LINUX_XHCI_HCD_H */

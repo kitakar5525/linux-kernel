@@ -45,6 +45,7 @@
 #include <asm/msr.h>
 #include <asm/processor.h>
 #include <asm/cpufeature.h>
+#include <asm/intel_mid_pcihelpers.h>
 
 MODULE_AUTHOR("Paul Diefenbaugh, Dominik Brodowski");
 MODULE_DESCRIPTION("ACPI Processor P-States Driver");
@@ -64,6 +65,12 @@ enum {
 
 #define MSR_K7_HWCR_CPB_DIS	(1ULL << 25)
 
+#ifdef CONFIG_INTEL_MODULE_CPU_FREQ
+#define CLASSCODE_REG		0x8
+#define CLASSCODE_OFFSET	0x2
+#define REVISION_ID_BIT		0x2
+#endif
+
 struct acpi_cpufreq_data {
 	struct acpi_processor_performance *acpi_data;
 	struct cpufreq_frequency_table *freq_table;
@@ -79,6 +86,7 @@ static struct acpi_processor_performance __percpu *acpi_perf_data;
 
 static struct cpufreq_driver acpi_cpufreq_driver;
 
+static bool battlow;
 static unsigned int acpi_pstate_strict;
 static struct msr __percpu *msrs;
 
@@ -641,9 +649,22 @@ static int acpi_cpufreq_blacklist(struct cpuinfo_x86 *c)
 }
 #endif
 
+#ifdef CONFIG_INTEL_MODULE_CPU_FREQ
+static void get_cpu_sibling_mask(int cpu, struct cpumask *sibling_mask)
+{
+	unsigned int base, i;
+	static int cores_per_mod = 2;
+	base = (cpu/cores_per_mod) * cores_per_mod;
+	cpumask_clear(sibling_mask);
+	for (i = base; i < (base + cores_per_mod); i++)
+		cpumask_set_cpu(i, sibling_mask);
+}
+#endif
 static int acpi_cpufreq_cpu_init(struct cpufreq_policy *policy)
 {
 	unsigned int i;
+	unsigned int freq;
+	unsigned int cpufreqidx = 0;
 	unsigned int valid_states = 0;
 	unsigned int cpu = policy->cpu;
 	struct acpi_cpufreq_data *data;
@@ -652,6 +673,10 @@ static int acpi_cpufreq_cpu_init(struct cpufreq_policy *policy)
 	struct acpi_processor_performance *perf;
 #ifdef CONFIG_SMP
 	static int blacklisted;
+#endif
+#ifdef CONFIG_INTEL_MODULE_CPU_FREQ
+	struct cpumask sibling_mask;
+	u32 revision_id;
 #endif
 
 	pr_debug("acpi_cpufreq_cpu_init\n");
@@ -695,6 +720,25 @@ static int acpi_cpufreq_cpu_init(struct cpufreq_policy *policy)
 		cpumask_copy(policy->cpus, perf->shared_cpu_map);
 	}
 	cpumask_copy(data->freqdomain_cpus, perf->shared_cpu_map);
+
+#ifdef CONFIG_INTEL_MODULE_CPU_FREQ
+       /*
+	   * Currently only Intel Cherrytrail platform supports
+	   * module level dvfs with acpi-cpufreq
+	   */
+	if (c->x86_vendor == X86_VENDOR_INTEL) {
+		revision_id =
+		intel_mid_msgbus_read32(CLASSCODE_REG, CLASSCODE_OFFSET);
+		revision_id = (revision_id & REVISION_ID_BIT);
+
+		if ((c->x86_model == 0x4c) && (!revision_id)) {
+			pr_info("Platform supports Module Level DVFS\n");
+			policy->shared_type = CPUFREQ_SHARED_TYPE_ALL;
+			get_cpu_sibling_mask(cpu, &sibling_mask);
+			cpumask_copy(policy->cpus, &sibling_mask);
+		}
+	}
+#endif
 
 #ifdef CONFIG_SMP
 	dmi_check_system(sw_any_bug_dmi_table);
@@ -789,6 +833,7 @@ static int acpi_cpufreq_cpu_init(struct cpufreq_policy *policy)
 		    perf->states[i].core_frequency * 1000;
 		valid_states++;
 	}
+	cpufreqidx = valid_states - 1;
 	data->freq_table[valid_states].frequency = CPUFREQ_TABLE_END;
 	perf->state = 0;
 
@@ -832,6 +877,22 @@ static int acpi_cpufreq_cpu_init(struct cpufreq_policy *policy)
 	 * writing something to the appropriate registers.
 	 */
 	data->resume = 1;
+
+	/**
+	 * Capping the cpu frequency to LFM during boot, if battery is detected
+	 * as critically low.
+	 */
+	if (battlow) {
+		freq = data->freq_table[cpufreqidx].frequency;
+		if (freq != CPUFREQ_ENTRY_INVALID) {
+			pr_info("CPU%u freq is capping to %uKHz\n", cpu, freq);
+			policy->max = freq;
+		} else {
+			pr_err("CPU%u table entry %u is invalid.\n",
+					cpu, cpufreqidx);
+			goto err_freqfree;
+		}
+	}
 
 	return result;
 
@@ -896,6 +957,18 @@ static struct cpufreq_driver acpi_cpufreq_driver = {
 	.attr		= acpi_cpufreq_attr,
 	.set_boost      = _store_boost,
 };
+
+/**
+ * set_battlow_status - enables "battlow" to cap the max scaling cpu frequency.
+ */
+static int __init set_battlow_status(char *unused)
+{
+	pr_notice("Low Battery detected! Frequency shall be capped.\n");
+	battlow = true;
+	return 0;
+}
+/* Checking "battlow" param on boot, whether battery is critically low or not */
+early_param("battlow", set_battlow_status);
 
 static void __init acpi_cpufreq_boost_init(void)
 {

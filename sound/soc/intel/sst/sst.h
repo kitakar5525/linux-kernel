@@ -71,7 +71,7 @@ enum sst_algo_ops {
 	SST_GET_ALGO = 1,
 };
 
-#define SST_BLOCK_TIMEOUT	2000
+#define SST_BLOCK_TIMEOUT	9000
 
 /* SST register map */
 #define SST_CSR			0x00
@@ -903,6 +903,7 @@ sst_set_fw_state_locked(struct intel_sst_drv *sst_drv_ctx, int sst_state)
 {
 	mutex_lock(&sst_drv_ctx->sst_lock);
 	sst_drv_ctx->sst_state = sst_state;
+	pr_err("%s, sst_state: %d", __func__, sst_state);
 	mutex_unlock(&sst_drv_ctx->sst_lock);
 }
 

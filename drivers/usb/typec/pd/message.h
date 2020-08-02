@@ -90,18 +90,6 @@
 #define PD_MSG_HEADER_MSGID_BITS_MASK	0x7
 #define PD_MSG_HEADER_N_DOBJ_BITS_MASK	0x7
 
-enum bdo_type {
-	BIST_RECEIVER_MODE,
-	BIST_TRANSMIT_MODE,
-	RETURNED_BIST_COUNTERS,
-	BIST_CARRIER_MODE0,
-	BIST_CARRIER_MODE1,
-	BIST_CARRIER_MODE2,
-	BIST_CARRIER_MODE3,
-	BIST_EYE_PATTERN,
-	BIST_TEST_DATA,
-};
-
 enum vdm_cmd_type {
 	INITIATOR,
 	REP_ACK,
@@ -122,44 +110,44 @@ enum vdm_cmd {
 };
 
 struct pd_pkt_header {
-	u16 msg_type:4;
-	u16 rsvd_a:1;
-	u16 data_role:1;
-	u16 rev_id:2;
-	u16 pwr_role:1;
-	u16 msg_id:3;
-	u16 num_data_obj:3;
-	u16 rsvd_b:1;
+	u8 msg_type:4;
+	u8 rsvd_a:1;
+	u8 data_role:1;
+	u8 rev_id:2;
+	u8 pwr_role:1;
+	u8 msg_id:3;
+	u8 num_data_obj:3;
+	u8 rsvd_b:1;
 } __packed;
 
 struct vdm_msg_header {
-	u16 msg_type:4;
-	u16 rsvd_a:2;
-	u16 spec_rev:2;
-	u16 pwr_role:1;
-	u16 msg_id:3;
-	u16 num_data_obj:3;
-	u16 rsvd_b:1;
+	u8 msg_type:4;
+	u8 rsvd_a:2;
+	u8 spec_rev:2;
+	u8 pwr_role:1;
+	u8 msg_id:3;
+	u8 num_data_obj:3;
+	u8 rsvd_b:1;
 } __packed;
 
 struct vdm_header {
-	u32 cmd:5;
-	u32 rsvd_a:1;
-	u32 cmd_type:2;
-	u32 obj_pos:3;
-	u32 rsvd_b:2;
-	u32 str_vdm_version:2;
-	u32 vdm_type:1;
-	u32 svid:16;
+	u8 cmd:5;
+	u8 rsvd_a:1;
+	u8 cmd_type:2;
+	u8 obj_pos:3;
+	u8 rsvd_b:2;
+	u8 str_vdm_version:2;
+	u8 vdm_type:1;
+	u16 svid;
 } __packed;
 
-struct id_header_vdo {
-	u32 vendor_id:16;
-	u32 rsvd:10;
-	u32 modal_op_supported:1;
-	u32 product_type:3;
-	u32 is_usb_dev_capable:1;
-	u32 is_usb_host_capable:1;
+struct id_header {
+	u16 vendor_id;
+	u16 rsvd:10;
+	u16 modal_op_supported:1;
+	u16 product_type:3;
+	u16 is_usb_dev_capable:1;
+	u16 is_usb_host_capable:1;
 } __packed;
 
 struct cert_stat_vdo {
@@ -190,21 +178,6 @@ struct product_vdo {
 	u16 product_id;
 } __packed;
 
-/* Alternate mode adapter vdo */
-struct ama_vdo {
-	u32 superspeed_signal_support:3;
-	u32 vbus_req:1;
-	u32 vconn_req:1;
-	u32 vconn_pwr:3;
-	u32 ssrx2_dir_supp:1;
-	u32 ssrx1_dir_supp:1;
-	u32 sstx2_dir_supp:1;
-	u32 sstx1_dir_supp:1;
-	u32 rsvd:12;
-	u32 fw_ver:4;
-	u32 hw_ver:4;
-} __packed;
-
 struct vdm_req_pkt {
 	struct pd_pkt_header msg_hdr;
 	struct vdm_header vdm_hdr;
@@ -213,7 +186,7 @@ struct vdm_req_pkt {
 struct dis_id_response_cable_pkt {
 	struct pd_pkt_header msg_hdr;
 	struct vdm_header vdm_hdr;
-	struct id_header_vdo id_hdr;
+	struct id_header id_hdr;
 	struct cert_stat_vdo vdo1;
 	struct cable_vdo vdo2;
 } __packed;
@@ -221,7 +194,7 @@ struct dis_id_response_cable_pkt {
 struct dis_id_response_hub_pkt {
 	struct pd_pkt_header msg_hdr;
 	struct vdm_header vdm_hdr;
-	struct id_header_vdo id_hdr;
+	struct id_header id_hdr;
 	struct cert_stat_vdo vdo1;
 	struct product_vdo vdo2;
 } __packed;
@@ -327,12 +300,6 @@ struct pd_fixed_var_rdo {
 	u32 rsvd2:1;
 } __packed;
 
-struct pd_bist_data_obj {
-	u32 err_counter:16;
-	u32 reserved:12;
-	u32 type:4;
-} __packed;
-
 struct pd_packet {
 	struct pd_pkt_header header;
 	u32 data_obj[MAX_NUM_DATA_OBJ+1]; /* +1 is for CRC */
@@ -376,65 +343,6 @@ static inline u32 pd_cur_to_fixed_pdo(u32 cur)
 static inline u32 pd_fixed_pdo_to_volt(u32 pdo)
 {
 	return (pdo & 0x3ff) * 50;
-}
-
-static char *pd_data_msg_to_str(u8 msg)
-{
-	switch (msg) {
-	case PD_DATA_MSG_SRC_CAP:
-		return "PD_DATA_MSG_SRC_CAP";
-	case PD_DATA_MSG_REQUEST:
-		return "PD_DATA_MSG_REQUEST";
-	case PD_DATA_MSG_BIST:
-		return "PD_DATA_MSG_BIST";
-	case PD_DATA_MSG_SINK_CAP:
-		return "PD_DATA_MSG_SINK_CAP";
-	case PD_DATA_MSG_VENDOR_DEF:
-		return "PD_DATA_MSG_VENDOR_DEF";
-	default:
-		return "PD_DATA_MSG_INVALID/RESERVED";
-	}
-}
-
-static char *pd_ctrl_msg_to_str(u8 msg)
-{
-	switch (msg) {
-	case PD_CTRL_MSG_GOODCRC:
-		return "PD_CTRL_MSG_GOODCRC";
-	case PD_CTRL_MSG_GOTOMIN:
-		return "PD_CTRL_MSG_GOTOMIN";
-	case PD_CTRL_MSG_ACCEPT:
-		return "PD_CTRL_MSG_ACCEPT";
-	case PD_CTRL_MSG_REJECT:
-		return "PD_CTRL_MSG_REJECT";
-	case PD_CTRL_MSG_PING:
-		return "PD_CTRL_MSG_PING";
-	case PD_CTRL_MSG_PS_RDY:
-		return "PD_CTRL_MSG_PS_RDY";
-	case PD_CTRL_MSG_GET_SRC_CAP:
-		return "PD_CTRL_MSG_GET_SRC_CAP";
-	case PD_CTRL_MSG_GET_SINK_CAP:
-		return "PD_CTRL_MSG_GET_SINK_CAP";
-	case PD_CTRL_MSG_DR_SWAP:
-		return "PD_CTRL_MSG_DR_SWAP";
-	case PD_CTRL_MSG_PR_SWAP:
-		return "PD_CTRL_MSG_PR_SWAP";
-	case PD_CTRL_MSG_VCONN_SWAP:
-		return "PD_CTRL_MSG_VCONN_SWAP";
-	case PD_CTRL_MSG_WAIT:
-		return "PD_CTRL_MSG_WAIT";
-	case PD_CTRL_MSG_SOFT_RESET:
-		return "PD_CTRL_MSG_SOFT_RESET";
-	default:
-		return "PD_CTRL_MSG_INVALID/RESERVED";
-	}
-}
-
-static inline char *pd_msg_to_str(u8 msg, int len)
-{
-	if (len)
-		return pd_data_msg_to_str(msg);
-	return pd_ctrl_msg_to_str(msg);
 }
 
 #endif /* __PD_MESSAGE_H__ */

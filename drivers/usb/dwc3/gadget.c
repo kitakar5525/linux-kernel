@@ -224,6 +224,12 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
 	struct dwc3			*dwc = dep->dwc;
 	int				i;
 
+	if(!req) {
+		dump_stack();
+		dev_err(dep->dwc->dev, "dwc3_gadget_giveback null %s\n", dep->name);
+		return;
+	}
+
 	if (req->queued) {
 		i = 0;
 		do {

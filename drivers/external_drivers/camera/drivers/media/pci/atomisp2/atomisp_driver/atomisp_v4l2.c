@@ -125,7 +125,7 @@ MODULE_PARM_DESC(pad_h, "extra data for ISP processing");
 struct device *atomisp_dev;
 
 void __iomem *atomisp_io_base;
-
+extern void vlv_force_ddr_high_frequency(bool mode);
 int atomisp_video_init(struct atomisp_video_pipe *video, const char *name)
 {
 	int ret;
@@ -408,8 +408,10 @@ void punit_ddr_dvfs_enable(bool enable)
 	if (enable) {
 		reg &= ~(MRFLD_BIT0 | MRFLD_BIT1);
 	} else {
-		reg |= (MRFLD_BIT1 | door_bell);
-		reg &= ~(MRFLD_BIT0);
+		//reg |= (MRFLD_BIT1 | door_bell);
+		//reg &= ~(MRFLD_BIT0);
+		reg |= (MRFLD_BIT0 | door_bell);
+		reg &= ~(MRFLD_BIT1);
 	}
 
 	intel_mid_msgbus_write32(PUNIT_PORT, MRFLD_ISPSSDVFS, reg);
@@ -442,9 +444,10 @@ int atomisp_mrfld_power_down(struct atomisp_device *isp)
 	intel_mid_msgbus_write32(PUNIT_PORT, MRFLD_ISPSSPM0, reg_value);
 
 	/*WA:Enable DVFS*/
-	if (IS_CHT)
+	if (IS_CHT){
+	       	vlv_force_ddr_high_frequency(false);
 		punit_ddr_dvfs_enable(true);
-
+	}
 	/*
 	 * There should be no iunit access while power-down is
 	 * in progress HW sighting: 4567865
@@ -480,8 +483,10 @@ int atomisp_mrfld_power_up(struct atomisp_device *isp)
 	u32 reg_value;
 
 	/*WA for PUNIT, if DVFS enabled, ISP timeout observed*/
-	if (IS_CHT)
+	if (IS_CHT){
+       		vlv_force_ddr_high_frequency(true);
 		punit_ddr_dvfs_enable(false);
+	}
 
 	/*
 	 * FIXME:WA for ECS28A, with this sleep, CTS
@@ -1300,12 +1305,12 @@ static int atomisp_pci_probe(struct pci_dev *dev,
 		return err;
 	}
 
-	table = pcim_iomap_table(dev);
-	if (!table) {
-		dev_err(&dev->dev, "atomisp: error iomap table ptr\n");
-		return -EINVAL;
-	}
-	base = table[ATOM_ISP_PCI_BAR];
+    table = pcim_iomap_table(dev);
+    if (!table) {
+        dev_err(&dev->dev, "atomisp: error iomap table ptr\n");
+            return -EINVAL;
+    }
+    base = table[ATOM_ISP_PCI_BAR];
 
 	dev_dbg(&dev->dev, "base: %p\n", base);
 

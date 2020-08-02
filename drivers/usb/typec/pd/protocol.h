@@ -58,7 +58,7 @@ struct pd_prot {
 	struct mutex rx_list_lock;
 
 	int (*policy_fwd_pkt)(struct pd_prot *prot, u8 msg_type,
-			void *data, int len, enum pd_pkt_type type);
+					void *data, int len);
 
 	void (*policy_update_data_role)(struct pd_prot *prot,
 					enum data_role drole);
@@ -71,19 +71,18 @@ struct pd_prot {
 };
 
 static inline int pd_prot_send_phy_packet(struct pd_prot *pd, void *buf,
-					int len, enum pd_pkt_type type)
+						int len)
 {
 	if (pd->phy->send_packet)
-		return pd->phy->send_packet(pd->phy, buf, len, type);
+		return pd->phy->send_packet(pd->phy, buf, len);
 
 	return -ENOTSUPP;
 }
 
-static inline int pd_prot_recv_phy_packet(struct pd_prot *pd,
-					void *buf, enum pd_pkt_type *type)
+static inline int pd_prot_recv_phy_packet(struct pd_prot *pd, void *buf)
 {
 	if (pd->phy->recv_packet)
-		return pd->phy->recv_packet(pd->phy, buf, type);
+		return pd->phy->recv_packet(pd->phy, buf);
 
 	return -ENOTSUPP;
 }

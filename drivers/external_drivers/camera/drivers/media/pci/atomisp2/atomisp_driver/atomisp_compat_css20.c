@@ -723,16 +723,12 @@ static void __apply_additional_pipe_config(
 		 * control whether use isp2.7 */
 #ifdef V4L2_CID_ATOMISP_SELECT_ISP_VERSION
 		if (asd->select_isp_version->val ==
-			ATOMISP_CSS_ISP_PIPE_VERSION_2_7) {
+			ATOMISP_CSS_ISP_PIPE_VERSION_2_7)
 			stream_env->pipe_configs[pipe_id].isp_pipe_version =
 				SH_CSS_ISP_PIPE_VERSION_2_7;
-			/* ISP2.7 does not support DZ, we should always turn
-			   it off. */
-			stream_env->pipe_configs[pipe_id].enable_dz = false;
-		} else {
+		else
 			stream_env->pipe_configs[pipe_id].isp_pipe_version =
 				SH_CSS_ISP_PIPE_VERSION_2_2;
-		}
 #endif
 		break;
 	case IA_CSS_PIPE_ID_VIDEO:
@@ -3896,51 +3892,10 @@ int atomisp_css_get_ob_config(struct atomisp_sub_device *asd,
 	return 0;
 }
 
-void atomisp_css_set_dpc2_config(struct atomisp_sub_device *asd,
-			struct atomisp_css_dpc2_config *dpc2_config)
-{
-	asd->params.config.dpc2_config = dpc2_config;
-}
-
-void atomisp_css_set_eed1_8_config(struct atomisp_sub_device *asd,
-			struct atomisp_css_eed1_8_config *eed1_8_config)
-{
-	asd->params.config.eed1_8_config = eed1_8_config;
-}
 void atomisp_css_set_ob2_config(struct atomisp_sub_device *asd,
 			struct atomisp_css_ob2_config *ob2_config)
 {
 	asd->params.config.ob2_config = ob2_config;
-}
-
-void atomisp_css_set_ctc2_config(struct atomisp_sub_device *asd,
-			struct atomisp_css_ctc2_config *ctc2_config)
-{
-	asd->params.config.ctc2_config = ctc2_config;
-}
-
-void atomisp_css_set_iefd2_6_config(struct atomisp_sub_device *asd,
-			struct atomisp_css_iefd2_6_config *iefd2_6_config)
-{
-	asd->params.config.iefd2_6_config = iefd2_6_config;
-}
-
-void atomisp_css_set_macc1_5_config(struct atomisp_sub_device *asd,
-			struct atomisp_css_macc1_5_config *macc1_5_config)
-{
-	asd->params.config.macc1_5_config = macc1_5_config;
-}
-
-void atomisp_css_set_macc1_5_table(struct atomisp_sub_device *asd,
-			struct atomisp_css_macc1_5_table *macc1_5_table)
-{
-	asd->params.config.macc1_5_table = macc1_5_table;
-}
-
-void atomisp_css_set_xnr3_0_11_config(struct atomisp_sub_device *asd,
-			struct atomisp_css_xnr3_0_11_config *xnr3_0_11_config)
-{
-	asd->params.config.xnr3_0_11_config = xnr3_0_11_config;
 }
 
 int atomisp_css_get_dp_config(struct atomisp_sub_device *asd,

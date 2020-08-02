@@ -574,6 +574,7 @@ i915_dpst_init(struct drm_device *dev,
 	put_pid(dev_priv->dpst.pid);
 	dev_priv->dpst.pid = cur_pid;
 	dev_priv->dpst.signal = ioctl_data->init_data.sig_num;
+	dev_priv->dpst.kernel_disable = true;
 
 	if (!i915_dpst_save_conn_on_edp(dev))
 		return -EINVAL;
@@ -613,7 +614,6 @@ i915_dpst_set_brightness(struct drm_device *dev, u32 brightness_val)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 backlight_level = brightness_val;
-
 	/*
 	 * When DPST is enabled only for video mode, we want to phase out when
 	 * video ends even though DPST is disabled. The same is true when we

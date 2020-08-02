@@ -70,7 +70,6 @@
 #define KXCJK1013_REG_CTRL1_BIT_WUFE	BIT(1)
 #define KXCJK1013_REG_INT_REG1_BIT_IEA	BIT(4)
 #define KXCJK1013_REG_INT_REG1_BIT_IEN	BIT(5)
-#define KXCJK1013_REG_INT_REG1_BIT_IEL	BIT(3)
 
 #define KXCJK1013_DATA_MASK_12_BIT	0x0FFF
 #define KXCJK1013_MAX_STARTUP_TIME_US	100000
@@ -366,7 +365,7 @@ static int kxcjk1013_chip_init(struct kxcjk1013_data *data)
 		ret &= ~KXCJK1013_REG_INT_REG1_BIT_IEA;
 
 	ret = i2c_smbus_write_byte_data(data->client, KXCJK1013_REG_INT_CTRL1,
-					ret | KXCJK1013_REG_INT_REG1_BIT_IEL);
+					ret);
 	if (ret < 0) {
 		dev_err(&data->client->dev, "Error writing reg_int_ctrl1\n");
 		return ret;
@@ -1230,9 +1229,6 @@ static int kxcjk1013_probe(struct i2c_client *client,
 		name = kxcjk1013_match_acpi_device(&client->dev,
 						   &data->chipset);
 	} else
-		return -ENODEV;
-
-	if (data->chipset >=  KX_MAX_CHIPS)
 		return -ENODEV;
 
 	ret = kxcjk1013_chip_init(data);

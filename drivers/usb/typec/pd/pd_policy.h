@@ -91,11 +91,9 @@ struct pe_operations {
 
 	/* Callback functions to receive msgs and cmds from protocol */
 	int (*process_data_msg)(struct policy *p, enum pe_event evt,
-				struct pd_packet *data,
-				enum pd_pkt_type sop_type);
+				struct pd_packet *data);
 	int (*process_ctrl_msg)(struct policy *p, enum pe_event evt,
-				struct pd_packet *data,
-				enum pd_pkt_type sop_type);
+				struct pd_packet *data);
 	int (*process_cmd)(struct policy *p, enum pe_event cmd);
 
 	/* Callback fn to receive DPM event */
@@ -123,22 +121,20 @@ static inline int pe_process_cmd(struct policy *p, enum pe_event cmd)
 
 static inline int pe_process_data_msg(struct policy *p,
 					enum pe_event evt,
-					struct pd_packet *pkt,
-					enum pd_pkt_type type)
+					struct pd_packet *pkt)
 {
 	if (p && p->ops && p->ops->process_data_msg)
-		return p->ops->process_data_msg(p, evt, pkt, type);
+		return p->ops->process_data_msg(p, evt, pkt);
 
 	return -ENOTSUPP;
 }
 
 static inline int pe_process_ctrl_msg(struct policy *p,
 					enum pe_event evt,
-					struct pd_packet *pkt,
-					enum pd_pkt_type type)
+					struct pd_packet *pkt)
 {
 	if (p && p->ops && p->ops->process_ctrl_msg)
-		return p->ops->process_ctrl_msg(p, evt, pkt, type);
+		return p->ops->process_ctrl_msg(p, evt, pkt);
 
 	return -ENOTSUPP;
 }

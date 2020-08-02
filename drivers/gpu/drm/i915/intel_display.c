@@ -41,13 +41,17 @@
 #include <drm/drm_crtc_helper.h>
 #include <linux/dma_remapping.h>
 #include <linux/bitops.h>
+#include "intel_esd_handler.h"
+
 #include "intel_clrmgr.h"
 #include "intel_dsi.h"
 #include "i915_scheduler.h"
 
+
 #define DIV_ROUND_CLOSEST_ULL(ll, d)	\
 	({ unsigned long long _tmp = (ll)+(d)/2; do_div(_tmp, d); _tmp; })
 
+extern struct esd_private i915_esd;
 void intel_save_clr_mgr_status(struct drm_device *dev);
 bool intel_restore_clr_mgr_status(struct drm_device *dev);
 static void intel_increase_pllclock(struct drm_crtc *crtc);
@@ -2239,6 +2243,7 @@ static void intel_enable_pipe(struct intel_crtc *crtc)
 	assert_cursor_disabled(dev_priv, pipe);
 	assert_sprites_disabled(dev_priv, pipe);
 
+	DRM_INFO("%s: pipe %d\n", __func__, pipe);
 	if (HAS_PCH_LPT(dev_priv->dev))
 		pch_transcoder = TRANSCODER_A;
 	else
@@ -2493,18 +2498,19 @@ intel_pin_and_fence_fb_obj(struct drm_device *dev,
 	if (ret)
 		goto err_interruptible;
 
-	if (obj->map_and_fenceable) {
-		/* Install a fence for tiled scan-out. Pre-i965 always needs a
-		 * fence, whereas 965+ only requires a fence if using
-		 * framebuffer compression.  For simplicity, we always install
-		 * a fence as the cost is not that onerous.
-		 */
+	/* Install a fence for tiled scan-out. Pre-i965 always needs a
+	 * fence, whereas 965+ only requires a fence if using
+	 * framebuffer compression.  For simplicity, we always install
+	 * a fence as the cost is not that onerous. Fence is only required
+	 * for gen 7 & below
+	 */
+	if ((INTEL_INFO(dev)->gen <= 7)) {
 		ret = i915_gem_object_get_fence(obj);
 		if (ret)
 			goto err_unpin;
-
-		i915_gem_object_pin_fence(obj);
 	}
+
+	i915_gem_object_pin_fence(obj);
 	drm_gem_object_reference(&obj->base);
 
 	dev_priv->mm.interruptible = true;
@@ -2519,8 +2525,7 @@ err_interruptible:
 
 void intel_unpin_fb_obj(struct drm_i915_gem_object *obj)
 {
-	if (obj->map_and_fenceable)
-		i915_gem_object_unpin_fence(obj);
+	i915_gem_object_unpin_fence(obj);
 	i915_gem_object_unpin_from_display_plane(obj);
 	drm_gem_object_unreference(&obj->base);
 }
@@ -5423,7 +5428,7 @@ int valleyview_cur_cdclk(struct drm_i915_private *dev_priv)
 static int valleyview_calc_cdclk(struct drm_i915_private *dev_priv,
 				 int max_pixclk)
 {
-	int new_cdclk;
+	int new_cdclk, cur_cdclk, czclk;
 	/*
 	 * Really only a few cases to deal with, as only 4 CDclks are supported:
 	 *   200MHz
@@ -5440,6 +5445,17 @@ static int valleyview_calc_cdclk(struct drm_i915_private *dev_priv,
 	else
 		new_cdclk = 266;
 	/* Looks like the 200MHz CDclk freq doesn't work on some configs */
+
+	if (IS_CHERRYVIEW(dev_priv->dev)) {
+		/*
+		 * The existing CHT systems can work only when
+		 * CDclk freq is equal to OR higher than CZclk.
+		 * freq. So, cap the CDclk freq, if required.
+		 */
+		intel_get_cd_cz_clk(dev_priv, &cur_cdclk, &czclk);
+		if (new_cdclk < czclk)
+			new_cdclk = czclk;
+	}
 
 	return new_cdclk;
 }
@@ -5509,6 +5525,7 @@ static void valleyview_crtc_enable(struct drm_crtc *crtc)
 	int pipe = intel_crtc->pipe;
 	int plane = intel_crtc->plane;
 	bool is_dsi;
+	u32 dspcntr;
 
 	WARN_ON(!crtc->enabled);
 
@@ -5618,6 +5635,14 @@ static void valleyview_crtc_enable(struct drm_crtc *crtc)
 	for_each_encoder_on_crtc(dev, crtc, encoder)
 		if (encoder->type != INTEL_OUTPUT_DSI)
 			encoder->enable(encoder);
+
+       /* hardcode to enable gamma for paperlooking */
+       /* Set up the display plane register */
+       dspcntr = I915_READ(DSPCNTR(plane));
+       dspcntr |= DISPPLANE_GAMMA_ENABLE;
+       I915_WRITE(DSPCNTR(plane), dspcntr);
+       POSTING_READ(DSPCNTR(plane));
+
 
 	/* If Intel DSI and CMd mode create buffer for cursor plane */
 	for_each_encoder_on_crtc(dev, crtc, encoder) {
@@ -9482,10 +9507,11 @@ static int intel_crtc_cursor_set(struct drm_crtc *crtc,
 			goto fail_locked;
 		}
 
-		if (obj->map_and_fenceable) {
+		/* Fence is required only for gen7 & below */
+		if ((INTEL_INFO(dev)->gen <= 7)) {
 			ret = i915_gem_object_put_fence(obj);
 			if (ret) {
-				DRM_DEBUG_KMS("failed to release fence for cursor");
+				DRM_DEBUG_KMS("failed to release fence cursor");
 				goto fail_unpin;
 			}
 		}
@@ -9551,14 +9577,44 @@ static int intel_crtc_cursor_move(struct drm_crtc *crtc, int x, int y)
 static void intel_crtc_gamma_set(struct drm_crtc *crtc, u16 *red, u16 *green,
 				 u16 *blue, uint32_t start, uint32_t size)
 {
-	int end = (start + size > 256) ? 256 : start + size, i;
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
+	struct drm_device *dev = crtc->dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	u32 pipe_dsl = PIPEDSL(intel_crtc->pipe), dsl = 0, last_dsl = 0;
+	u32 vdisplay = VTOTAL(intel_crtc->pipe), vdisplay_val = 0;
+	u32 loop_cnt = 0;
+
+	int end = (start + size > 256) ? 256 : start + size, i;
+
+	mutex_lock(&dev_priv->bk_status_lock);
+	if (!(&dev_priv->bk_status) ){
+		mutex_unlock(&dev_priv->bk_status_lock);
+		return;
+	}
+	mutex_unlock(&dev_priv->bk_status_lock);
 
 	for (i = start; i < end; i++) {
 		intel_crtc->lut_r[i] = red[i] >> 8;
 		intel_crtc->lut_g[i] = green[i] >> 8;
 		intel_crtc->lut_b[i] = blue[i] >> 8;
 	}
+
+	vdisplay_val = I915_READ(vdisplay) & 0xfff;
+	do {
+		dsl = (I915_READ(pipe_dsl) & DSL_LINEMASK_GEN3);
+		if (dsl == last_dsl) {
+			loop_cnt++;
+			if (loop_cnt > 50) {
+				DRM_INFO("%s: loop timeout. dsl [%u], loop_cnt [%u].\n", __func__, dsl, loop_cnt);
+				break;
+			}
+		} else {
+			last_dsl = dsl;
+			loop_cnt = 0;
+		}
+
+		usleep_range(4, 5);
+	} while (dsl <= (vdisplay_val+1));
 
 	intel_crtc_load_lut(crtc);
 }
@@ -11292,6 +11348,7 @@ pfit_out:
 
 	/* Update the z-order */
 	if (disp->update_flag & DRM_MODE_SET_DISPLAY_UPDATE_ZORDER) {
+
 		zorder = kzalloc(sizeof(struct drm_i915_set_plane_zorder),
 				GFP_KERNEL);
 		if (!zorder) {
@@ -13575,6 +13632,7 @@ void set_hdmi_priv(struct drm_device *dev)
 #endif
 }
 
+#if 0
 static void intel_setup_outputs_vbt(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -13627,6 +13685,7 @@ static void intel_setup_outputs_vbt(struct drm_device *dev)
 		}
 	}
 }
+#endif
 
 static void intel_setup_outputs(struct drm_device *dev)
 {
@@ -13687,8 +13746,17 @@ static void intel_setup_outputs(struct drm_device *dev)
 		if (I915_READ(PCH_DP_D) & DP_DETECTED)
 			intel_dp_init(dev, PCH_DP_D, PORT_D);
 	} else if (IS_CHERRYVIEW(dev)) {
+#if 0		/*don't use vbt configuration*/
 		intel_setup_outputs_vbt(dev);
+#else
+		intel_dp_init(dev, VLV_DISPLAY_BASE + DP_C, PORT_C);
 
+
+		intel_dsi_init(dev);
+
+		set_hdmi_priv(dev);
+		intel_hdmi_init(dev, VLV_DISPLAY_BASE + CHV_HDMID, PORT_D);
+#endif
 	} else if (IS_VALLEYVIEW(dev)) {
 		/* There is no detection method for MIPI so rely on VBT */
 		if (dev_priv->vbt.has_mipi)
@@ -15355,7 +15423,9 @@ int intel_connector_reset(struct drm_connector *connector)
 	int mode_vrefresh = 60;
 	char *uevp[3];
 	unsigned long flags;
-
+#ifndef FEATURE_ESD_RESET
+        return -EINVAL;
+#endif
 	if (connector == NULL)
 		return -EINVAL;
 	if (connector->encoder == NULL)
@@ -15368,6 +15438,7 @@ int intel_connector_reset(struct drm_connector *connector)
 		return -EINVAL;
 	}
 
+	DRM_DEBUG_DRIVER("esd recovery running\n");
 	dev = connector->dev;
 	/*
 	 * According connector type, send reset message to HWC

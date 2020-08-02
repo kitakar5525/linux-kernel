@@ -86,7 +86,7 @@ static DECLARE_WAIT_QUEUE_HEAD(proc_poll_wait);
 /* Activity counter to indicate that a swapon or swapoff has occurred */
 static atomic_t proc_poll_event = ATOMIC_INIT(0);
 
-static inline unsigned char swap_count(unsigned char ent)
+inline unsigned char swap_count(unsigned char ent)
 {
 	return ent & ~SWAP_HAS_CACHE;	/* may include SWAP_HAS_CONT flag */
 }
@@ -745,7 +745,7 @@ swp_entry_t get_swap_page_of_type(int type)
 	return (swp_entry_t) {0};
 }
 
-static struct swap_info_struct *swap_info_get(swp_entry_t entry)
+struct swap_info_struct *swap_info_get(swp_entry_t entry)
 {
 	struct swap_info_struct *p;
 	unsigned long offset, type;
@@ -897,48 +897,6 @@ int page_swapcount(struct page *page)
 		count = swap_count(p->swap_map[swp_offset(entry)]);
 		spin_unlock(&p->lock);
 	}
-	return count;
-}
-
-/*
- * How many references to @entry are currently swapped out?
- * This considers COUNT_CONTINUED so it returns exact answer.
- */
-int swp_swapcount(swp_entry_t entry)
-{
-	int count, tmp_count, n;
-	struct swap_info_struct *p;
-	struct page *page;
-	pgoff_t offset;
-	unsigned char *map;
-
-	p = swap_info_get(entry);
-	if (!p)
-		return 0;
-
-	count = swap_count(p->swap_map[swp_offset(entry)]);
-	if (!(count & COUNT_CONTINUED))
-		goto out;
-
-	count &= ~COUNT_CONTINUED;
-	n = SWAP_MAP_MAX + 1;
-
-	offset = swp_offset(entry);
-	page = vmalloc_to_page(p->swap_map + offset);
-	offset &= ~PAGE_MASK;
-	VM_BUG_ON(page_private(page) != SWP_CONTINUED);
-
-	do {
-		page = list_entry(page->lru.next, struct page, lru);
-		map = kmap_atomic(page);
-		tmp_count = map[offset];
-		kunmap_atomic(map);
-
-		count += (tmp_count & ~COUNT_CONTINUED) * n;
-		n *= (SWAP_CONT_MAX + 1);
-	} while (tmp_count & COUNT_CONTINUED);
-out:
-	spin_unlock(&p->lock);
 	return count;
 }
 

@@ -291,7 +291,7 @@ static int ov2680_g_fnumber(struct v4l2_subdev *sd, s32 *val)
 
 static int ov2680_g_fnumber_range(struct v4l2_subdev *sd, s32 *val)
 {
-
+	
 	*val = (OV2680_F_NUMBER_DEFAULT_NUM << 24) |
 		(OV2680_F_NUMBER_DEM << 16) |
 		(OV2680_F_NUMBER_DEFAULT_NUM << 8) | OV2680_F_NUMBER_DEM;
@@ -310,7 +310,7 @@ static int ov2680_g_bin_factor_x(struct v4l2_subdev *sd, s32 *val)
 static int ov2680_g_bin_factor_y(struct v4l2_subdev *sd, s32 *val)
 {
 	struct ov2680_device *dev = to_ov2680_sensor(sd);
-
+	
 	*val = ov2680_res[dev->fmt_idx].bin_factor_y;
 	ov2680_debug(dev,  "++++ov2680_g_bin_factor_y\n");
 	return 0;
@@ -403,11 +403,20 @@ static long __ov2680_set_exposure(struct v4l2_subdev *sd, int coarse_itg,
 	struct ov2680_device *dev = to_ov2680_sensor(sd);
 	u16 vts,hts;
 	int ret,exp_val;
-
-	ov2680_debug(dev, "+++++++__ov2680_set_exposure coarse_itg %d, gain %d, digitgain %d++\n",coarse_itg, gain, digitgain);
+	
+       ov2680_debug(dev, "+++++++__ov2680_set_exposure coarse_itg %d, gain %d, digitgain %d++\n",coarse_itg, gain, digitgain);
 
 	hts = ov2680_res[dev->fmt_idx].pixels_per_line;
 	vts = ov2680_res[dev->fmt_idx].lines_per_frame;
+
+	/* group hold */
+	ret = ov2680_write_reg(client, OV2680_8BIT,
+                                       OV2680_GROUP_ACCESS, 0x00);
+	if (ret) {
+		dev_err(&client->dev, "%s: write %x error, aborted\n",
+			__func__, OV2680_GROUP_ACCESS);
+		return ret;
+	}
 
 	/* Increase the VTS to match exposure + MARGIN */
 	if (coarse_itg > vts - OV2680_INTEGRATION_TIME_MARGIN)
@@ -482,6 +491,17 @@ static long __ov2680_set_exposure(struct v4l2_subdev *sd, int coarse_itg,
 		}
 	}
 
+	/* End group */
+	ret = ov2680_write_reg(client, OV2680_8BIT,
+			       OV2680_GROUP_ACCESS, 0x10);
+	if (ret)
+		return ret;
+
+	/* Delay launch group */
+	ret = ov2680_write_reg(client, OV2680_8BIT,
+					   OV2680_GROUP_ACCESS, 0xa0);
+	if (ret)
+		return ret;
 	return ret;
 }
 
@@ -526,7 +546,7 @@ static long ov2680_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 	switch (cmd) {
 	case ATOMISP_IOC_S_EXPOSURE:
 		return ov2680_s_exposure(sd, arg);
-
+	
 	default:
 		return -EINVAL;
 	}
@@ -753,7 +773,7 @@ struct ov2680_control ov2680_controls[] = {
 static struct ov2680_control *ov2680_find_control(u32 id)
 {
 	int i;
-
+	
 	for (i = 0; i < N_CONTROLS; i++)
 		if (ov2680_controls[i].qc.id == id)
 			return &ov2680_controls[i];
@@ -871,14 +891,12 @@ static int power_ctrl(struct v4l2_subdev *sd, bool flag)
 		return dev->platform_data->power_ctrl(sd, flag);
 
 	if (flag) {
-		ret |= dev->platform_data->v1p5_ctrl(sd, 1);
 		ret |= dev->platform_data->v1p8_ctrl(sd, 1);
 		ret |= dev->platform_data->v2p8_ctrl(sd, 1);
 		usleep_range(10000, 15000);
 	}
 
 	if (!flag || ret) {
-		ret |= dev->platform_data->v1p5_ctrl(sd, 0);
 		ret |= dev->platform_data->v1p8_ctrl(sd, 0);
 		ret |= dev->platform_data->v2p8_ctrl(sd, 0);
 	}
@@ -1002,17 +1020,13 @@ static int ov2680_s_power(struct v4l2_subdev *sd, int on)
 	if (on == 0){
 		ret = power_down(sd);
 	} else {
-		ret = power_up(sd);
+		ret = power_up(sd);	
 		if (!ret)
 			return ov2680_init(sd);
 	}
 	return ret;
 }
-#if 0
-/* Nearest higher resolution search has been removed due to OAM-28812 issue.
- *
- * Reference: IMINAN-47858 [CHT-CR-MRD][Camera] WA to fix ov2680 FOV issue.
- */
+
 /*
  * distance - calculate the distance
  * @res: resolution
@@ -1044,18 +1058,12 @@ static int distance(struct ov2680_resolution *res, u32 w, u32 h)
 
 	return w_ratio + h_ratio;
 }
-#endif
+
 /* Return the nearest higher resolution index */
 static int nearest_resolution_index(int w, int h)
 {
-
-	int idx = -1;
-#if 0
-/* Nearest higher resolution search has been removed due to OAM-28812 issue.
- *
- * Reference: IMINAN-47858 [CHT-CR-MRD][Camera] WA to fix ov2680 FOV issue.
- */
 	int i;
+	int idx = -1;
 	int dist;
 	int min_dist = INT_MAX;
 	struct ov2680_resolution *tmp_res = NULL;
@@ -1070,12 +1078,7 @@ static int nearest_resolution_index(int w, int h)
 			idx = i;
 		}
 	}
-#else
-	if (w == 1280 && h == 720)
-		idx = 1; /* For 16:9 */
-	else
-		idx = 0; /* For 4:3 */
-#endif
+
 	return idx;
 }
 
@@ -1241,10 +1244,10 @@ static int ov2680_s_stream(struct v4l2_subdev *sd, int enable)
 
 	mutex_lock(&dev->input_lock);
 	if(enable )
-		ov2680_debug(&client->dev, "ov2680_s_stream one\n");
+		ov2680_debug(&client->dev, "ov2680_s_stream one \n");
 	else
-		ov2680_debug(&client->dev, "ov2680_s_stream off\n");
-
+		ov2680_debug(&client->dev, "ov2680_s_stream off \n");
+	
 	ret = ov2680_write_reg(client, OV2680_8BIT, OV2680_SW_STREAM,
 				enable ? OV2680_START_STREAMING :
 				OV2680_STOP_STREAMING);
@@ -1346,7 +1349,7 @@ static int ov2680_s_config(struct v4l2_subdev *sd,
 		dev_err(&client->dev, "ov2680_detect err s_config.\n");
 		goto fail_csi_cfg;
 	}
-
+	
 	/* turn off sensor, after probed */
 	ret = power_down(sd);
 	if (ret) {
@@ -1516,7 +1519,7 @@ static int ov2680_set_pad_format(struct v4l2_subdev *sd,
 static int ov2680_g_skip_frames(struct v4l2_subdev *sd, u32 *frames)
 {
 	struct ov2680_device *dev = to_ov2680_sensor(sd);
-
+	
 	mutex_lock(&dev->input_lock);
 	*frames = ov2680_res[dev->fmt_idx].skip_frames;
 	mutex_unlock(&dev->input_lock);
@@ -1639,7 +1642,6 @@ out_free:
 
 static struct acpi_device_id ov2680_acpi_match[] = {
 	{"XXOV2680"},
-	{"OVTI2680"},
 	{},
 };
 MODULE_DEVICE_TABLE(acpi, ov2680_acpi_match);

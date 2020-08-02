@@ -1834,7 +1834,7 @@ struct drm_i915_private {
 	bool is_resuming;
 	bool is_video_playing;  /* Indicates enabling only in videomode */
 	bool force_low_ddr_freq;
-
+	bool force_high_ddr_freq;
 	/* Track the media promotion timer update */
 	bool last_media_active_state;
 
@@ -2034,6 +2034,8 @@ struct drm_i915_private {
 
 	bool shutdown_in_progress;
 
+	bool bk_status;
+        struct mutex bk_status_lock;
 #ifdef CONFIG_MIGRATION
 	struct shmem_migrate_info migrate_info;
 #endif

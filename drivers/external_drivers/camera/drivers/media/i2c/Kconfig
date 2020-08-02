@@ -3,7 +3,6 @@
 #
 
 source "drivers/external_drivers/camera/drivers/media/i2c/mt9e013/Kconfig"
-source "drivers/external_drivers/camera/drivers/media/i2c/ov5693/Kconfig"
 source "drivers/external_drivers/camera/drivers/media/i2c/imx/Kconfig"
 source "drivers/external_drivers/camera/drivers/media/i2c/imx135VB/Kconfig"
 
@@ -38,6 +37,26 @@ config VIDEO_OV2722
          OVT is a 2M raw sensor.
 
          It currently only works with the atomisp driver.
+
+config VIDEO_AR1335
+       tristate "OVT ov8865 sensor support"
+       depends on I2C && VIDEO_V4L2
+       ---help---
+         This is a Video4Linux2 sensor-level driver for the aptina
+         AR1335 raw camera.
+
+         AR1335 is a 13M raw sensor.
+
+         It currently only works with the atomisp driver.
+
+config VIDEO_OV2740
+	tristate "OVT ov2740 sensor support"
+	depends on I2C && VIDEO_V4L2
+	--help---
+	 This is a Video4Linux2 sensor-level driver for the
+	 OV2740 raw camera
+
+	 It currently only works with the atomisp driver.
 
 config VIDEO_M10MO
 	tristate "Fujitsu M10MO driver"

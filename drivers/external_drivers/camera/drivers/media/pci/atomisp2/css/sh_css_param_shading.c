@@ -105,11 +105,8 @@ crop_and_interpolate(unsigned int cropped_width,
 	padded_width = cropped_width + left_padding + right_padding;
 	out_cell_size = CEIL_DIV(padded_width, out_table->width - 1);
 	in_cell_size  = CEIL_DIV(sensor_width, table_width - 1);
-
-	if (0 == in_cell_size) {
-		assert(in_cell_size != 0);
-		return;
-	}
+    
+    
 
 	out_start_col = ((int)sensor_width - (int)cropped_width)/2 - left_padding;
 	out_start_row = ((int)sensor_height - (int)cropped_height)/2 - top_padding;

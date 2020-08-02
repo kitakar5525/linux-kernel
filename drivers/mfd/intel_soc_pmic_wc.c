@@ -47,6 +47,10 @@
 #include <linux/regulator/gpio-regulator.h>
 #include <linux/platform_device.h>
 #include <linux/dmi.h>
+#include <linux/regulator/machine.h>
+#include <linux/power/bq2589x_reg.h>
+
+#define WHISKEY_COVE_IRQ_NUM	17
 
 
 #define CHIPID		0x00
@@ -968,21 +972,50 @@ static u8 pmic_read_tt(u8 addr)
 	return intel_soc_pmic_readb(pmic_wcove_regmap.pmic_chrttdata);
 }
 
+static struct bq2589x_platform_data bq25892_data_main = {
+	.gpio_irq = 0,    /* null: conect to PMIC */
+	.gpio_ce = 0,     /* null: conect to PMIC */
+	.gpio_otg = 0,    /* null: conect to VSYS1 */
+
+	.enable_watchdog = 0,
+	.watchdog_timeout = 160,  /* only valid if watchdog timer is enabled */
+	.enable_charge_timer = 0,
+	.charge_timeout = 12,     /* only valid if fast charge timer is enabled */
+	.boost_frequency = 1500,  /* 1.5MHz */
+	.boost_voltage = 4998,
+	.boost_ilimit = 700,     /* 1300mA */
+	.ir_comp_resistance = 0,
+	.ir_comp_vclamp = 32,     /* default */
+	.thermal_regulation_threshold = 120,    /* default */
+	.jeita_vset = 150,        /* default */
+	.jeita_iset = 20,         /* default */
+	.sys_min_voltage = 3500,
+	.enable_termination = 1,
+	.termination_current = 192,   /* 256mA default */
+	.precharge_voltage = 3000,
+	.recharge_threshold = 100,
+//	.enable_ilimit_pin =
+	.vindpm_offset = 600,
+	.force_vindpm = 1,     /* must init */
+
+/* add bq25892_charge_param init data here */
+	.charge_param[BQ2589X_VBUS_USB_SDP].vlim = 4500,
+	.charge_param[BQ2589X_VBUS_USB_SDP].ilim = 500,
+	.charge_param[BQ2589X_VBUS_USB_SDP].ichg = 500,
+	.charge_param[BQ2589X_VBUS_USB_SDP].vreg = 4352,
+};
 
 static void __init register_external_charger(void)
 {
 	static struct i2c_board_info i2c_info;
-	int irq;
 
 	if (!wcove_init_done)
 		return;
 
-	strncpy(i2c_info.type, "ext-charger", I2C_NAME_SIZE);
-	i2c_info.addr = pmic_read_tt(TT_I2CDADDR_ADDR);
-	if (acpi_get_chgr_irq(&irq))
-		i2c_info.irq = whiskey_cove_pmic.irq_base + CHGR_IRQ;
-	else
-		i2c_info.irq = irq;
+	strncpy(i2c_info.type, "bq25892-main", I2C_NAME_SIZE);
+	i2c_info.addr = pmic_read_tt(TT_I2CDADDR_ADDR);      /* bq25892: 0x6B */
+	i2c_info.irq = whiskey_cove_pmic.irq_base + CHGR_IRQ;
+	i2c_info.platform_data = &bq25892_data_main;
 	i2c_new_device(wcove_pmic_i2c_adapter, &i2c_info);
 }
 late_initcall(register_external_charger);

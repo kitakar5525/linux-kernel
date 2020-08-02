@@ -105,7 +105,7 @@ static int byt_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 
 	/* one time divison calculation:
 	   duty_ns / period_ns = (256 - otd) / 256 */
-	otd = 256 - duty_ns * 256 / period_ns;
+	otd = 255 - duty_ns * 255 / period_ns;
 	mutex_lock(&byt_pwm->lock);
 	board_name = dmi_get_system_info(DMI_BOARD_NAME);
 	if (strcmp(board_name, "Cherry Trail CR") == 0) {

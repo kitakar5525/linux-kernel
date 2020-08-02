@@ -184,9 +184,7 @@ xt_socket_get4_sk(const struct sk_buff *skb, struct xt_action_param *par)
 	}
 #endif
 
-	if (sk)
-		atomic_inc(&sk->sk_refcnt);
-	else
+	if (!sk)
 		sk = xt_socket_get_sock_v4(dev_net(skb->dev), protocol,
 					   saddr, daddr, sport, dport,
 					   par->in);
@@ -227,7 +225,8 @@ socket_match(const struct sk_buff *skb, struct xt_action_param *par,
 				       (sk->sk_state == TCP_TIME_WAIT &&
 					inet_twsk(sk)->tw_transparent));
 
-		sock_gen_put(sk);
+		if (sk != skb->sk)
+			sock_gen_put(sk);
 
 		if (wildcard || !transparent)
 			sk = NULL;
@@ -365,9 +364,7 @@ xt_socket_get6_sk(const struct sk_buff *skb, struct xt_action_param *par)
 		return NULL;
 	}
 
-	if (sk)
-		atomic_inc(&sk->sk_refcnt);
-	else
+	if (!sk)
 		sk = xt_socket_get_sock_v6(dev_net(skb->dev), tproto,
 					   saddr, daddr, sport, dport,
 					   par->in);

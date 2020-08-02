@@ -1538,6 +1538,8 @@ static int uart_open(struct tty_struct *tty, struct file *filp)
 
 	pr_debug("uart_open(%d) called\n", line);
 
+	printk("%s(%d) called, port->count(%d) 1\n", __FUNCTION__, line, port->count);
+
 	/*
 	 * We take the semaphore here to guarantee that we won't be re-entered
 	 * while allocating the state structure, or while we request any IRQs
@@ -1549,6 +1551,8 @@ static int uart_open(struct tty_struct *tty, struct file *filp)
 		retval = -ERESTARTSYS;
 		goto end;
 	}
+
+	printk("%s(%d)\n", __FUNCTION__, 2);
 
 	port->count++;
 	if (!state->uart_port || state->uart_port->flags & UPF_DEAD) {
@@ -1567,6 +1571,8 @@ static int uart_open(struct tty_struct *tty, struct file *filp)
 		(state->uart_port->flags & UPF_LOW_LATENCY) ? 1 : 0;
 	tty_port_tty_set(port, tty);
 
+	printk("%s(%d)\n", __FUNCTION__, 3);
+
 	/*
 	 * If the port is in the middle of closing, bail out now.
 	 */
@@ -1575,28 +1581,39 @@ static int uart_open(struct tty_struct *tty, struct file *filp)
 		goto err_dec_count;
 	}
 
+	printk("%s(%d)\n", __FUNCTION__, 4);
+
 	/*
 	 * Make sure the device is in D0 state.
 	 */
 	if (port->count == 1)
 		uart_change_pm(state, UART_PM_STATE_ON);
 
+	printk("%s(%d)\n", __FUNCTION__, 5);
+
 	/*
 	 * Start up the serial port.
 	 */
 	retval = uart_startup(tty, state, 0);
 
+	printk("%s(%d)\n", __FUNCTION__, 6);
+
 	/*
 	 * If we succeeded, wait until the port is ready.
 	 */
 	mutex_unlock(&port->mutex);
+
+	printk("%s(%d)\n", __FUNCTION__, 7);
+
 	if (retval == 0)
 		retval = tty_port_block_til_ready(port, tty, filp);
 
 end:
+    printk("%s(%d)\n", __FUNCTION__, 8);
 	return retval;
 err_dec_count:
 	port->count--;
+	printk("%s(%d)\n", __FUNCTION__, 9);
 	mutex_unlock(&port->mutex);
 	goto end;
 }

@@ -94,6 +94,7 @@
 			psy->type == POWER_SUPPLY_TYPE_USB_CDP || \
 			psy->type == POWER_SUPPLY_TYPE_USB_DCP || \
 			psy->type == POWER_SUPPLY_TYPE_USB_ACA || \
+			psy->type == POWER_SUPPLY_TYPE_USB_ACA_L || \
 			psy->type == POWER_SUPPLY_TYPE_USB_TYPEC)
 
 enum psy_type {

@@ -695,9 +695,9 @@ bool i915_is_device_suspending(struct drm_device *drm_dev)
 		return false;
 }
 
-#ifdef CONFIG_SUPPORT_LPDMA_HDMI_AUDIO
-
 static struct drm_device *gdev;
+
+#ifdef CONFIG_SUPPORT_LPDMA_HDMI_AUDIO
 
 /* HDMI Audio HAD and Display interfaces */
 bool ospm_power_is_hw_on(int hw_islands)
@@ -1632,13 +1632,21 @@ void vlv_set_ddr_dvfs(struct drm_i915_private *dev_priv,
 	struct intel_crtc_config *config;
 	unsigned int cur_dvfs_mode;
 
-	/* Set higher DDR frequency if DDR DVFS is being disabled */
-	if (!enable_ddr_dvfs)
-		val = CHV_FORCE_DDR_HIGH_FREQ;
+	return;
 
-	/* Force DDR freq to low if userspace is requesting for it */
-	if (dev_priv->force_low_ddr_freq)
+	/* Set higher DDR frequency if DDR DVFS is being disabled */
+	if (!enable_ddr_dvfs) {
+		val = CHV_FORCE_DDR_HIGH_FREQ;
+	}
+       /* Set higher DDR frequency if it is requested */
+       else if(dev_priv->force_high_ddr_freq) {
+		val = CHV_FORCE_DDR_HIGH_FREQ;
+       }
+	/* Force DDR freq to low if userspace is requesting for it, 
+	and dvfs is enabled, high frequency is not requested */
+	else if (dev_priv->force_low_ddr_freq) {
 		val = CHV_FORCE_DDR_LOW_FREQ;
+	}
 
 	crtc = single_enabled_crtc(dev_priv->dev);
 	/* DDR freq should be high if more than one pipe is active */
@@ -1656,6 +1664,7 @@ void vlv_set_ddr_dvfs(struct drm_i915_private *dev_priv,
 
 	/* Return if required mode is already set */
 	cur_dvfs_mode = vlv_punit_read(dev_priv, CHV_DDR_DVFS);
+       DRM_DEBUG_DRIVER("dvfs mode request from %d to %d",(cur_dvfs_mode & freq_mask),val);
 	if ((cur_dvfs_mode & freq_mask) == val)
 		goto out;
 
@@ -1731,6 +1740,16 @@ void intel_update_maxfifo(struct drm_i915_private *dev_priv,
 	trace_i915_maxfifo_update(to_intel_crtc(crtc), enable);
 }
 
+void
+vlv_force_ddr_high_frequency(bool mode)
+{
+       struct drm_i915_private *dev_priv = (struct drm_i915_private *)gdev->dev_private;
+	if (mode != dev_priv->force_high_ddr_freq) {
+		dev_priv->force_high_ddr_freq = mode;
+		vlv_set_ddr_dvfs(dev_priv, mode);
+	}
+}
+EXPORT_SYMBOL(vlv_force_ddr_high_frequency);
 void
 vlv_force_ddr_low_frequency(struct drm_i915_private *dev_priv, bool mode)
 {
@@ -8051,9 +8070,7 @@ void intel_init_pm(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
-#ifdef CONFIG_SUPPORT_LPDMA_HDMI_AUDIO
 	gdev = dev;
-#endif
 	if (HAS_FBC(dev)) {
 		if (INTEL_INFO(dev)->gen >= 7) {
 			dev_priv->display.fbc_enabled = ironlake_fbc_enabled;

@@ -12,4 +12,3 @@
 #
 
 obj-$(CONFIG_EXTERNAL_CAMERA) += drivers/
-obj-$(CONFIG_EXTERNAL_BTNS_CAMERA) += drivers/

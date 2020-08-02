@@ -21,8 +21,8 @@ more details.
 #ifndef __IA_CSS_VERSION_DATA_H
 #define __IA_CSS_VERSION_DATA_H
 
+#define CSS_VERSION_STRING "REL:20160521_20.6_0139; API:2.1.21.0; GIT:irci___#2bb8540b20e62ae72131d13db8d1d7dc0d6d3a66; SDK:; USER:viedifw; "
 
-#define CSS_VERSION_STRING "REL:20160125_04.1_1840; API:2.1.21.0; GIT:irci___#4923fff34777f286fac2188e945b1cf3914c9809; SDK:; USER:viedifw; "
 
 
 #endif

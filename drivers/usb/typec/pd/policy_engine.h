@@ -32,7 +32,7 @@
 #define PE_TIME_ATTENTION_BURST_SPACING	100
 #define PE_TIME_ATTENTION_SPACING	250
 #define PE_TIME_BIST_MODE		300
-#define PE_TIME_BIST_CONT_MODE		50	/* tBISTContMode: 30 - 60ms */
+#define PE_TIME_BIST_CONT_MODE		60
 #define PE_TIME_BIST_RECEIVE		1
 #define PE_TIME_BIST_RESPONSE		15
 #define PE_TIME_DISCOVER_IDENTITY	50
@@ -70,8 +70,7 @@
 #define PE_TIME_VDM_ENTER_MODE		25
 #define PE_TIME_VDM_EXIT_MODE		25
 #define PE_TIME_VDM_RECEIVER_RESPONSE	15
-/* 24 >= vdm_sender_response <= 30 */
-#define PE_TIME_VDM_SENDER_RESPONSE	25
+#define PE_TIME_VDM_SENDER_RESPONSE	30
 #define PE_TIME_VDM_WAIT_MODE_ENTRY	50
 #define PE_TIME_VDM_WAIT_MODE_EXIT	50
 
@@ -127,8 +126,6 @@
 #define CURRENT_TO_DATA_OBJ(x)	((x / 10) & SNK_FSPDO_MAX_CURRENT)
 #define VOLT_TO_CAP_DATA_OBJ(x)		(x / 50)
 #define CURRENT_TO_CAP_DATA_OBJ(x)	(x / 10)
-#define CAP_DATA_OBJ_TO_VOLT(x)		(x * 50)
-#define CAP_DATA_OBJ_TO_CURRENT(x)	(x * 10)
 
 
 #define PD_MIN_PDO			1
@@ -147,8 +144,7 @@
 	pr_warn(LOG_TAG":%s:"format"\n", __func__, ##__VA_ARGS__)
 
 #define PE_MAX_RETRY			20
-#define PE_SRC_AUTO_TRIGGERING_DELAY	100 /* 100 mSec */
-#define PE_SNK_AUTO_TRIGGERING_DELAY	200 /* 200 mSec */
+#define PE_AUTO_TRIGGERING_DELAY	100 /* 100 mSec */
 
 enum pe_states {
 
@@ -389,13 +385,8 @@ enum pe_states {
 	/* Cable Hard Reset (209) */
 	PE_CBL_HARD_RESET,
 
-	PE_DFP_CBL_SEND_SOFT_RESET,
-	PE_DFP_CBL_SEND_CABLE_RESET,
-	PE_UFP_CBL_SEND_SOFT_RESET,
-
-	PE_SRC_VDM_IDENTITY_REQUEST,
-	PE_SRC_VDM_IDENTITY_ACK,
-	PE_SRC_VDM_IDENTITY_NACK,
+	/* CBL Reserved States  (210 - 215 */
+	PE_CBL_RESERVED = 215,
 
 	/* BIST Receive Mode (216, 217) */
 	PE_BIST_RECEIVE_MODE,
@@ -459,7 +450,7 @@ enum pe_timers {
 	/* 20 - 22 */
 	VDM_MODE_ENTRY_TIMER,
 	VDM_MODE_EXIT_TIMER,
-	VDM_RESPONSE_TIMER,
+	VMD_RESPONSE_TIMER,
 	/*23, Misc timer */
 	VBUS_CHECK_TIMER,
 	SRC_RESET_RECOVER_TIMER,
@@ -523,7 +514,6 @@ struct pe_req_cap {
 
 struct policy_engine {
 	struct policy p;
-	struct pd_platfrom_config *plat_conf;
 
 	struct mutex pe_lock;
 	struct mutex dpm_evt_lock;
@@ -544,7 +534,6 @@ struct policy_engine {
 	/* Timer structs for pe_timers */
 	struct pe_timer timers[PE_TIMER_CNT];
 
-	struct dis_id_response_cable_pkt cable_pkt;
 	enum pe_states cur_state;
 	enum pe_states prev_state;
 	enum data_role	cur_drole;
@@ -583,7 +572,4 @@ extern void protocol_unbind_pe(struct policy *p);
 void pe_change_state_to_snk_or_src_ready(struct policy_engine *pe);
 int pe_send_packet(struct policy_engine *pe, void *data, int len,
 				u8 msg_type, enum pe_event evt);
-int pe_send_packet_type(struct policy_engine *pe, void *data, int len,
-			u8 msg_type, enum pe_event evt, int type);
-void pe_change_state(struct policy_engine *pe, enum pe_states state);
 #endif /*  __POLICY_ENGINE_H__ */

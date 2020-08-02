@@ -26,8 +26,6 @@
 
 #define PD_SID          0xff00
 #define VESA_SVID       0xff01
-#define INTEL_SVID	0x8086
-#define UNSUPPORTED_SVID	0xeeee
 #define STRUCTURED_VDM	1
 
 /* Display port pin assignments */
@@ -44,26 +42,20 @@
 #define DISP_CONFIG_UFPU_AS_UFP_D	2
 #define DISP_CONFIG_RESERVED		3
 
-/* Port partner alt-mode capability  */
-#define ALT_MODE_CAP_RESERVED		0
-#define ALT_MODE_CAP_UFP_D		1
-#define ALT_MODE_CAP_DFP_D		2
-#define ALT_MODE_CAP_BOTH_UFP_DFP_D	3
-
 /* Display port signaling for transport */
 #define DISP_PORT_SIGNAL_UNSPEC		0
 #define DISP_PORT_SIGNAL_DP_1P3		1
 #define DISP_PORT_SIGNAL_GEN2		2
 
 #define DP_HPD_LONG_PULSE_TIME		5 /* 5 mSec */
-#define DP_HPD_SHORT_PULSE_TIME		1   /* 1 mSec */
+#define DP_HPD_SHORT_PULSE_TIME		2   /* 2 mSec */
 #define DP_HPD_AUTO_TRIGGER_TIME	200 /* 200 mSec */
 
 static void pe_prepare_vdm_header(struct vdm_header *v_hdr, enum vdm_cmd cmd,
-			enum vdm_cmd_type cmd_type, int svid, int obj_pos)
+					int svid, int obj_pos)
 {
 	v_hdr->cmd = cmd;
-	v_hdr->cmd_type = cmd_type;
+	v_hdr->cmd_type = INITIATOR;
 	v_hdr->obj_pos = obj_pos;
 	v_hdr->str_vdm_version = 0x0; /* 0 = version 1.0 */
 	v_hdr->vdm_type = STRUCTURED_VDM; /* Structured VDM */
@@ -71,141 +63,33 @@ static void pe_prepare_vdm_header(struct vdm_header *v_hdr, enum vdm_cmd cmd,
 
 }
 
-static void pe_prepare_initiator_vdm_header(struct vdm_header *v_hdr,
-				enum vdm_cmd cmd, int svid, int obj_pos)
-{
-	pe_prepare_vdm_header(v_hdr, cmd, INITIATOR, svid, obj_pos);
-}
-
-int pe_send_discover_identity(struct policy_engine *pe, int type)
+int pe_send_discover_identity(struct policy_engine *pe)
 {
 	struct vdm_header v_hdr = { 0 };
 	int ret;
 
-	pe_prepare_initiator_vdm_header(&v_hdr, DISCOVER_IDENTITY,
+	pe_prepare_vdm_header(&v_hdr, DISCOVER_IDENTITY,
 						PD_SID, 0);
-	ret = pe_send_packet_type(pe, &v_hdr, 4, PD_DATA_MSG_VENDOR_DEF,
-				PE_EVT_SEND_VDM, type);
+	ret = pe_send_packet(pe, &v_hdr, 4,
+				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM);
 
 	return ret;
 }
 
-static void pe_send_discover_identity_responder_nack(struct policy_engine *pe)
+int pe_send_discover_identity_rnak(struct policy_engine *pe)
 {
 	struct vdm_header v_hdr = { 0 };
+	int ret;
 
 	v_hdr.cmd = DISCOVER_IDENTITY;
 	v_hdr.cmd_type = REP_NACK;
 	v_hdr.vdm_type = STRUCTURED_VDM; /* Structured VDM */
 	v_hdr.svid = PD_SID;
 
-	if (pe_send_packet(pe, &v_hdr, 4,
-				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM))
-		log_err("Failed to send DI");
-	else
-		log_dbg("Sent DI NACK");
-}
+	ret = pe_send_packet(pe, &v_hdr, 4,
+				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM);
 
-static void pe_send_discover_identity_responder_ack(struct policy_engine *pe)
-{
-	u32 vdm[MAX_NUM_DATA_OBJ];
-	struct vdm_header *v_hdr = (struct vdm_header *)&vdm[0];
-	struct id_header_vdo *id_hdr = (struct id_header_vdo *)&vdm[1];
-	struct cert_stat_vdo *cert_vdo = (struct cert_stat_vdo *)&vdm[2];
-	struct product_vdo *p_vdo = (struct product_vdo *)&vdm[3];
-	struct pd_platfrom_config *pconf = pe->plat_conf;
-
-	memset(&vdm, 0, sizeof(vdm));
-	pe_prepare_vdm_header(v_hdr, DISCOVER_IDENTITY, REP_ACK, PD_SID, 0);
-
-	id_hdr->vendor_id = pconf->vendor_id;
-	id_hdr->modal_op_supported = pconf->ufp_modal_op_supp;
-	id_hdr->product_type = pconf->product_type;
-	id_hdr->is_usb_dev_capable = pconf->usb_dev_supp;
-	id_hdr->is_usb_host_capable = pconf->usb_host_supp;
-
-	cert_vdo->tid = pconf->test_id;
-
-	p_vdo->bcd_dev = pconf->usb_bcd_device_id;
-	p_vdo->product_id = pconf->usb_product_id;
-	if (pe_send_packet(pe, &vdm, 16,
-				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM))
-		log_err("Failed to send DI");
-	else
-		log_dbg("Sent DI ACK");
-}
-
-static void pe_send_discover_svid_responder_ack(struct policy_engine *pe)
-{
-	u32 vdm[MAX_NUM_DATA_OBJ];
-	struct vdm_header *v_hdr = (struct vdm_header *)&vdm[0];
-	struct dp_vdo *svid_vdo = (struct dp_vdo *)&vdm[1];
-
-	memset(&vdm, 0, sizeof(vdm));
-	pe_prepare_vdm_header(v_hdr, DISCOVER_SVID, REP_ACK, PD_SID, 0);
-	svid_vdo->svid0 = PD_SID;
-
-	if (pe_send_packet(pe, &vdm, 8,
-				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM))
-		log_err("Failed to send SVID ack");
-	else
-		log_dbg("Sent SVID ACK");
-}
-
-static void pe_send_discover_svid_responder_nack(struct policy_engine *pe)
-{
-	struct vdm_header v_hdr = { 0 };
-
-	pe_prepare_vdm_header(&v_hdr, DISCOVER_SVID, REP_NACK, PD_SID, 0);
-	log_dbg("Sending SVID NACK");
-	if (pe_send_packet(pe, &v_hdr, 4,
-				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM))
-		log_err("Failed to send SVID nack");
-	else
-		log_dbg("Sent SVID NACK");
-}
-
-static void pe_send_discover_mode_responder_nack(struct policy_engine *pe)
-{
-	struct vdm_header v_hdr = { 0 };
-
-	pe_prepare_vdm_header(&v_hdr, DISCOVER_MODE,
-				REP_NACK, UNSUPPORTED_SVID, 0);
-	if (pe_send_packet(pe, &v_hdr, 4,
-				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM))
-		log_err("Failed to send discover mode nack");
-	else
-		log_dbg("Sent DiscoverMode NACK");
-}
-
-static void
-pe_send_enter_mode_responder_nack(struct policy_engine *pe,
-						int svid, int index)
-{
-	struct vdm_header v_hdr = { 0 };
-
-	pe_prepare_vdm_header(&v_hdr, ENTER_MODE, REP_NACK,
-						svid, index);
-	if (pe_send_packet(pe, &v_hdr, 4,
-				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM))
-		log_err("Failed to send enter mode nack");
-	else
-		log_dbg("Sent EnterMode NACK");
-}
-
-static void
-pe_send_exit_mode_responder_nack(struct policy_engine *pe,
-						int svid, int index)
-{
-	struct vdm_header v_hdr = { 0 };
-
-	pe_prepare_vdm_header(&v_hdr, EXIT_MODE, REP_NACK,
-						svid, index);
-	if (pe_send_packet(pe, &v_hdr, 4,
-				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM))
-		log_err("Failed to send exit mode nack");
-	else
-		log_dbg("Sent ExitMode NACK");
+	return ret;
 }
 
 int pe_send_discover_svid(struct policy_engine *pe)
@@ -213,7 +97,7 @@ int pe_send_discover_svid(struct policy_engine *pe)
 	struct vdm_header v_hdr = { 0 };
 	int ret;
 
-	pe_prepare_initiator_vdm_header(&v_hdr, DISCOVER_SVID,
+	pe_prepare_vdm_header(&v_hdr, DISCOVER_SVID,
 						PD_SID, 0);
 	ret = pe_send_packet(pe, &v_hdr, 4,
 				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM);
@@ -226,7 +110,7 @@ int pe_send_discover_mode(struct policy_engine *pe)
 	struct vdm_header v_hdr = { 0 };
 	int ret;
 
-	pe_prepare_initiator_vdm_header(&v_hdr, DISCOVER_MODE,
+	pe_prepare_vdm_header(&v_hdr, DISCOVER_MODE,
 						VESA_SVID, 0);
 	ret = pe_send_packet(pe, &v_hdr, 4,
 				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM);
@@ -239,7 +123,7 @@ int pe_send_enter_mode(struct policy_engine *pe, int index)
 	struct vdm_header v_hdr = { 0 };
 	int ret;
 
-	pe_prepare_initiator_vdm_header(&v_hdr, ENTER_MODE,
+	pe_prepare_vdm_header(&v_hdr, ENTER_MODE,
 						VESA_SVID, index);
 	ret = pe_send_packet(pe, &v_hdr, 4,
 				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM);
@@ -266,7 +150,7 @@ int pe_send_display_status(struct policy_engine *pe)
 
 	memset(&pkt, 0, sizeof(pkt));
 	v_hdr = (struct vdm_header *) &pkt.data_obj[0];
-	pe_prepare_initiator_vdm_header(v_hdr, DP_STATUS_UPDATE,
+	pe_prepare_vdm_header(v_hdr, DP_STATUS_UPDATE,
 						VESA_SVID, index);
 
 	stat = (struct dis_port_status *) &pkt.data_obj[1];
@@ -318,7 +202,7 @@ int pe_send_display_configure(struct policy_engine *pe)
 	}
 
 	pkt.data_obj[0] = 0;
-	pe_prepare_initiator_vdm_header((struct vdm_header *)&pkt.data_obj[0],
+	pe_prepare_vdm_header((struct vdm_header *)&pkt.data_obj[0],
 					DP_CONFIGURE, VESA_SVID, index);
 	memcpy(&pkt.data_obj[1], &dconf, sizeof(dconf));
 
@@ -335,57 +219,29 @@ static int pe_handle_discover_identity(struct policy_engine *pe,
 	struct vdm_header *vdm_hdr = (struct vdm_header *)&pkt->data_obj[0];
 	unsigned short cmd_type = vdm_hdr->cmd_type;
 
-	if (vdm_hdr->svid != PD_SID) {
-		log_warn("Invalid SID, don't respond");
-		return -EINVAL;
-	}
-
 	if (cmd_type == INITIATOR) {
-		if (pe->plat_conf) {
-			pe_send_discover_identity_responder_ack(pe);
-		} else {
-			log_warn("No platform configuration, Sending NAK");
-			pe_send_discover_identity_responder_nack(pe);
-		}
+		log_warn("UFP alternate mode not supported, Sending NAK\n");
+		pe_send_discover_identity_rnak(pe);
 		return 0;
 	}
-	if (pe->cur_state != PE_DFP_UFP_VDM_IDENTITY_REQUEST &&
-		pe->cur_state != PE_SRC_VDM_IDENTITY_REQUEST) {
+	if (pe->cur_state != PE_DFP_UFP_VDM_IDENTITY_REQUEST) {
 		log_warn("DI RACK received in wrong state,state=%d\n",
 				pe->cur_state);
 		return -EINVAL;
 	}
-	/*
-	 * consider response initiated from cable when in
-	 * SRC_VDM_IDENTITY_REQUEST state
-	 */
 	switch (cmd_type) {
 	case REP_ACK:
 		/* TODO: Process the port partner's DI */
 		log_dbg(" DI Acked ");
-		if (pe->cur_state == PE_SRC_VDM_IDENTITY_REQUEST) {
-			memcpy(&pe->cable_pkt, &pkt->data_obj[0],
-				pkt->header.num_data_obj * 4);
-			pe_change_state(pe, PE_SRC_WAIT_FOR_VBUS);
-			return 0;
-		}
 		pe->alt_state = PE_ALT_STATE_DI_ACKED;
 		break;
 	case REP_NACK:
 		log_dbg(" DI Nacked!!! ");
 		log_err("Responder doesn't support alternate mode\n");
-		if (pe->cur_state == PE_SRC_VDM_IDENTITY_REQUEST) {
-			pe_change_state(pe, PE_SRC_WAIT_FOR_VBUS);
-			return 0;
-		}
 		pe->alt_state = PE_ALT_STATE_ALT_MODE_FAIL;
 		break;
 	case REP_BUSY:
 		log_info("Responder BUSY!!. Retry Discover Identity\n");
-		if (pe->cur_state == PE_SRC_VDM_IDENTITY_REQUEST) {
-			pe_change_state(pe, PE_SRC_WAIT_FOR_VBUS);
-			return 0;
-		}
 		pe->alt_state = PE_ALT_STATE_NONE;
 		break;
 	}
@@ -405,16 +261,8 @@ static int pe_handle_discover_svid(struct policy_engine *pe,
 	svid_pkt = (struct dis_svid_response_pkt *)pkt;
 	cmd_type = svid_pkt->vdm_hdr.cmd_type;
 
-	if (svid_pkt->vdm_hdr.svid != PD_SID) {
-		log_warn("Invalid SID, don't respond");
-		return -EINVAL;
-	}
-
 	if (cmd_type == INITIATOR) {
-		if (pe->plat_conf->ufp_modal_op_supp)
-			pe_send_discover_svid_responder_ack(pe);
-		else
-			pe_send_discover_svid_responder_nack(pe);
+		log_warn("UFP alternate mode not supported, Sending NAK\n");
 		return 0;
 	}
 	if (pe->cur_state != PE_DFP_VDM_SVIDS_REQUEST) {
@@ -468,11 +316,6 @@ static void pe_process_dp_modes(struct policy_engine *pe,
 	int index_4x = 0;
 
 	for (i = 0; i < dmode_pkt->msg_hdr.num_data_obj - 1; i++) {
-		if (dmode_pkt->mode[i].port_cap != ALT_MODE_CAP_UFP_D &&
-		dmode_pkt->mode[i].port_cap != ALT_MODE_CAP_BOTH_UFP_DFP_D) {
-			log_dbg("Mode[%d] doesn't support UFP_D", i);
-			continue;
-		}
 		if (!index_4x) {
 			if (dmode_pkt->mode[i].ufp_pin
 					& DISP_PORT_PIN_ASSIGN_E
@@ -525,8 +368,7 @@ static int pe_handle_discover_mode(struct policy_engine *pe,
 	cmd_type = dmode_pkt->vdm_hdr.cmd_type;
 
 	if (cmd_type == INITIATOR) {
-		pe_send_discover_mode_responder_nack(pe);
-		/* TODO: Support discover mode in UFP */
+		log_warn("UFP alternate mode not supported\n");
 		return 0;
 	}
 	if (pe->cur_state != PE_DFP_VDM_MODES_REQUEST) {
@@ -571,9 +413,7 @@ static int pe_handle_enter_mode(struct policy_engine *pe,
 	unsigned short cmd_type = vdm_hdr->cmd_type;
 
 	if (cmd_type == INITIATOR) {
-		pe_send_enter_mode_responder_nack(pe,
-				vdm_hdr->svid, vdm_hdr->obj_pos);
-		/* TODO: Support enter mode in UFP */
+		log_warn("UFP alternate mode not supported, Sending NAK\n");
 		return 0;
 	}
 	if (pe->cur_state != PE_DFP_VDM_MODES_ENTRY_REQUEST) {
@@ -603,19 +443,6 @@ static int pe_handle_enter_mode(struct policy_engine *pe,
 	}
 
 	pe_change_state_to_snk_or_src_ready(pe);
-	return 0;
-}
-
-static int pe_handle_exit_mode(struct policy_engine *pe,
-						struct pd_packet *pkt)
-{
-	struct vdm_header *vdm_hdr = (struct vdm_header *)&pkt->data_obj[0];
-	unsigned short cmd_type = vdm_hdr->cmd_type;
-
-	if (cmd_type == INITIATOR)
-		pe_send_exit_mode_responder_nack(pe,
-				vdm_hdr->svid, vdm_hdr->obj_pos);
-	/* TODO: handle exit mode responce */
 	return 0;
 }
 
@@ -782,11 +609,6 @@ int pe_handle_vendor_msg(struct policy_engine *pe,
 	struct vdm_header *vdm_hdr = (struct vdm_header *)&pkt->data_obj[0];
 	int ret = 0;
 
-	if (vdm_hdr->vdm_type != STRUCTURED_VDM) {
-		log_warn("Unstructure vdm not supported");
-		return -EINVAL;
-	}
-
 	switch (vdm_hdr->cmd) {
 	case DISCOVER_IDENTITY:
 		ret = pe_handle_discover_identity(pe, pkt);
@@ -802,7 +624,7 @@ int pe_handle_vendor_msg(struct policy_engine *pe,
 		break;
 	case EXIT_MODE:
 		log_info("EXIT DP mode request received\n");
-		ret = pe_handle_exit_mode(pe, pkt);
+		/* TODO: Handle the exit mode */
 		break;
 	case DP_STATUS_UPDATE:
 		log_dbg("Received display status from port partner=%x\n",

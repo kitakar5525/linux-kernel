@@ -233,6 +233,7 @@ static int __init pm_debugfs_init(void)
 
 late_initcall(pm_debugfs_init);
 #endif /* CONFIG_DEBUG_FS */
+
 #endif /* CONFIG_PM_SLEEP */
 
 #ifdef CONFIG_PM_SLEEP_DEBUG

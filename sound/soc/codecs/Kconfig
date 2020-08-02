@@ -62,7 +62,6 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_PCM3008
 	select SND_SOC_RT5631 if I2C
 	select SND_SOC_RT5640 if I2C
-	select SND_SOC_RT5645 if I2C
 	select SND_SOC_RT5651 if I2C
 	select SND_SOC_SGTL5000 if I2C
 	select SND_SOC_SI476X if MFD_SI476X_CORE
@@ -329,25 +328,13 @@ config SND_SOC_PCM3008
 config SND_SOC_RT286
 	tristate
 
-config SND_SOC_RT5631
+config SND_SOC_RT5677
 	tristate
+	default y
 
-config SND_SOC_RT56XX
+config SND_SOC_TS3A227E
 	tristate
-	default y if SND_SOC_RT5640
-	default y if SND_SOC_RT5651
-
-config SND_SOC_RT5640
-	tristate
-
-config SND_SOC_RT5645
-	tristate
-
-config SND_SOC_RT5651
-	tristate
-
-config SND_SOC_RT5672
-	tristate
+	default y if SND_SOC_RT5677
 
 config SND_SOC_TLV320AIC31XX
 	tristate

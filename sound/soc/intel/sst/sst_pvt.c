@@ -43,6 +43,8 @@
 #define SST_EXCE_DUMP_SIZE	((SST_EXCE_DUMP_LEN)*(SST_EXCE_DUMP_WORD))
 #define SST_EXCE_DUMP_OFFSET	0xA00
 
+static bool recover_done = true;
+
 /*
  * sst_wait_interruptible - wait on event
  *
@@ -513,8 +515,10 @@ int sst_wait_timeout(struct intel_sst_drv *sst_drv_ctx, struct sst_block *block)
 			}
 
 		} else {
-			if (sst_drv_ctx->ops->do_recovery)
+			if ((sst_drv_ctx->ops->do_recovery) && recover_done) {
 				sst_drv_ctx->ops->do_recovery(sst_drv_ctx);
+				recover_done = false;
+			}
 		}
 
 		retval = -EBUSY;
@@ -617,8 +621,10 @@ void sst_trigger_recovery(struct work_struct *work)
 							struct sst_monitor_lpe, mwork);
 	struct intel_sst_drv *sst  = container_of(monitor_lpe,
 						struct intel_sst_drv, monitor_lpe);
-	if (sst->ops->do_recovery)
+	if ((sst->ops->do_recovery) && recover_done) {
 		sst->ops->do_recovery(sst);
+		recover_done = false;
+	}
 	return;
 }
 

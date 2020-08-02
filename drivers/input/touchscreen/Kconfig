@@ -308,18 +308,6 @@ config TOUCHSCREEN_S3C2410
 	  To compile this driver as a module, choose M here: the
 	  module will be called s3c2410_ts.
 
-config TOUCHSCREEN_GT9XX
-	tristate "Goodix GT911 touchscreen"
-	select SERIO
-	help
-	  Say Y here if you have the Goodix GT911 touchscreen connected to
-	  your system.
-
-	  If unsure, say N.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called gt9xx.
-
 config TOUCHSCREEN_GUNZE
 	tristate "Gunze AHL-51S touchscreen"
 	select SERIO
@@ -368,6 +356,17 @@ config TOUCHSCREEN_WACOM_I2C
 	  To compile this driver as a module, choose M here: the module
 	  will be called wacom_i2c.
 
+config TOUCHSCREEN_MORGAN_I2C
+        tristate "Morgan Tablet support (I2C)"
+        depends on I2C
+        help
+          Say Y here if you want to use the I2C version of the Morgan 
+          Pen Tablet.
+
+          If unsure, say N.
+
+          To compile this driver as a module, choose M here: the module
+          will be called mg_i2c_ts.
 config TOUCHSCREEN_LPC32XX
 	tristate "LPC32XX touchscreen controller"
 	depends on ARCH_LPC32XX
@@ -899,18 +898,6 @@ config TOUCHSCREEN_PCAP
 	  To compile this driver as a module, choose M here: the
 	  module will be called pcap_ts.
 
-config TOUCHSCREEN_SILEAD
-	tristate "Silead I2C touchscreen"
-	depends on I2C
-	help
-	  Say Y here if you have the Silead touchscreen connected to
-	  your system.
-
-	  If unsure, say N.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called silead.
-
 config TOUCHSCREEN_ST1232
 	tristate "Sitronix ST1232 touchscreen controllers"
 	depends on I2C
@@ -984,4 +971,9 @@ config TOUCHSCREEN_FOCALTECH_FT5X06
 	  module will be called ft5x06_ts.
 
 source "drivers/input/touchscreen/synaptics_dsx/Kconfig"
+source "drivers/input/touchscreen/hideep/Kconfig"
+source "drivers/input/touchscreen/ist940e/Kconfig"
+source "drivers/input/touchscreen/ist771x/Kconfig"
+source "drivers/input/touchscreen/gt9xx/Kconfig"
+source "drivers/input/touchscreen/smtpad/Kconfig"
 endif

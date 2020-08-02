@@ -492,9 +492,13 @@ struct mem_size_stats {
 	unsigned long swap;
 	unsigned long nonlinear;
 	u64 pss;
-	u64 swap_pss;
+	u64 pswap;
 };
 
+#ifdef CONFIG_SWAP
+extern struct swap_info_struct *swap_info_get(swp_entry_t swpent);
+extern inline unsigned char swap_count(unsigned char ent);
+#endif
 
 static void smaps_pte_entry(pte_t ptent, unsigned long addr,
 		unsigned long ptent_size, struct mm_walk *walk)
@@ -504,6 +508,9 @@ static void smaps_pte_entry(pte_t ptent, unsigned long addr,
 	pgoff_t pgoff = linear_page_index(vma, addr);
 	struct page *page = NULL;
 	int mapcount;
+#ifdef CONFIG_SWAP
+	struct swap_info_struct *p;
+#endif
 
 	if (pte_present(ptent)) {
 		page = vm_normal_page(vma, addr, ptent);
@@ -511,19 +518,19 @@ static void smaps_pte_entry(pte_t ptent, unsigned long addr,
 		swp_entry_t swpent = pte_to_swp_entry(ptent);
 
 		if (!non_swap_entry(swpent)) {
-			int mapcount;
-
-			mss->swap += PAGE_SIZE;
-			mapcount = swp_swapcount(swpent);
-			if (mapcount >= 2) {
-				u64 pss_delta = (u64)PAGE_SIZE << PSS_SHIFT;
-
-				do_div(pss_delta, mapcount);
-				mss->swap_pss += pss_delta;
-			} else {
-				mss->swap_pss += (u64)PAGE_SIZE << PSS_SHIFT;
+			mss->swap += ptent_size;
+#ifdef CONFIG_SWAP
+			p = swap_info_get(swpent);
+			if (p) {
+				int swapcount = swap_count(p->swap_map[swp_offset(swpent)]);
+				if (swapcount == 0)
+					swapcount = 1;
+				mss->pswap += (ptent_size << PSS_SHIFT) / swapcount;
+				spin_unlock(&p->lock);
 			}
-		} else if (is_migration_entry(swpent))
+#endif
+		}
+		else if (is_migration_entry(swpent))
 			page = migration_entry_to_page(swpent);
 	} else if (pte_file(ptent)) {
 		if (pte_to_pgoff(ptent) != pgoff)
@@ -675,7 +682,7 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
 		   "Anonymous:      %8lu kB\n"
 		   "AnonHugePages:  %8lu kB\n"
 		   "Swap:           %8lu kB\n"
-		   "SwapPss:        %8lu kB\n"
+		   "PSwap:          %8lu kB\n"
 		   "KernelPageSize: %8lu kB\n"
 		   "MMUPageSize:    %8lu kB\n"
 		   "Locked:         %8lu kB\n",
@@ -690,7 +697,7 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
 		   mss.anonymous >> 10,
 		   mss.anonymous_thp >> 10,
 		   mss.swap >> 10,
-		   (unsigned long)(mss.swap_pss >> (10 + PSS_SHIFT)),
+		   (unsigned long)(mss.pswap >> (10 + PSS_SHIFT)),
 		   vma_kernel_pagesize(vma) >> 10,
 		   vma_mmu_pagesize(vma) >> 10,
 		   (vma->vm_flags & VM_LOCKED) ?

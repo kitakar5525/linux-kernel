@@ -59,3 +59,4 @@ obj-$(CONFIG_HABANA_AI)		+= habanalabs/
 obj-$(CONFIG_XILINX_SDFEC)	+= xilinx_sdfec.o
 obj-$(CONFIG_UID_SYS_STATS)	+= uid_sys_stats.o
 obj-$(CONFIG_SURFACE_SAM)	+= surface_sam/
+obj-$(CONFIG_MISC_IPTS)		+= ipts/

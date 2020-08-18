@@ -1,6 +1,6 @@
-### linux kernel repository
+## linux kernel repository
 
-#### linux-surface branches
+### linux-surface branches
 
 v${kernelver}-surface-devel:
 - tracking upstream [linux-surface/kernel](linux-surface/kernel) development branches, if exist in my repo.
@@ -8,7 +8,7 @@ v${kernelver}-surface-devel:
 v${kernelver}-surface:
 - tracking upstream [linux-surface/kernel](linux-surface/kernel) patch generation branches, if exist in my repo. Patches will be created by cherry-picking commits from `-devel` branches and squashing.
 
-#### chromiumos kernel branches
+### chromiumos kernel branches
 
 chromeos-${kernelver}:
 - tracking upstream [chromiumos kernel](https://chromium.googlesource.com/chromiumos/third_party/kernel/) branches, if exist in my repo.
@@ -22,7 +22,7 @@ chromeos-${kernelver}-surface:
 chromeos-${kernelver}-surface-devel+k5:
 - chromeos-${kernelver}-surface-devel plus some patches needed to run well on chromiumos/brunch.
 
-#### chromiumos kernel tags
+### chromiumos kernel tags
 
 chromeos-${base_chromiumos_kernel_describe_ver}+surface+k5:
 - Where `base_chromiumos_kernel_describe_ver=$(git describe chromeos-${kernelver})`. `chromeos-${kernelver}-surface` patches and `chromeos-${kernelver}-surface-devel+k5` (without `-surface-devel` commits) are applied on top of upstream chromiumos kernel tree.
@@ -41,7 +41,7 @@ $ git merge chromeos-5.4-surface
 $ git cherry-pick chromeos-5.4-surface-devel..chromeos-5.4-surface-devel+k5
 ```
 
-#### Cherry Trail related branches (mainly for atomisp stuff leaning)
+### Cherry Trail related branches (mainly for atomisp stuff leaning)
 
 Android-IA kernel trees for Cherry Trail, applied kernel quilts from Intel:
 - [ProductionKernelQuilts/cht-m1stable-2016_ww31](https://github.com/kitakar5525/linux-kernel/tree/ProductionKernelQuilts/cht-m1stable-2016_ww31)

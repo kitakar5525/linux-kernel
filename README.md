@@ -2,29 +2,29 @@
 
 ### linux-surface branches
 
-v${kernelver}-surface-devel:
+`v${kernelver}-surface-devel`:
 - tracking upstream [linux-surface/kernel](linux-surface/kernel) development branches, if exist in my repo.
 
-v${kernelver}-surface:
+`v${kernelver}-surface`:
 - tracking upstream [linux-surface/kernel](linux-surface/kernel) patch generation branches, if exist in my repo. Patches will be created by cherry-picking commits from `-devel` branches and squashing.
 
 ### chromiumos kernel branches
 
-chromeos-${kernelver}:
+`chromeos-${kernelver}`:
 - tracking upstream [chromiumos kernel](https://chromium.googlesource.com/chromiumos/third_party/kernel/) branches, if exist in my repo.
 
-chromeos-${kernelver}-surface-devel:
+`chromeos-${kernelver}-surface-devel`:
 - Merging v${kernelver}-surface-devel commits on top of chromeos-${kernelver}.
 
-chromeos-${kernelver}-surface:
+`chromeos-${kernelver}-surface`:
 - Patch generation branches for chromiumos kernel. Patches will be created by cherry-picking commits from `-devel` branches and squashing.
 
-chromeos-${kernelver}-surface-devel+k5:
+`chromeos-${kernelver}-surface-devel+k5`:
 - chromeos-${kernelver}-surface-devel plus some patches needed to run well on chromiumos/brunch.
 
 ### chromiumos kernel tags
 
-chromeos-${base_chromiumos_kernel_describe_ver}+surface+k5:
+`chromeos-${base_chromiumos_kernel_describe_ver}+surface+k5`:
 - Where `base_chromiumos_kernel_describe_ver=$(git describe chromeos-${kernelver})`. `chromeos-${kernelver}-surface` patches and `chromeos-${kernelver}-surface-devel+k5` (without `-surface-devel` commits) are applied on top of upstream chromiumos kernel tree.
 
 For example:

@@ -93,12 +93,20 @@ static const struct acpi_device_id tps68470_acpi_ids[] = {
 };
 MODULE_DEVICE_TABLE(acpi, tps68470_acpi_ids);
 
+/* To be used with sysfs new_device */
+static const struct i2c_device_id tps68470_i2c_ids[] = {
+	{"INT3472", 0},
+	{},
+};
+MODULE_DEVICE_TABLE(i2c, tps68470_i2c_ids);
+
 static struct i2c_driver tps68470_driver = {
 	.driver = {
 		   .name = "tps68470",
 		   .acpi_match_table = tps68470_acpi_ids,
 	},
 	.probe_new = tps68470_probe,
+	.id_table = tps68470_i2c_ids,
 	.remove = tps68470_remove,
 };
 module_i2c_driver(tps68470_driver);

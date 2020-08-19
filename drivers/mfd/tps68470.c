@@ -22,6 +22,7 @@
 static const struct mfd_cell tps68470s[] = {
 	{ .name = "tps68470-gpio" },
 	{ .name = "tps68470_pmic_oprg" },
+	{ .name = "tps68470-regulator" },
 };
 
 static const struct regmap_config tps68470_regmap_config = {

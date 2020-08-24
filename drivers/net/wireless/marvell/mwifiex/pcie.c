@@ -34,6 +34,11 @@
 
 static struct mwifiex_if_ops pcie_ops;
 
+static bool enable_device_dump;
+module_param(enable_device_dump, bool, 0644);
+MODULE_PARM_DESC(enable_device_dump,
+		 "enable device_dump (default: disabled)");
+
 static const struct mwifiex_pcie_card_reg mwifiex_reg_8766 = {
 	.cmd_addr_lo = PCIE_SCRATCH_0_REG,
 	.cmd_addr_hi = PCIE_SCRATCH_1_REG,
@@ -2944,6 +2949,12 @@ static void mwifiex_pcie_fw_dump(struct mwifiex_adapter *adapter)
 
 static void mwifiex_pcie_device_dump_work(struct mwifiex_adapter *adapter)
 {
+	if (!enable_device_dump) {
+		mwifiex_dbg(adapter, MSG,
+			    "device_dump is disabled by module parameter\n");
+		return;
+	}
+
 	adapter->devdump_data = vzalloc(MWIFIEX_FW_DUMP_SIZE);
 	if (!adapter->devdump_data) {
 		mwifiex_dbg(adapter, ERROR,

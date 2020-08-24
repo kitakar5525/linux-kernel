@@ -33,6 +33,10 @@
 #define PCIE_VERSION	"1.0"
 #define DRV_NAME        "Marvell mwifiex PCIe"
 
+bool modparam_enable_device_dump;
+module_param(modparam_enable_device_dump, bool, 0644);
+MODULE_PARM_DESC(modparam_enable_device_dump, "enable device_dump (default: disabled)");
+
 #define ACPI_WSID_PATH			"\\_SB.WSID"
 #define WSID_DSM_UUID	"534ea3bf-fcc2-4e7a-908f-a13978f0c7ef"
 #define WSID_REV		0x0
@@ -3034,6 +3038,12 @@ static void mwifiex_pcie_fw_dump(struct mwifiex_adapter *adapter)
 
 static void mwifiex_pcie_device_dump_work(struct mwifiex_adapter *adapter)
 {
+	if (!modparam_enable_device_dump) {
+		mwifiex_dbg(adapter, MSG,
+			    "device_dump disabled via module parameter\n");
+		return;
+	}
+
 	adapter->devdump_data = vzalloc(MWIFIEX_FW_DUMP_SIZE);
 	if (!adapter->devdump_data) {
 		mwifiex_dbg(adapter, ERROR,

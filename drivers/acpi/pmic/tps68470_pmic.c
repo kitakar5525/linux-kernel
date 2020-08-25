@@ -439,11 +439,29 @@ out_mutex_destroy:
 	return -ENODEV;
 }
 
+static int tps68470_pmic_opregion_remove(struct platform_device *pdev)
+{
+	acpi_handle handle = ACPI_HANDLE(pdev->dev.parent);
+
+	acpi_remove_address_space_handler(handle, TI_PMIC_CLOCK_OPREGION_ID,
+					  tps68470_pmic_clk_handler);
+
+	acpi_remove_address_space_handler(handle, TI_PMIC_VR_VAL_OPREGION_ID,
+					  tps68470_pmic_vrval_handler);
+
+	acpi_remove_address_space_handler(handle, TI_PMIC_POWER_OPREGION_ID,
+					  tps68470_pmic_pwr_handler);
+
+	return 0;
+}
+
 static struct platform_driver tps68470_pmic_opregion_driver = {
 	.probe = tps68470_pmic_opregion_probe,
+	.remove = tps68470_pmic_opregion_remove,
 	.driver = {
 		.name = "tps68470_pmic_opregion",
 	},
 };
 
-builtin_platform_driver(tps68470_pmic_opregion_driver)
+module_platform_driver(tps68470_pmic_opregion_driver)
+MODULE_LICENSE("GPL v2");

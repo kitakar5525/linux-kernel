@@ -167,12 +167,19 @@ static int tps68470_gpio_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct platform_device_id tps68470_gpio_id_table[] = {
+	{ "tps68470-gpio", 0 },
+	{ },
+};
+MODULE_DEVICE_TABLE(platform, tps68470_gpio_id_table);
+
 static struct platform_driver tps68470_gpio_driver = {
 	.driver = {
 		   .name = "tps68470-gpio",
 	},
 	.probe = tps68470_gpio_probe,
 	.remove = tps68470_gpio_remove,
+	.id_table = tps68470_gpio_id_table,
 };
 
 module_platform_driver(tps68470_gpio_driver)

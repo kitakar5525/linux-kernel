@@ -1533,7 +1533,7 @@ config MFD_TPS65217
 	  will be called tps65217.
 
 config MFD_TPS68470
-	bool "TI TPS68470 Power Management / LED chips"
+	tristate "TI TPS68470 Power Management / LED chips"
 	depends on ACPI && PCI && I2C=y
 	depends on I2C_DESIGNWARE_PLATFORM=y
 	select MFD_CORE
@@ -1544,11 +1544,6 @@ config MFD_TPS68470
 
 	  These include voltage regulators, LEDs and other features
 	  that are often used in portable devices.
-
-	  This option is a bool as it provides an ACPI operation
-	  region, which must be available before any of the devices
-	  using this are probed. This option also configures the
-	  designware-i2c driver to be built-in, for the same reason.
 
 config MFD_TI_LP873X
 	tristate "TI LP873X Power Management IC"

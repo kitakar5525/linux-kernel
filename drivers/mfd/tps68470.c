@@ -82,10 +82,16 @@ static int tps68470_probe(struct i2c_client *client)
 	return 0;
 }
 
+static int tps68470_remove(struct i2c_client *client)
+{
+	return 0;
+}
+
 static const struct acpi_device_id tps68470_acpi_ids[] = {
 	{"INT3472"},
 	{},
 };
+MODULE_DEVICE_TABLE(acpi, tps68470_acpi_ids);
 
 static struct i2c_driver tps68470_driver = {
 	.driver = {
@@ -93,5 +99,8 @@ static struct i2c_driver tps68470_driver = {
 		   .acpi_match_table = tps68470_acpi_ids,
 	},
 	.probe_new = tps68470_probe,
+	.remove = tps68470_remove,
 };
-builtin_i2c_driver(tps68470_driver);
+module_i2c_driver(tps68470_driver);
+
+MODULE_LICENSE("GPL v2");

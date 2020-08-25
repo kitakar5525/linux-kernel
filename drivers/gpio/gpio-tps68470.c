@@ -158,11 +158,22 @@ static int tps68470_gpio_probe(struct platform_device *pdev)
 	return ret;
 }
 
+static int tps68470_gpio_remove(struct platform_device *pdev)
+{
+	struct tps68470_gpio_data *gpio = platform_get_drvdata(pdev);
+
+	gpiochip_remove(&gpio->gc);
+
+	return 0;
+}
+
 static struct platform_driver tps68470_gpio_driver = {
 	.driver = {
 		   .name = "tps68470-gpio",
 	},
 	.probe = tps68470_gpio_probe,
+	.remove = tps68470_gpio_remove,
 };
 
-builtin_platform_driver(tps68470_gpio_driver)
+module_platform_driver(tps68470_gpio_driver)
+MODULE_LICENSE("GPL v2");

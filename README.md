@@ -50,3 +50,8 @@ Android-IA kernel trees for Cherry Trail, applied kernel quilts from Intel:
 Android-IA vendor kernel trees:
 - [lenovo_yb1_x90f_l_osc_201803](https://github.com/kitakar5525/linux-kernel/tree/lenovo_yb1_x90f_l_osc_201803)
 - [xiaomi-mipad2/latte-l-oss](https://github.com/kitakar5525/linux-kernel/tree/xiaomi-mipad2/latte-l-oss)
+
+### Bay Trail related branches (mainly for atomisp stuff leaning)
+
+Android-IA vendor kernel trees:
+- [lenovo_yoga_tab_2_osc_android_to_lollipop_201505](https://github.com/kitakar5525/linux-kernel/tree/lenovo_yoga_tab_2_osc_android_to_lollipop_201505)

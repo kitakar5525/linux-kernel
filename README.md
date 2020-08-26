@@ -57,4 +57,4 @@ Android-IA vendor kernel trees:
 
 Android-IA vendor kernel trees:
 - [lenovo_yoga_tab_2_osc_android_to_lollipop_201505](https://github.com/kitakar5525/linux-kernel/tree/lenovo_yoga_tab_2_osc_android_to_lollipop_201505)
-  [Based on v3.10.20]
+  [Based on v3.10.20. Contains ov8865 sensor driver for atomisp.]

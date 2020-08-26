@@ -47,7 +47,7 @@ CONFIG_AUTOFS_FS=y
 # CONFIG_CAIF is not set
 # CONFIG_CAN is not set
 # CONFIG_CB710_CORE is not set
-CONFIG_CC_VERSION_TEXT="s390x-linux-gnu-gcc (Ubuntu 9.3.0-13ubuntu1) 9.3.0"
+CONFIG_CC_VERSION_TEXT="s390x-linux-gnu-gcc (Ubuntu 10.2.0-3ubuntu1) 10.2.0"
 # CONFIG_CDROM_PKTCDVD is not set
 CONFIG_CMA=y
 # CONFIG_CMDLINE_PARTITION is not set
@@ -172,7 +172,6 @@ CONFIG_GPIO_GENERIC_PLATFORM=m
 # CONFIG_HFSPLUS_FS is not set
 # CONFIG_HFS_FS is not set
 # CONFIG_HID is not set
-# CONFIG_HIO is not set
 # CONFIG_HMC6352 is not set
 CONFIG_HOTPLUG_PCI=y
 # CONFIG_HOTPLUG_PCI_SHPC is not set

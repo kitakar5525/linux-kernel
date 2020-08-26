@@ -2838,7 +2838,7 @@ static void serial8250_console_putchar(struct uart_port *port, int ch)
 {
 	struct uart_8250_port *up =
 		container_of(port, struct uart_8250_port, port);
-
+		return ;  //liulc1 add
 	wait_for_xmitr(up, UART_LSR_THRE);
 	serial_port_out(port, UART_TX, ch);
 }
@@ -2865,6 +2865,12 @@ serial8250_console_write(struct console *co, const char *s, unsigned int count)
 		/* serial8250_handle_irq() already took the lock */
 		locked = 0;
 	} else if (oops_in_progress) {
+#ifdef CONFIG_EMMC_IPANIC
+		static int oops_char_len;
+		if (oops_char_len > 2048)
+			return;
+		oops_char_len++;
+#endif
 		locked = spin_trylock(&port->lock);
 	} else
 		spin_lock(&port->lock);

@@ -8,6 +8,41 @@ menuconfig POWER_SUPPLY
 
 if POWER_SUPPLY
 
+config POWER_SUPPLY_CHARGER
+        bool "Power Supply Charger"
+        select EXTCON
+        select POWER_SUPPLY_BATTID
+        help
+          Say Y here to enable the power supply charger framework. Charger
+          framework supports charging in a generic way. This allows the charger
+          drivers to keep the charging logic outside and the charger driver
+          just need to abstract the charger hardware
+
+config POWER_SUPPLY_CHARGING_ALGO_PSE
+        bool "PSE compliant charging algorithm"
+        help
+          Say Y here to select PSE compliant charging algorithm. As per PSE
+          standard the battery characteristics and thereby the charging rates
+          can vary on different temperature zones. This config will enable PSE
+          compliant charging algorithm with maintenance charging support. The
+          algorithm can be selected by the charging framework based on the type
+          of the battery charging profile.
+
+        depends on POWER_SUPPLY_CHARGER
+
+config POWER_SUPPLY_BATTID
+        bool "Power Supply Battery Identification Framework"
+        help
+         Say Y here to enable the power supply battery idnetification
+         framework. The framework would allow different battery identification
+         drivers to interface with power supply subsystem. Also it allows consumer
+         drivers to register for notification from the power_supply subsystem.
+config RAW_CC_THROTTLE
+	bool "Raw Charge Current Throttle"
+	help
+	  Say Y here to enable raw charge current throttling. This feature will
+	  expose n states where n is defined as (max_current_mA/100_mA)
+
 config POWER_SUPPLY_DEBUG
 	bool "Power supply debug"
 	help
@@ -150,6 +185,13 @@ config BATTERY_SBS
 	  Say Y to include support for SBS battery driver for SBS-compliant
 	  gas gauges.
 
+config BATTERY_BQ27x00_X8
+        tristate "BQ27x00 battery driver x8"
+        depends on I2C || I2C=n
+        help
+          Say Y here to enable support for batteries with BQ27x00 (I2C/HDQ) chips.
+
+
 config BATTERY_BQ27x00
 	tristate "BQ27x00 battery driver"
 	depends on I2C || I2C=n
@@ -158,7 +200,7 @@ config BATTERY_BQ27x00
 
 config BATTERY_BQ27X00_I2C
 	bool "BQ27200/BQ27500 support"
-	depends on BATTERY_BQ27x00
+	depends on BATTERY_BQ27x00 || BATTERY_BQ27x00_X8
 	depends on I2C
 	default y
 	help
@@ -166,7 +208,7 @@ config BATTERY_BQ27X00_I2C
 
 config BATTERY_BQ27X00_PLATFORM
 	bool "BQ27000 support"
-	depends on BATTERY_BQ27x00
+	depends on BATTERY_BQ27x00 || BATTERY_BQ27x00_X8
 	default y
 	help
 	  Say Y here to enable support for batteries with BQ27000 (HDQ) chips.
@@ -362,6 +404,33 @@ config BATTERY_GOLDFISH
 	  Say Y to enable support for the battery and AC power in the
 	  Goldfish emulator.
 
+config BYT_EC_BATTERY
+	bool "Baytrail EC battery driver"
+	help
+	  Say Y here to enable support for Baytrail EC battery driver.
+
+config DC_XPWR_BATTERY
+	bool "Dollar Cove(Xpower) PMIC Fuel Gauge driver"
+	help
+	  Say Y here to enable support for Dollar Cove(Xpower) PMIC Fuel Gauge.
+
+config DC_XPWR_CHARGER
+	bool "Dollar Cove(Xpower) PMIC Charger driver"
+	help
+	  Say Y here to enable support for Dollar Cove(Xpower) PMIC Charger.
+
+config INTEL_FUEL_GAUGE
+	bool "Intel Fuel Gauge driver"
+	help
+	  Say Y here to enable support for Intel SW Fuel Gauge driver.
+
+config INTEL_FG_UIFACE
+	bool "Intel Fuel Gauge User Interface"
+	help
+	  Say Y here to enable support for Intel SW Fuel gauge Algo User Interface.
+if PF450CL
+source "drivers/power/battery/Kconfig"
+endif
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY

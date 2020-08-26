@@ -55,7 +55,7 @@ else
         CHECKFLAGS += -D__x86_64__ -m64
 
         KBUILD_AFLAGS += -m64
-        KBUILD_CFLAGS += -m64
+        KBUILD_CFLAGS += -m64 -fno-pic
 
 	# Use -mpreferred-stack-boundary=3 if supported.
 	KBUILD_CFLAGS += $(call cc-option,-mno-sse -mpreferred-stack-boundary=3)
@@ -68,6 +68,8 @@ else
                 $(call cc-option,-march=core2,$(call cc-option,-mtune=generic))
 	cflags-$(CONFIG_MATOM) += $(call cc-option,-march=atom) \
 		$(call cc-option,-mtune=atom,$(call cc-option,-mtune=generic))
+        cflags-$(CONFIG_MSLM) += $(call cc-option,-march=slm) \
+                $(call cc-option,-mtune=slm,$(call cc-option,-mtune=generic))
         cflags-$(CONFIG_GENERIC_CPU) += $(call cc-option,-mtune=generic)
         KBUILD_CFLAGS += $(cflags-y)
 
@@ -85,9 +87,10 @@ endif
 
 ifdef CONFIG_CC_STACKPROTECTOR
 	cc_has_sp := $(srctree)/scripts/gcc-x86_$(BITS)-has-stack-protector.sh
-        ifeq ($(shell $(CONFIG_SHELL) $(cc_has_sp) $(CC) $(KBUILD_CPPFLAGS) $(biarch)),y)
+	cc_sp_guard := $(call cc-option,-mstack-protector-guard=tls)
+        ifeq ($(shell $(CONFIG_SHELL) $(cc_has_sp) $(CC) $(KBUILD_CPPFLAGS) $(KBUILD_CFLAGS) $(cc_sp_guard) $(biarch)),y)
                 stackp-y := -fstack-protector
-                KBUILD_CFLAGS += $(stackp-y)
+                KBUILD_CFLAGS += $(stackp-y) $(cc_sp_guard)
         else
                 $(warning stack protector enabled but no compiler support)
         endif

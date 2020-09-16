@@ -355,6 +355,7 @@ static const struct usb_device_id blacklist_table[] = {
 	/* Marvell Bluetooth devices */
 	{ USB_DEVICE(0x1286, 0x2044), .driver_info = BTUSB_MARVELL },
 	{ USB_DEVICE(0x1286, 0x2046), .driver_info = BTUSB_MARVELL },
+	{ USB_DEVICE(0x1286, 0x204c), .driver_info = BTUSB_MARVELL },
 	{ USB_DEVICE(0x1286, 0x204e), .driver_info = BTUSB_MARVELL },
 
 	/* Intel Bluetooth devices */
@@ -3334,6 +3335,8 @@ static int marvell_config_oob_wake(struct hci_dev *hdev)
 	int ret;
 	u8 cmd[5];
 
+	pr_info("DEBUG: %s called\n", __func__);
+
 	/* Move on if no wakeup pin specified */
 	if (of_property_read_u16(dev->of_node, "marvell,wakeup-pin", &pin) ||
 	    of_property_read_u16(dev->of_node, "marvell,wakeup-gap-ms", &gap))
@@ -3373,6 +3376,8 @@ static int btusb_set_bdaddr_marvell(struct hci_dev *hdev,
 	struct sk_buff *skb;
 	u8 buf[8];
 	long ret;
+
+	pr_info("DEBUG: %s called\n", __func__);
 
 	buf[0] = 0xfe;
 	buf[1] = sizeof(bdaddr_t);

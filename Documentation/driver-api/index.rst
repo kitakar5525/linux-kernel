@@ -54,6 +54,7 @@ available subsections can be seen below.
    slimbus
    soundwire/index
    fpga/index
+   surface_aggregator/index
 
 .. only::  subproject and html
 

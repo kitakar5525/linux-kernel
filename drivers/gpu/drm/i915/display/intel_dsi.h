@@ -68,9 +68,6 @@ struct intel_dsi {
 	/* number of DSI lanes */
 	unsigned int lane_count;
 
-	/* i2c bus associated with the slave device */
-	int i2c_bus_num;
-
 	/*
 	 * video mode pixel format
 	 *

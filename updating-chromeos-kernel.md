@@ -26,6 +26,7 @@ git checkout chromeos-4.19-surface
 git reset --hard chromeos-kernel/chromeos-4.19
 # Can't just merge v4.19-surface because it may have newer linux commits.
 # So, apply patches from linux-surface/linux-surface repo.
+git am -3 ../linux-surface/pkg/fedora/kernel-surface/0001-Add-secureboot-pre-signing-to-the-kernel.patch
 git am -3 ../linux-surface/patches/4.19/*.patch
 # Note_1: Resolve conflicts here. You may want to enable rerere:
 # git config --global rerere.enabled true
@@ -81,6 +82,7 @@ git checkout chromeos-5.4-surface
 git reset --hard chromeos-kernel/chromeos-5.4
 # Can't just merge v5.4-surface because it may have newer linux commits.
 # So, apply patches from linux-surface/linux-surface repo.
+git am -3 ../linux-surface/pkg/fedora/kernel-surface/0001-Add-secureboot-pre-signing-to-the-kernel.patch
 git am -3 ../linux-surface/patches/5.4/*.patch
 # Note: Resolve conflicts here. You may want to enable rerere:
 # git config --global rerere.enabled true

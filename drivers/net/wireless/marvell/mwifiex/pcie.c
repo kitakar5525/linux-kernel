@@ -389,6 +389,11 @@ static int mwifiex_pcie_probe(struct pci_dev *pdev,
 	struct pci_dev *parent_pdev = pci_upstream_bridge(pdev);
 	int ret;
 
+	pr_alert("DEBUG: bridge_d3 state at top of probe()\n");
+	pr_alert("pdev->bridge_d3: %s\n", pdev->bridge_d3 ? "true" : "false");
+	pr_alert("parent_pdev->bridge_d3: %s\n",
+		 parent_pdev->bridge_d3 ? "true" : "false");
+
 	pr_debug("info: vendor=0x%4.04X device=0x%4.04X rev=%d\n",
 		 pdev->vendor, pdev->device, pdev->revision);
 
@@ -433,6 +438,11 @@ static int mwifiex_pcie_probe(struct pci_dev *pdev,
 	 */
 	if (card->quirks & QUIRK_NO_BRIDGE_D3)
 		parent_pdev->bridge_d3 = false;
+
+	pr_alert("DEBUG: bridge_d3 state at end of probe()\n");
+	pr_alert("pdev->bridge_d3: %s\n", pdev->bridge_d3 ? "true" : "false");
+	pr_alert("parent_pdev->bridge_d3: %s\n",
+		 parent_pdev->bridge_d3 ? "true" : "false");
 
 	return 0;
 }

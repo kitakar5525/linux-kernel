@@ -2262,6 +2262,9 @@ static inline bool pmc_core_is_pc10_failed(struct pmc_dev *pmcdev)
 	if (pc10_counter == pmcdev->pc10_counter)
 		return true;
 
+	/* Update counter to the current value */
+	pmcdev->pc10_counter = pc10_counter;
+
 	return false;
 }
 
@@ -2274,6 +2277,9 @@ static inline bool pmc_core_is_s0ix_failed(struct pmc_dev *pmcdev)
 
 	if (s0ix_counter == pmcdev->s0ix_counter)
 		return true;
+
+	/* Update counter to the current value */
+	pmcdev->s0ix_counter = s0ix_counter;
 
 	return false;
 }

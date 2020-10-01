@@ -2284,14 +2284,39 @@ static inline bool pmc_core_is_s0ix_failed(struct pmc_dev *pmcdev)
 	return false;
 }
 
+/* Required code is extracted from pmc_core_pkgc_show() */
+static inline long long unsigned pc10_count_to_usec(u64 pc10_counter)
+{
+	pc10_counter *= 1000;
+	do_div(pc10_counter, tsc_khz);
+
+	return pc10_counter;
+}
+
 static __maybe_unused int pmc_core_resume(struct device *dev)
 {
 	struct pmc_dev *pmcdev = dev_get_drvdata(dev);
 	const struct pmc_bit_map **maps = pmcdev->map->lpm_sts;
 	int offset = pmcdev->map->lpm_status_offset;
+	u64 pc10_cnt_after;
+	u64 pc10_diff_usec;
+	u64 s0ix_cnt_after;
 
 	if (!pmcdev->check_counters)
 		return 0;
+
+	/* Print PC10 diff between suspend/resume */
+	if (!rdmsrl_safe(MSR_PKG_C10_RESIDENCY, &pc10_cnt_after)) {
+		pc10_diff_usec = pc10_count_to_usec(pc10_cnt_after -
+						   pmcdev->pc10_counter);
+		dev_info(dev, "PC10 counter diff (can overflow): %llu usec (%llu sec)\n",
+			 pc10_diff_usec, DIV_ROUND_UP(pc10_diff_usec, 1000000));
+	}
+
+	/* Print S0ix diff between suspend/resume */
+	if (!pmc_core_dev_state_get(pmcdev, &s0ix_cnt_after))
+		dev_info(dev, "S0ix counter diff (can overflow): %llu\n",
+			 s0ix_cnt_after - pmcdev->s0ix_counter);
 
 	if (!pmc_core_is_s0ix_failed(pmcdev))
 		return 0;

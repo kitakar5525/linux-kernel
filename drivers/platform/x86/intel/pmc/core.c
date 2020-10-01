@@ -2222,7 +2222,7 @@ static int pmc_core_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static bool warn_on_s0ix_failures;
+static bool warn_on_s0ix_failures = true;
 module_param(warn_on_s0ix_failures, bool, 0644);
 MODULE_PARM_DESC(warn_on_s0ix_failures, "Check and warn for S0ix failures");
 

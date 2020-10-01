@@ -39,6 +39,13 @@ module_param(enable_device_dump, bool, 0644);
 MODULE_PARM_DESC(enable_device_dump,
 		 "enable device_dump (default: disabled)");
 
+#define SUSPEND_REMOVE_HW 1
+#define SUSPEND_HS 2
+static int suspend_method;
+module_param(suspend_method, int, 0644);
+MODULE_PARM_DESC(suspend_method,
+		 "Specify suspend method. (1: remove_hw, 2: Host Sleep, otherwise: shutdown_sw (default))");
+
 static const struct mwifiex_pcie_card_reg mwifiex_reg_8766 = {
 	.cmd_addr_lo = PCIE_SCRATCH_0_REG,
 	.cmd_addr_hi = PCIE_SCRATCH_1_REG,
@@ -299,6 +306,175 @@ static bool mwifiex_pcie_ok_to_access_hw(struct mwifiex_adapter *adapter)
  * registered functions must have drivers with suspend and resume
  * methods. Failing that the kernel simply removes the whole card.
  *
+ * If already not suspended, this function allocates and sends a host
+ * sleep activate request to the firmware and turns off the traffic.
+ */
+static int mwifiex_pcie_suspend_hs(struct device *dev)
+{
+	struct mwifiex_adapter *adapter;
+	struct pcie_service_card *card = dev_get_drvdata(dev);
+
+
+	/* Might still be loading firmware */
+	wait_for_completion(&card->fw_done);
+
+	adapter = card->adapter;
+	if (!adapter) {
+		dev_err(dev, "adapter is not valid\n");
+		return 0;
+	}
+
+	mwifiex_enable_wake(adapter);
+
+	/* Enable the Host Sleep */
+	if (!mwifiex_enable_hs(adapter)) {
+		mwifiex_dbg(adapter, ERROR,
+			    "cmd: failed to suspend\n");
+		clear_bit(MWIFIEX_IS_HS_ENABLING, &adapter->work_flags);
+		mwifiex_disable_wake(adapter);
+		return -EFAULT;
+	}
+
+	flush_workqueue(adapter->workqueue);
+
+	/* Indicate device suspended */
+	set_bit(MWIFIEX_IS_SUSPENDED, &adapter->work_flags);
+	clear_bit(MWIFIEX_IS_HS_ENABLING, &adapter->work_flags);
+
+	return 0;
+}
+
+/*
+ * Kernel needs to suspend all functions separately. Therefore all
+ * registered functions must have drivers with suspend and resume
+ * methods. Failing that the kernel simply removes the whole card.
+ *
+ * If already not resumed, this function turns on the traffic and
+ * sends a host sleep cancel request to the firmware.
+ */
+static int mwifiex_pcie_resume_hs(struct device *dev)
+{
+	struct mwifiex_adapter *adapter;
+	struct pcie_service_card *card = dev_get_drvdata(dev);
+
+
+	if (!card->adapter) {
+		dev_err(dev, "adapter structure is not valid\n");
+		return 0;
+	}
+
+	adapter = card->adapter;
+
+	if (!test_bit(MWIFIEX_IS_SUSPENDED, &adapter->work_flags)) {
+		mwifiex_dbg(adapter, WARN,
+			    "Device already resumed\n");
+		return 0;
+	}
+
+	clear_bit(MWIFIEX_IS_SUSPENDED, &adapter->work_flags);
+
+	mwifiex_cancel_hs(mwifiex_get_priv(adapter, MWIFIEX_BSS_ROLE_STA),
+			  MWIFIEX_ASYNC_CMD);
+	mwifiex_disable_wake(adapter);
+
+	return 0;
+}
+
+/*
+ * Kernel needs to suspend all functions separately. Therefore all
+ * registered functions must have drivers with suspend and resume
+ * methods. Failing that the kernel simply removes the whole card.
+ *
+ * If already not suspended, this function allocates and sends a host
+ * sleep activate request to the firmware and turns off the traffic.
+ *
+ * XXX: ignoring all the above comment and just removes the card to
+ * fix S0ix and "AP scanning (sometimes) not working after suspend".
+ * Required code is extracted from mwifiex_pcie_remove().
+ */
+static int mwifiex_pcie_suspend_remove_hw(struct device *dev)
+{
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct pcie_service_card *card = pci_get_drvdata(pdev);
+	struct mwifiex_adapter *adapter;
+	struct mwifiex_private *priv;
+	const struct mwifiex_pcie_card_reg *reg;
+	u32 fw_status;
+	int ret;
+
+	/* Might still be loading firmware */
+	wait_for_completion(&card->fw_done);
+
+	adapter = card->adapter;
+	if (!adapter || !adapter->priv_num)
+		return 0;
+
+	reg = card->pcie.reg;
+	if (reg)
+		ret = mwifiex_read_reg(adapter, reg->fw_status, &fw_status);
+	else
+		fw_status = -1;
+
+	if (fw_status == FIRMWARE_READY_PCIE && !adapter->mfg_mode) {
+		mwifiex_deauthenticate_all(adapter);
+
+		priv = mwifiex_get_priv(adapter, MWIFIEX_BSS_ROLE_ANY);
+
+		mwifiex_disable_auto_ds(priv);
+
+		mwifiex_init_shutdown_fw(priv, MWIFIEX_FUNC_SHUTDOWN);
+	}
+
+	mwifiex_remove_card(adapter);
+
+	return 0;
+}
+
+/*
+ * Kernel needs to suspend all functions separately. Therefore all
+ * registered functions must have drivers with suspend and resume
+ * methods. Failing that the kernel simply removes the whole card.
+ *
+ * If already not resumed, this function turns on the traffic and
+ * sends a host sleep cancel request to the firmware.
+ *
+ * XXX: ignoring all the above comment and probes the card that was
+ * removed on suspend. Required code is extracted from mwifiex_pcie_probe().
+ */
+static int mwifiex_pcie_resume_probe_hw(struct device *dev)
+{
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct pcie_service_card *card = pci_get_drvdata(pdev);
+	int ret;
+
+	pr_debug("info: vendor=0x%4.04X device=0x%4.04X rev=%d\n",
+		 pdev->vendor, pdev->device, pdev->revision);
+
+	init_completion(&card->fw_done);
+
+	card->dev = pdev;
+
+	/* device tree node parsing and platform specific configuration */
+	if (pdev->dev.of_node) {
+		ret = mwifiex_pcie_probe_of(&pdev->dev);
+		if (ret)
+			return ret;
+	}
+
+	if (mwifiex_add_card(card, &card->fw_done, &pcie_ops,
+			MWIFIEX_PCIE, &pdev->dev)) {
+		pr_err("%s failed\n", __func__);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * Kernel needs to suspend all functions separately. Therefore all
+ * registered functions must have drivers with suspend and resume
+ * methods. Failing that the kernel simply removes the whole card.
+ *
  * This function shuts down the adapter.
  */
 static int mwifiex_pcie_suspend(struct device *dev)
@@ -306,6 +482,14 @@ static int mwifiex_pcie_suspend(struct device *dev)
 	struct mwifiex_adapter *adapter;
 	struct pcie_service_card *card = dev_get_drvdata(dev);
 
+	if (suspend_method == SUSPEND_REMOVE_HW) {
+		pr_info("DEBUG: %s: using remove_hw method\n", __func__);
+		return mwifiex_pcie_suspend_remove_hw(dev);
+	} else if (suspend_method == SUSPEND_HS) {
+		pr_info("DEBUG: %s: using Host Sleep method\n", __func__);
+		return mwifiex_pcie_suspend_hs(dev);
+	}
+	pr_info("DEBUG: %s: using current default shutdown_sw method\n", __func__);
 
 	adapter = card->adapter;
 	if (!adapter) {
@@ -339,6 +523,14 @@ static int mwifiex_pcie_resume(struct device *dev)
 	struct pcie_service_card *card = dev_get_drvdata(dev);
 	int ret;
 
+	if (suspend_method == SUSPEND_REMOVE_HW) {
+		pr_info("DEBUG: %s: using remove_hw method\n", __func__);
+		return mwifiex_pcie_resume_probe_hw(dev);
+	} else if (suspend_method == SUSPEND_HS) {
+		pr_info("DEBUG: %s: using Host Sleep method\n", __func__);
+		return mwifiex_pcie_resume_hs(dev);
+	}
+	pr_info("DEBUG: %s: using current default shutdown_sw method\n", __func__);
 
 	if (!card->adapter) {
 		dev_err(dev, "adapter structure is not valid\n");

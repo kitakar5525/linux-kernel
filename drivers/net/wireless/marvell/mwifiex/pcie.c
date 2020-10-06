@@ -27,6 +27,7 @@
 #include "wmm.h"
 #include "11n.h"
 #include "pcie.h"
+#include "pcie_aspm.h"
 #include "pcie_quirks.h"
 
 #define PCIE_VERSION	"1.0"

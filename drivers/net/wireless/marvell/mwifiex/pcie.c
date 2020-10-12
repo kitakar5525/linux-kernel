@@ -621,6 +621,9 @@ static int mwifiex_pcie_probe(struct pci_dev *pdev,
 	if (card->quirks & QUIRK_NO_BRIDGE_D3)
 		parent_pdev->bridge_d3 = false;
 
+	pr_alert("DEBUG: setting pdev->no_d1d2 to true\n");
+	pdev->no_d1d2 = true;
+
 	pr_alert("DEBUG: bridge_d3 state at end of probe()\n");
 	pr_alert("pdev->bridge_d3: %s\n", pdev->bridge_d3 ? "true" : "false");
 	pr_alert("parent_pdev->bridge_d3: %s\n",

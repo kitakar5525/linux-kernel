@@ -621,6 +621,9 @@ static int mwifiex_pcie_probe(struct pci_dev *pdev,
 	if (card->quirks & QUIRK_NO_BRIDGE_D3)
 		parent_pdev->bridge_d3 = false;
 
+	if (card->quirks & QUIRK_ASPM_L0S_L1_ON_PROBE)
+		mwifiex_enable_aspm_l0s_and_l1(pdev);
+
 	pr_alert("DEBUG: setting pdev->no_d1d2 to true\n");
 	pdev->no_d1d2 = true;
 

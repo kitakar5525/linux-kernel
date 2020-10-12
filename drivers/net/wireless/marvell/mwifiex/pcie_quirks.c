@@ -106,7 +106,8 @@ static const struct dmi_system_id mwifiex_quirk_table[] = {
 			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "Microsoft Corporation"),
 			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "Surface 3"),
 		},
-		.driver_data = (void *)QUIRK_FW_RST_WSID_S3,
+		.driver_data = (void *)(QUIRK_FW_RST_WSID_S3 |
+					QUIRK_ASPM_L0S_L1_ON_PROBE),
 	},
 	{
 		.ident = "Surface 3",
@@ -115,7 +116,8 @@ static const struct dmi_system_id mwifiex_quirk_table[] = {
 			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "OEMB"),
 			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "OEMB"),
 		},
-		.driver_data = (void *)QUIRK_FW_RST_WSID_S3,
+		.driver_data = (void *)(QUIRK_FW_RST_WSID_S3 |
+					QUIRK_ASPM_L0S_L1_ON_PROBE),
 	},
 	{
 		.ident = "Surface Pro 3",
@@ -147,6 +149,9 @@ void mwifiex_initialize_quirks(struct pcie_service_card *card)
 	if (card->quirks & QUIRK_NO_BRIDGE_D3)
 		dev_info(&pdev->dev,
 			 "quirk no_brigde_d3 enabled\n");
+	if (card->quirks & QUIRK_ASPM_L0S_L1_ON_PROBE)
+		dev_info(&pdev->dev,
+			 "quirk aspm_l0s_l1_on_probe enabled\n");
 }
 
 static void mwifiex_pcie_set_power_d3cold(struct pci_dev *pdev)

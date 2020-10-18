@@ -10,36 +10,18 @@
 
 ### chromiumos kernel branches
 
-`chromeos-${kernelver}`:
-- tracking upstream [chromiumos kernel](https://chromium.googlesource.com/chromiumos/third_party/kernel/) branches, if exist in my repo.
+Release branches:
+- [release/chromeos\-4.19+surface+k5](https://github.com/kitakar5525/linux-kernel/tree/release/chromeos-4.19%2Bsurface%2Bk5)
+- [release/chromeos\-5.4+surface+k5](https://github.com/kitakar5525/linux-kernel/tree/release/chromeos-5.4%2Bsurface%2Bk5)
 
-`chromeos-${kernelver}-surface-devel`:
-- Merging v${kernelver}-surface-devel commits on top of chromeos-${kernelver}.
+v5.4 devel branches:
+- [chromeos\-5.4\-surface\-devel+k5](https://github.com/kitakar5525/linux-kernel/tree/chromeos-5.4-surface-devel%2Bk5)
+- [chromeos\-5.4\-surface\-devel\-uapi\_ipts](https://github.com/kitakar5525/linux-kernel/tree/chromeos-5.4-surface-devel-uapi_ipts)
+- [chromeos\-5.4\-surface\-devel](https://github.com/kitakar5525/linux-kernel/tree/chromeos-5.4-surface-devel)
 
-`chromeos-${kernelver}-surface`:
-- Patch generation branches for chromiumos kernel. Patches will be created by cherry-picking commits from `-devel` branches and squashing.
-
-`chromeos-${kernelver}-surface-devel+k5`:
-- chromeos-${kernelver}-surface-devel plus some patches needed to run well on chromiumos/brunch.
-
-### chromiumos kernel tags
-
-`chromeos-${base_chromiumos_kernel_describe_ver}+surface+k5`:
-- Where `base_chromiumos_kernel_describe_ver=$(git describe chromeos-${kernelver})`. `chromeos-${kernelver}-surface` patches and `chromeos-${kernelver}-surface-devel+k5` (without `-surface-devel` commits) are applied on top of upstream chromiumos kernel tree.
-
-For example:
-```bash
-$ git describe chromeos-5.4
-v5.4.58-7455-g0a7a035a76b8
-
-$ git checkout chromeos-5.4 -b chromeos-v5.4.58-7455-g0a7a035a76b8+surface+k5
-$ git merge chromeos-5.4-surface
-
-# because I want to apply k5 patches on top of `-surface` patches,
-# but `chromeos-5.4-surface-devel+k5` branch also contains `-surface-devel`
-# patches. So, cherry-pick patches between them.
-$ git cherry-pick chromeos-5.4-surface-devel..chromeos-5.4-surface-devel+k5
-```
+v4.19 devel branches:
+- [chromeos\-4.19\-surface\-devel+k5](https://github.com/kitakar5525/linux-kernel/tree/chromeos-4.19-surface-devel%2Bk5)
+- [chromeos\-4.19\-surface\-devel](https://github.com/kitakar5525/linux-kernel/tree/chromeos-4.19-surface-devel)
 
 ### Cherry Trail related branches (mainly for atomisp stuff leaning)
 

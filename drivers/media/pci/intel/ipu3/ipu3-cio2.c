@@ -1738,6 +1738,7 @@ static int cio2_pci_probe(struct pci_dev *pci_dev,
 	void __iomem *const *iomap;
 	int r;
 
+	pr_err("cio2 probe\n");
 	cio2 = devm_kzalloc(&pci_dev->dev, sizeof(*cio2), GFP_KERNEL);
 	if (!cio2)
 		return -ENOMEM;
@@ -1812,7 +1813,8 @@ static int cio2_pci_probe(struct pci_dev *pci_dev,
 
 	/* Register notifier for subdevices we care */
 	r = cio2_notifier_init(cio2);
-	if (r)
+	/* Proceed without sensors connected to allow powering off the device. */
+	if (r && r != -ENODEV)
 		goto fail_cio2_queue_exit;
 
 	r = devm_request_irq(&pci_dev->dev, pci_dev->irq, cio2_irq,
@@ -1825,6 +1827,7 @@ static int cio2_pci_probe(struct pci_dev *pci_dev,
 	pm_runtime_put_noidle(&pci_dev->dev);
 	pm_runtime_allow(&pci_dev->dev);
 
+	pr_err("cio2 probe passed\n");
 	return 0;
 
 fail:
@@ -1980,6 +1983,7 @@ static int __maybe_unused cio2_suspend(struct device *dev)
 	struct cio2_queue *q = cio2->cur_queue;
 
 	dev_dbg(dev, "cio2 suspend\n");
+	pr_err("cio2 suspend\n");
 	if (!cio2->streaming)
 		return 0;
 
@@ -2008,6 +2012,7 @@ static int __maybe_unused cio2_resume(struct device *dev)
 	struct cio2_queue *q = cio2->cur_queue;
 
 	dev_dbg(dev, "cio2 resume\n");
+	pr_err("cio2 resume\n");
 	if (!cio2->streaming)
 		return 0;
 	/* Start stream */

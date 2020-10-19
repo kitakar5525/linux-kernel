@@ -1460,6 +1460,7 @@ static const struct v4l2_async_notifier_operations cio2_async_ops = {
 
 static int cio2_parse_firmware(struct cio2_device *cio2)
 {
+	unsigned long allow_disabled;
 	unsigned int i;
 	int ret;
 
@@ -1468,11 +1469,15 @@ static int cio2_parse_firmware(struct cio2_device *cio2)
 			.bus_type = V4L2_MBUS_CSI2_DPHY
 		};
 		struct sensor_async_subdev *s_asd = NULL;
+		struct fwnode_handle *fwnode;
 		struct fwnode_handle *ep;
 
+		fwnode = dev_fwnode(&cio2->pci_dev->dev);
+		allow_disabled = is_software_node(fwnode) ? FWNODE_GRAPH_DEVICE_DISABLED : 0;
+
 		ep = fwnode_graph_get_endpoint_by_id(
-			dev_fwnode(&cio2->pci_dev->dev), i, 0,
-			FWNODE_GRAPH_ENDPOINT_NEXT);
+			fwnode, i, 0,
+			FWNODE_GRAPH_ENDPOINT_NEXT | allow_disabled);
 
 		if (!ep) {
 			dev_info(&cio2->pci_dev->dev,

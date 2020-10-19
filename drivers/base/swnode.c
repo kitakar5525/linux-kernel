@@ -728,6 +728,27 @@ void software_node_unregister_nodes(const struct software_node *nodes)
 EXPORT_SYMBOL_GPL(software_node_unregister_nodes);
 
 /**
+ * software_node_unregister_nodes_reverse - Unregister an array of software
+ * nodes in reverse order.
+ * @nodes: Array of software nodes to be unregistered.
+ *
+ * NOTE: The same warning applies as with software_node_unregister_nodes.
+ * Unless you are _sure_ that the array of nodes is ordered parent to child
+ * it is wiser to remove them individually in the correct order.
+ */
+void software_node_unregister_nodes_reverse(const struct software_node *nodes)
+{
+	unsigned int i = 0;
+
+	while (nodes[i].name)
+		i++;
+
+	while (i--)
+		software_node_unregister(&nodes[i]);
+}
+EXPORT_SYMBOL_GPL(software_node_unregister_nodes_reverse);
+
+/**
  * software_node_register_node_group - Register a group of software nodes
  * @node_group: NULL terminated array of software node pointers to be registered
  *

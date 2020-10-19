@@ -450,7 +450,7 @@ software_node_get_next_child(const struct fwnode_handle *fwnode,
 		c = list_next_entry(c, entry);
 	else
 		c = list_first_entry(&p->children, struct swnode, entry);
-	return &c->fwnode;
+	return software_node_get(&c->fwnode);
 }
 
 static struct fwnode_handle *

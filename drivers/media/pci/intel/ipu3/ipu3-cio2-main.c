@@ -1728,8 +1728,26 @@ static void cio2_queues_exit(struct cio2_device *cio2)
 static int cio2_pci_probe(struct pci_dev *pci_dev,
 			  const struct pci_device_id *id)
 {
+	struct fwnode_handle *endpoint;
 	struct cio2_device *cio2;
 	int r;
+
+	/*
+	 * On some platforms no connections to sensors are defined in firmware,
+	 * if the device has no endpoints then we can try to build those as
+	 * software_nodes parsed from SSDB.
+	 *
+	 * This may EPROBE_DEFER if supported devices are found defined in ACPI
+	 * but not yet ready for use (either not attached to the i2c bus yet,
+	 * or not done probing themselves).
+	 */
+
+	endpoint = fwnode_graph_get_next_endpoint(dev_fwnode(&pci_dev->dev), NULL);
+	if (!endpoint) {
+		r = cio2_bridge_build(pci_dev);
+		if (r)
+			return r;
+	}
 
 	cio2 = devm_kzalloc(&pci_dev->dev, sizeof(*cio2), GFP_KERNEL);
 	if (!cio2)
@@ -1837,6 +1855,9 @@ fail_mutex_destroy:
 static void cio2_pci_remove(struct pci_dev *pci_dev)
 {
 	struct cio2_device *cio2 = pci_get_drvdata(pci_dev);
+
+	if (is_software_node(dev_fwnode(&pci_dev->dev)))
+		cio2_bridge_burn(pci_dev);
 
 	media_device_unregister(&cio2->media_dev);
 	v4l2_async_notifier_unregister(&cio2->notifier);

@@ -379,6 +379,8 @@ struct cio2_device {
 	u32 *dummy_lop;
 	/* DMA handle of dummy_lop */
 	dma_addr_t dummy_lop_bus_addr;
+
+        struct cio2_bridge *bridge;
 };
 
 /**************** Virtual channel ****************/
@@ -436,5 +438,13 @@ static inline struct cio2_queue *vb2q_to_cio2_queue(struct vb2_queue *vq)
 {
 	return container_of(vq, struct cio2_queue, vbq);
 }
+
+#if IS_ENABLED(CONFIG_CIO2_BRIDGE)
+struct cio2_bridge *cio2_bridge_init(struct pci_dev *cio2);
+void cio2_bridge_clean(struct cio2_device *cio2);
+#else
+struct cio2_bridge *cio2_bridge_init(struct pci_dev *cio2) { return NULL; }
+void cio2_bridge_clean(struct cio2_device *cio2) { }
+#endif
 
 #endif

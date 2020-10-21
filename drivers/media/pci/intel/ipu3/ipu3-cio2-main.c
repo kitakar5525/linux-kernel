@@ -1481,8 +1481,8 @@ static int cio2_parse_firmware(struct cio2_device *cio2)
 		struct fwnode_handle *ep;
 
 		ep = fwnode_graph_get_endpoint_by_id(
-			dev_fwnode(&cio2->pci_dev->dev), i, 0,
-			FWNODE_GRAPH_ENDPOINT_NEXT);
+                        dev_fwnode(&cio2->pci_dev->dev), i, 0,
+                        FWNODE_GRAPH_ENDPOINT_NEXT);
 
 		if (!ep) {
 			dev_info(&cio2->pci_dev->dev,
@@ -1733,6 +1733,7 @@ static void cio2_queues_exit(struct cio2_device *cio2)
 static int cio2_pci_probe(struct pci_dev *pci_dev,
 			  const struct pci_device_id *id)
 {
+	struct fwnode_handle *endpoint;
 	struct cio2_device *cio2;
 	int r;
 
@@ -1740,6 +1741,21 @@ static int cio2_pci_probe(struct pci_dev *pci_dev,
 	if (!cio2)
 		return -ENOMEM;
 	cio2->pci_dev = pci_dev;
+
+	/*
+	 * On some platforms no connections to sensors are defined in firmware,
+	 * if the device has no endpoints then we can try to build those as
+	 * software_nodes parsed from SSDB.
+	 */
+
+	endpoint = fwnode_graph_get_next_endpoint(dev_fwnode(&pci_dev->dev), NULL);
+	if (!endpoint) {
+		cio2->bridge = cio2_bridge_init(pci_dev);
+		if (IS_ERR_OR_NULL(cio2->bridge))
+                        return PTR_ERR(cio2->bridge);
+	} else {
+                fwnode_handle_put(endpoint);
+        }
 
 	r = pcim_enable_device(pci_dev);
 	if (r) {
@@ -1841,7 +1857,11 @@ fail_mutex_destroy:
 
 static void cio2_pci_remove(struct pci_dev *pci_dev)
 {
+	struct fwnode_handle *fwnode = dev_fwnode(&pci_dev->dev);
 	struct cio2_device *cio2 = pci_get_drvdata(pci_dev);
+
+	if (is_software_node(fwnode) || is_software_node(fwnode->secondary))
+		cio2_bridge_clean(cio2);
 
 	media_device_unregister(&cio2->media_dev);
 	v4l2_async_notifier_unregister(&cio2->notifier);

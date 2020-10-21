@@ -36,6 +36,18 @@
 		_PROPS,				\
 	})
 
+#define IPU3_SENSOR(_CLIENT)		\
+	{					\
+		.i2c_id = {			\
+			{_CLIENT, 0},		\
+			{ },			\
+		}				\
+	}
+
+struct ipu3_sensor {
+	const struct i2c_device_id i2c_id[2];
+};
+
 struct sensor {
 	char name[ACPI_ID_LEN];
 	struct device *dev;
@@ -45,11 +57,17 @@ struct sensor {
 	struct property_entry ep_properties[4];
 	struct property_entry cio2_properties[3];
 	u32 *data_lanes;
+
+	struct fwnode_handle *fwnode;
+	struct i2c_driver *old_drv;
+	struct i2c_driver new_drv;
 };
 
 struct cio2_bridge {
 	int n_sensors;
 	struct sensor sensors[MAX_CONNECTED_DEVICES];
+
+	struct fwnode_handle *cio2_fwnode;
 };
 
 /* Data representation as it is in ACPI SSDB buffer */

@@ -17,7 +17,10 @@
  * working
  */
 static const char * const supported_devices[] = {
-	"INT33BE",
+	"INT33BE", // ov5693
+	"INT3479", // ov5670
+	"INT347A", // ov8865
+	"INT347E", // ov7251
 	"OVTI2680",
 	"OVTI5648",
 };
@@ -30,7 +33,10 @@ static const char * const supported_devices[] = {
  * TODO: dynamically generate this list from supported_devices ?
  */
 static const struct ipu3_sensor reprobe_ids[] = {
-	IPU3_SENSOR("INT33BE:00"),
+	IPU3_SENSOR("INT33BE:00"), // ov5693
+	IPU3_SENSOR("INT3479:00"), // ov5670
+	IPU3_SENSOR("INT347A:00"), // ov8865
+	IPU3_SENSOR("INT347E:00"), // ov7251
 	IPU3_SENSOR("OVTI2680:00"),
 	IPU3_SENSOR("OVTI5648:00"),
 };

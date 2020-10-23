@@ -17,7 +17,8 @@
  * working
  */
 static const char * const supported_devices[] = {
-	"INT33BE",
+	"INT33BE", // ov5693
+	"INT3479", // ov5670
 	"OVTI2680",
 };
 

@@ -382,6 +382,10 @@ int cio2_bridge_build(struct pci_dev *cio2)
 
 	pci_dev_get(cio2);
 
+	dev_info(&cio2->dev,
+		 "DEBUG: %s() called (partially reverted to RFC v2 on top of RFC v3)\n",
+		 __func__);
+
 	ret = software_node_register(&cio2_hid_node);
 	if (ret < 0) {
 		dev_err(&cio2->dev, "Failed to register the CIO2 HID node\n");

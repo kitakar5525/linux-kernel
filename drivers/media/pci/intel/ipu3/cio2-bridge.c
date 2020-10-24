@@ -322,6 +322,13 @@ err_put_cio2:
 
 void cio2_bridge_burn(struct pci_dev *cio2)
 {
+	/*
+	 * We need to return this to NULL or upon removing the module,
+	 * re-insertion will fail
+	 */
+	if (is_software_node(dev_fwnode(&cio2->dev)))
+		cio2->dev.fwnode = NULL;
+
 	pci_dev_put(cio2);
 
 	cio2_bridge_unregister_sensors();

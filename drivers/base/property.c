@@ -1157,6 +1157,10 @@ fwnode_graph_get_endpoint_by_id(const struct fwnode_handle *fwnode,
 		best_ep_id = fwnode_ep.id;
 	}
 
+	if (!best_ep && !IS_ERR_OR_NULL(fwnode->secondary))
+		best_ep = fwnode_graph_get_endpoint_by_id(fwnode->secondary,
+							  port, endpoint, flags);
+
 	return best_ep;
 }
 EXPORT_SYMBOL_GPL(fwnode_graph_get_endpoint_by_id);

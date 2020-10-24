@@ -1725,12 +1725,31 @@ static void cio2_queues_exit(struct cio2_device *cio2)
 
 /**************** PCI interface ****************/
 
+static bool fwnode_is_primary(struct fwnode_handle *fwnode)
+{
+	return fwnode && !IS_ERR(fwnode->secondary);
+}
+
 static int cio2_pci_probe(struct pci_dev *pci_dev,
 			  const struct pci_device_id *id)
 {
 	struct fwnode_handle *endpoint;
 	struct cio2_device *cio2;
 	int r;
+	struct fwnode_handle *fwnode;
+
+	if (fwnode_is_primary(pci_dev->dev.fwnode))
+		dev_info(&pci_dev->dev, "DEBUG: Yes, fwnode is primary\n");
+	else
+		dev_info(&pci_dev->dev, "DEBUG: No, fwnode is not primary\n");
+
+	fwnode = dev_fwnode(&pci_dev->dev);
+	if(is_acpi_node(fwnode))
+		dev_info(&pci_dev->dev, "DEBUG: Yes, default fwnode is acpi node\n");
+	if (fwnode_has_op(fwnode, device_is_available))
+		dev_info(&pci_dev->dev, "DEBUG: Yes, default fwnode has device_is_available\n");
+	if (fwnode_call_bool_op(fwnode, device_is_available))
+		dev_info(&pci_dev->dev, "DEBUG: Yes, default fwnode is available\n");
 
 	/*
 	 * On some platforms no connections to sensors are defined in firmware,

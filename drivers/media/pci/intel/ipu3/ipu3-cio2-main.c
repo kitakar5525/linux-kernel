@@ -1479,6 +1479,19 @@ static int cio2_parse_firmware(struct cio2_device *cio2)
 			fwnode, i, 0,
 			FWNODE_GRAPH_ENDPOINT_NEXT | allow_disabled);
 
+		/*
+		 * Check if we have a software_node secondary we could get a graph
+		 * from instead.
+		 */
+		if (!ep && !IS_ERR_OR_NULL(fwnode->secondary)) {
+			dev_info(&cio2->pci_dev->dev,
+				"%s(), a software_node secondary we could get a graph from found\n",
+				__func__);
+			ep = fwnode_graph_get_endpoint_by_id(fwnode->secondary, i, 0,
+							     FWNODE_GRAPH_ENDPOINT_NEXT |
+							     FWNODE_GRAPH_DEVICE_DISABLED);
+		}
+
 		if (!ep) {
 			dev_info(&cio2->pci_dev->dev,
 				 "%s(): endpoint not available for CIO2 port %d\n",

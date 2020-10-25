@@ -1115,27 +1115,39 @@ fwnode_graph_get_endpoint_by_id(const struct fwnode_handle *fwnode,
 	bool endpoint_next = flags & FWNODE_GRAPH_ENDPOINT_NEXT;
 	bool enabled_only = !(flags & FWNODE_GRAPH_DEVICE_DISABLED);
 
+	pr_info("Port: %d, Endpoint: %d\n", port, endpoint);
+
 	while ((ep = fwnode_graph_get_next_endpoint(fwnode, ep))) {
 		struct fwnode_endpoint fwnode_ep = { 0 };
 		int ret;
+
+		pr_info("Found an endpoint\n");
 
 		if (enabled_only) {
 			struct fwnode_handle *dev_node;
 			bool available;
 
+			pr_info("Yes enabled only\n");
+
 			dev_node = fwnode_graph_get_remote_port_parent(ep);
 			available = fwnode_device_is_available(dev_node);
 			fwnode_handle_put(dev_node);
-			if (!available)
+			if (!available) {
+				pr_info("fwnode is not available\n");
 				continue;
+			}
 		}
 
 		ret = fwnode_graph_parse_endpoint(ep, &fwnode_ep);
-		if (ret < 0)
+		if (ret < 0) {
+			pr_info("fwnode_graph_parse_endpoint failure");
 			continue;
+		}
 
-		if (fwnode_ep.port != port)
+		if (fwnode_ep.port != port) {
+			pr_info("fwnode_ep.port != port\n");
 			continue;
+		}
 
 		if (fwnode_ep.id == endpoint)
 			return ep;

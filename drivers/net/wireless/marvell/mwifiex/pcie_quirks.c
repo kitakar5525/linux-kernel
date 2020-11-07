@@ -269,3 +269,12 @@ int mwifiex_pcie_reset_wsid_quirk(struct pci_dev *pdev)
 
 	return 0;
 }
+
+void mwifiex_aspm(struct pci_dev *pdev)
+{
+	dev_info(&pdev->dev, "Setting ASPM\n");
+
+	pcie_capability_clear_and_set_word(pdev, PCI_EXP_LNKCTL,
+					   PCI_EXP_LNKCTL_ASPMC,
+					   PCI_EXP_LNKCTL_ASPM_L1);
+}

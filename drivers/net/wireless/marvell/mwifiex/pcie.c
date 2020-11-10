@@ -234,13 +234,15 @@ static void mwifiex_unmap_pci_memory(struct mwifiex_adapter *adapter,
 }
 
 /*
- * This function writes data into PCIE card register.
+ * This function writes data into PCIE card register, ensuring it's
+ * completion before returning.
  */
 static int mwifiex_write_reg(struct mwifiex_adapter *adapter, int reg, u32 data)
 {
 	struct pcie_service_card *card = adapter->card;
 
 	iowrite32(data, card->pci_mmap1 + reg);
+	ioread32(card->pci_mmap1 + reg);
 
 	return 0;
 }

@@ -509,7 +509,7 @@ int mwifiex_complete_cmd(struct mwifiex_adapter *adapter,
 		    adapter->cmd_wait_q.status);
 
 	*cmd_node->condition = true;
-	wake_up_interruptible(&adapter->cmd_wait_q.wait);
+	wake_up(&adapter->cmd_wait_q.wait);
 
 	return 0;
 }

@@ -60,9 +60,10 @@ int mwifiex_wait_queue_complete(struct mwifiex_adapter *adapter,
 	int status;
 
 	/* Wait for completion */
-	status = wait_event_interruptible_timeout(adapter->cmd_wait_q.wait,
-						  *(cmd_queued->condition),
-						  (12 * HZ));
+	status = wait_event_timeout(adapter->cmd_wait_q.wait,
+				    *(cmd_queued->condition),
+				    (12 * HZ));
+
 	if (status <= 0) {
 		if (status == 0)
 			status = -ETIMEDOUT;

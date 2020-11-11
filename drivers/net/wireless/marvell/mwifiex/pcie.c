@@ -1626,6 +1626,8 @@ static int mwifiex_pcie_init_fw_port(struct mwifiex_adapter *adapter)
 	const struct mwifiex_pcie_card_reg *reg = card->pcie.reg;
 	int tx_wrap = card->txbd_wrptr & reg->tx_wrap_mask;
 
+	dev_alert(&pdev->dev, "%s() called\n", __func__);
+
 	/* Reset parent PCI bridge to allow system to enter package C-State C10
 	 * and opportunistic S0ix sleep, for some reason the card needs this.
 	 * We need to do it here because it must happen after firmware

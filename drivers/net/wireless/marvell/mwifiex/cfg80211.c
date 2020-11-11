@@ -950,6 +950,75 @@ mwifiex_init_new_priv_params(struct mwifiex_private *priv,
 	return 0;
 }
 
+static bool
+is_vif_type_change_allowed (struct mwifiex_adapter *adapter,
+			    enum nl80211_iftype old_iftype,
+			    enum nl80211_iftype new_iftype)
+{
+	switch (old_iftype) {
+	case NL80211_IFTYPE_ADHOC:
+		switch (new_iftype) {
+		case NL80211_IFTYPE_STATION:
+			return true;
+		case NL80211_IFTYPE_P2P_CLIENT:
+		case NL80211_IFTYPE_P2P_GO:
+			return adapter->curr_iface_comb.p2p_intf ==
+			       adapter->iface_limit.p2p_intf;
+		case NL80211_IFTYPE_AP:
+			return adapter->curr_iface_comb.uap_intf ==
+			       adapter->iface_limit.uap_intf;
+		default:
+			return false;
+		}
+
+	case NL80211_IFTYPE_STATION:
+		switch (new_iftype) {
+		case NL80211_IFTYPE_ADHOC:
+			return true;
+		case NL80211_IFTYPE_P2P_CLIENT:
+		case NL80211_IFTYPE_P2P_GO:
+			return adapter->curr_iface_comb.p2p_intf ==
+			       adapter->iface_limit.p2p_intf;
+		case NL80211_IFTYPE_AP:
+			return adapter->curr_iface_comb.uap_intf ==
+			       adapter->iface_limit.uap_intf;
+		default:
+			return false;
+		}
+
+	case NL80211_IFTYPE_AP:
+		switch (new_iftype) {
+		case NL80211_IFTYPE_ADHOC:
+			return adapter->curr_iface_comb.sta_intf ==
+			       adapter->iface_limit.sta_intf;
+		case NL80211_IFTYPE_P2P_CLIENT:
+		case NL80211_IFTYPE_P2P_GO:
+			return adapter->curr_iface_comb.p2p_intf ==
+			       adapter->iface_limit.p2p_intf;
+		default:
+			return false;
+		}
+
+	case NL80211_IFTYPE_P2P_CLIENT:
+	case NL80211_IFTYPE_P2P_GO:
+		switch (new_iftype) {
+		case NL80211_IFTYPE_ADHOC:
+		case NL80211_IFTYPE_STATION:
+			return true;
+		case NL80211_IFTYPE_AP:
+			return adapter->curr_iface_comb.uap_intf ==
+			       adapter->iface_limit.uap_intf;
+		default:
+			return false;
+		}
+
+	default:
+		break;
+	}
+
+	return false;
+}
+
 static int
 mwifiex_change_vif_to_p2p(struct net_device *dev,
 			  enum nl80211_iftype curr_iftype,
@@ -965,13 +1034,6 @@ mwifiex_change_vif_to_p2p(struct net_device *dev,
 		return -1;
 
 	adapter = priv->adapter;
-
-	if (adapter->curr_iface_comb.p2p_intf ==
-	    adapter->iface_limit.p2p_intf) {
-		mwifiex_dbg(adapter, ERROR,
-			    "cannot create multiple P2P ifaces\n");
-		return -1;
-	}
 
 	mwifiex_dbg(adapter, INFO,
 		    "%s: changing role to p2p\n", dev->name);
@@ -1038,15 +1100,6 @@ mwifiex_change_vif_to_sta_adhoc(struct net_device *dev,
 
 	adapter = priv->adapter;
 
-	if ((curr_iftype != NL80211_IFTYPE_P2P_CLIENT &&
-	     curr_iftype != NL80211_IFTYPE_P2P_GO) &&
-	    (adapter->curr_iface_comb.sta_intf ==
-	     adapter->iface_limit.sta_intf)) {
-		mwifiex_dbg(adapter, ERROR,
-			    "cannot create multiple station/adhoc ifaces\n");
-		return -1;
-	}
-
 	if (type == NL80211_IFTYPE_STATION)
 		mwifiex_dbg(adapter, INFO,
 			    "%s: changing role to station\n", dev->name);
@@ -1096,13 +1149,6 @@ mwifiex_change_vif_to_ap(struct net_device *dev,
 		return -1;
 
 	adapter = priv->adapter;
-
-	if (adapter->curr_iface_comb.uap_intf ==
-	    adapter->iface_limit.uap_intf) {
-		mwifiex_dbg(adapter, ERROR,
-			    "cannot create multiple AP ifaces\n");
-		return -1;
-	}
 
 	mwifiex_dbg(adapter, INFO,
 		    "%s: changing role to AP\n", dev->name);
@@ -1166,6 +1212,13 @@ mwifiex_cfg80211_change_virtual_intf(struct wiphy *wiphy,
 		return 0;
 	}
 
+	if (!is_vif_type_change_allowed (priv->adapter, curr_iftype, type)) {
+		mwifiex_dbg(priv->adapter, ERROR,
+			    "%s: change from type %d to %d is not allowed\n",
+			    dev->name, curr_iftype, type);
+		return -EOPNOTSUPP;
+	}
+
 	switch (curr_iftype) {
 	case NL80211_IFTYPE_ADHOC:
 		switch (type) {
@@ -1185,13 +1238,10 @@ mwifiex_cfg80211_change_virtual_intf(struct wiphy *wiphy,
 		case NL80211_IFTYPE_AP:
 			return mwifiex_change_vif_to_ap(dev, curr_iftype, type,
 							params);
-		default:
-			mwifiex_dbg(priv->adapter, ERROR,
-				    "%s: changing to %d not supported\n",
-				    dev->name, type);
+		default: /* Should never get here, handled by is_vif_type_change_allowed() */
 			return -EOPNOTSUPP;
 		}
-		break;
+
 	case NL80211_IFTYPE_STATION:
 		switch (type) {
 		case NL80211_IFTYPE_ADHOC:
@@ -1210,13 +1260,10 @@ mwifiex_cfg80211_change_virtual_intf(struct wiphy *wiphy,
 		case NL80211_IFTYPE_AP:
 			return mwifiex_change_vif_to_ap(dev, curr_iftype, type,
 							params);
-		default:
-			mwifiex_dbg(priv->adapter, ERROR,
-				    "%s: changing to %d not supported\n",
-				    dev->name, type);
+		default: /* Should never get here, handled by is_vif_type_change_allowed() */
 			return -EOPNOTSUPP;
 		}
-		break;
+
 	case NL80211_IFTYPE_AP:
 		switch (type) {
 		case NL80211_IFTYPE_ADHOC:
@@ -1227,13 +1274,10 @@ mwifiex_cfg80211_change_virtual_intf(struct wiphy *wiphy,
 		case NL80211_IFTYPE_P2P_GO:
 			return mwifiex_change_vif_to_p2p(dev, curr_iftype,
 							 type, params);
-		default:
-			mwifiex_dbg(priv->adapter, ERROR,
-				    "%s: changing to %d not supported\n",
-				    dev->name, type);
+		default: /* Should never get here, handled by is_vif_type_change_allowed() */
 			return -EOPNOTSUPP;
 		}
-		break;
+
 	case NL80211_IFTYPE_P2P_CLIENT:
 	case NL80211_IFTYPE_P2P_GO:
 		switch (type) {
@@ -1261,18 +1305,12 @@ mwifiex_cfg80211_change_virtual_intf(struct wiphy *wiphy,
 				return -EFAULT;
 			return mwifiex_change_vif_to_ap(dev, curr_iftype, type,
 							params);
-		default:
-			mwifiex_dbg(priv->adapter, ERROR,
-				    "%s: changing to %d not supported\n",
-				    dev->name, type);
+		default: /* Should never get here, handled by is_vif_type_change_allowed() */
 			return -EOPNOTSUPP;
 		}
-		break;
+
 	default:
-		mwifiex_dbg(priv->adapter, ERROR,
-			    "%s: unknown iftype: %d\n",
-			    dev->name, dev->ieee80211_ptr->iftype);
-		return -EOPNOTSUPP;
+		break;
 	}
 
 

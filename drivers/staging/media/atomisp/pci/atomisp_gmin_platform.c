@@ -1229,6 +1229,99 @@ static int gmin_get_config_dsm_var(struct device *dev,
 	return 0;
 }
 
+/**
+ * get_dsm_data_integer - wrapper for acpi_evaluate_dsm()
+ * @adev: ACPI device
+ * @guid: GUID of requested functions, should be 16 bytes
+ * @dsm_rev: revision number of requested function
+ * @dsm_func: requested function number
+ * @out: pointer to integer to point returned integer value from _DSM
+ *
+ * Return negative values for errors.
+ * Return 0 for success.
+ */
+static int get_dsm_data_integer(struct acpi_device *adev, const guid_t *guid,
+				int dsm_rev, int dsm_func, u64 *out)
+{
+	struct acpi_handle *handle = adev->handle;
+	union acpi_object *obj;
+
+	obj = acpi_evaluate_dsm_typed(handle, guid, dsm_rev, dsm_func,
+				      NULL, ACPI_TYPE_INTEGER);
+	if (!obj) {
+		pr_debug("%s(): _DSM execution failed. GUID not exist?\n",
+			 __func__);
+		return -ENODEV;
+	}
+
+	/* TODO: Even if the GUID doesn't exist, it seems that
+	 * acpi_evaluate_dsm_typed() doesn't fail and obj->integer.value
+	 * will be 0 anyway. Until we find a better way to tell if the
+	 * GUID really doesn't exist, ignore this case.
+	 */
+	*out = obj->integer.value;
+
+	ACPI_FREE(obj);
+	return 0;
+}
+
+/*
+ * _DSM that returns mipi port data
+ */
+#define MIPI_PORT_DSM_REV	0x0
+#define MIPI_PORT_DSM_FUNC	0x1
+/* MIPI_PORT _DSM UUID: "ea3b7bd8-e09b-4239-ad6e-ed525f3f26ab" */
+static const guid_t mipi_port_dsm_guid =
+	GUID_INIT(0xea3b7bd8, 0xe09b, 0x4239,
+		0xad, 0x6e, 0xed, 0x52, 0x5f, 0x3f, 0x26, 0xab);
+#define MIPI_PORT_DSM_BUF_SIZE	1
+
+static int gmin_get_config_dsm_var_port(struct device *dev,
+					const char *var,
+					char *out, size_t *out_len)
+{
+	struct acpi_device *adev = ACPI_COMPANION(dev);
+	u64 port_dsm_data;
+	int csi2_port;
+	int csi2_nlanes;
+	int ret;
+
+	ret = get_dsm_data_integer(adev, &mipi_port_dsm_guid,
+				   MIPI_PORT_DSM_REV,
+				   MIPI_PORT_DSM_FUNC,
+				   &port_dsm_data);
+	if (ret) {
+		dev_info_once(dev, "Couldn't get port data. GUID not exist?\n");
+		return -ENODEV;
+	}
+
+	csi2_port = port_dsm_data & 0xf;
+	csi2_nlanes = (port_dsm_data & 0xf0) >> 4;
+
+	*out_len = MIPI_PORT_DSM_BUF_SIZE;
+
+	/* dsdt data currently contains wrong numbers for combo ports */
+	if (csi2_port >= 6)
+		csi2_port -= 2;
+
+	if (csi2_nlanes == 0) {
+		dev_info_once(dev, "mipi port data from _DSM is invalid\n");
+		return -ENODEV;
+	}
+
+	if (!strcmp(var, "CsiPort")) {
+		snprintf(out, sizeof(&out), "%d", csi2_port);
+		dev_info(dev, "CsiPort: %s\n", out);
+	}
+
+	if (!strcmp(var, "CsiLanes")) {
+		snprintf(out, sizeof(&out), "%d", csi2_nlanes);
+		dev_info(dev, "CsiLanes: %s\n", out);
+	}
+
+	return 0;
+}
+
 /* Retrieves a device-specific configuration variable.  The dev
  * argument should be a device with an ACPI companion, as all
  * configuration is based on firmware ID.
@@ -1271,6 +1364,9 @@ static int gmin_get_config_var(struct device *maindev,
 	/* For sensors, try first to use the _DSM table */
 	if (!is_gmin) {
 		ret = gmin_get_config_dsm_var(maindev, var, out, out_len);
+		if (!ret)
+			return 0;
+		ret = gmin_get_config_dsm_var_port(maindev, var, out, out_len);
 		if (!ret)
 			return 0;
 	}

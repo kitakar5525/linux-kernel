@@ -590,6 +590,7 @@ software_node_graph_get_next_endpoint(const struct fwnode_handle *fwnode,
 		}
 
 		endpoint = software_node_get_next_child(port, old);
+		fwnode_handle_put(old);
 		if (endpoint)
 			break;
 

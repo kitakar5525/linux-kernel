@@ -451,9 +451,6 @@ software_node_get_next_child(const struct fwnode_handle *fwnode,
 	else
 		c = list_first_entry(&p->children, struct swnode, entry);
 
-	if (child)
-		software_node_put(child);
-
 	return software_node_get(&c->fwnode);
 }
 
@@ -549,6 +546,7 @@ swnode_graph_find_next_port(const struct fwnode_handle *parent,
 	while ((port = software_node_get_next_child(parent, old))) {
 		if (!strncmp(to_swnode(port)->node->name, "port", 4))
 			return port;
+		fwnode_handle_put(port);
 		old = port;
 	}
 

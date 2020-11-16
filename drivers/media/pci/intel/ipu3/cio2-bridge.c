@@ -16,7 +16,10 @@
  * Do not add a HID for a sensor that is not actually supported.
  */
 static const char * const cio2_supported_devices[] = {
-	"INT33BE",
+	"INT33BE", // ov5693
+	"INT3479", // ov5670
+	"INT347A", // ov8865
+	"INT347E", // ov7251
 	"OVTI2680",
 };
 

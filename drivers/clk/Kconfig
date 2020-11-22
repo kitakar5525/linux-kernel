@@ -359,6 +359,11 @@ config COMMON_CLK_FIXED_MMIO
 	help
 	  Support for Memory Mapped IO Fixed clocks
 
+config CLK_TPS68470
+	tristate "Clock driver for TPS68470"
+	help
+	  Clock Driver TPS68470
+
 source "drivers/clk/actions/Kconfig"
 source "drivers/clk/analogbits/Kconfig"
 source "drivers/clk/baikal-t1/Kconfig"

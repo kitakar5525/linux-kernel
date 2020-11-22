@@ -207,7 +207,6 @@ static const struct clk_ops tps68470_clk_ops = {
 static struct clk_init_data tps68470_clk_initdata = {
 	.name = TPS68470_CLK_NAME,
 	.ops = &tps68470_clk_ops,
-	.flags = CLK_IS_ROOT,
 };
 
 static int tps68470_clk_probe(struct platform_device *pdev)

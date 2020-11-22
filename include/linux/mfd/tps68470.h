@@ -147,6 +147,10 @@
 #define TPS68470_GPIO_MODE_OUT_CMOS	2
 #define TPS68470_GPIO_MODE_OUT_ODRAIN	3
 
+/* required for opregion driver */
+#define TPS68470_CLKCFG1_MODE_A_MASK   GENMASK(1, 0)
+#define TPS68470_CLKCFG1_MODE_B_MASK   GENMASK(3, 2)
+
 enum tps68470_regulator_id {
 	/* converters */
 	TPS68470_CORE,

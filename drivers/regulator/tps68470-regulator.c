@@ -58,11 +58,11 @@
 	}
 #endif
 
-static const struct regulator_linear_range tps68470_ldo_ranges[] = {
+static const struct linear_range tps68470_ldo_ranges[] = {
 	REGULATOR_LINEAR_RANGE(875000, 0, 125, 17800),
 };
 
-static const struct regulator_linear_range tps68470_core_ranges[] = {
+static const struct linear_range tps68470_core_ranges[] = {
 	REGULATOR_LINEAR_RANGE(900000, 0, 42, 25000),
 };
 

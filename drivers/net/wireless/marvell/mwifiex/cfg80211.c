@@ -25,6 +25,11 @@
 static char *reg_alpha2;
 module_param(reg_alpha2, charp, 0);
 
+static bool disable_scan;
+module_param(disable_scan, bool, 0644);
+MODULE_PARM_DESC(disable_scan,
+		 "disable scan (default: false)");
+
 static const struct ieee80211_iface_limit mwifiex_ap_sta_limits[] = {
 	{
 		.max = 3, .types = BIT(NL80211_IFTYPE_STATION) |
@@ -2634,6 +2639,12 @@ mwifiex_cfg80211_scan(struct wiphy *wiphy,
 
 	mwifiex_dbg(priv->adapter, MSG,
 		    "info: received scan request on %s\n", dev->name);
+
+	if (disable_scan) {
+		mwifiex_dbg(priv->adapter, MSG,
+			    "info: scan disabled by module parameter\n");
+		return -EPERM;
+	}
 
 	/* Block scan request if scan operation or scan cleanup when interface
 	 * is disabled is in process

@@ -2605,7 +2605,7 @@ mwifiex_cfg80211_scan(struct wiphy *wiphy,
 	struct mwifiex_user_scan_cfg *user_scan_cfg;
 	u8 mac_addr[ETH_ALEN];
 
-	mwifiex_dbg(priv->adapter, CMD,
+	mwifiex_dbg(priv->adapter, MSG,
 		    "info: received scan request on %s\n", dev->name);
 
 	/* Block scan request if scan operation or scan cleanup when interface

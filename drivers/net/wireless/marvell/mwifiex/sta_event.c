@@ -27,6 +27,11 @@
 
 #define MWIFIEX_IBSS_CONNECT_EVT_FIX_SIZE    12
 
+static bool ignore_event_sleep;
+module_param(ignore_event_sleep, bool, 0644);
+MODULE_PARM_DESC(ignore_event_sleep,
+		 "ignore EVENT_PS_SLEEP (default: false)");
+
 static int mwifiex_check_ibss_peer_capabilities(struct mwifiex_private *priv,
 					        struct mwifiex_sta_node *sta_ptr,
 					        struct sk_buff *event)
@@ -758,6 +763,12 @@ int mwifiex_process_sta_event(struct mwifiex_private *priv)
 		break;
 
 	case EVENT_PS_SLEEP:
+		if (ignore_event_sleep) {
+			mwifiex_dbg(adapter, MSG,
+				    "%s(): EVENT_PS_SLEEP ignored\n", __func__);
+			break;
+		}
+
 		mwifiex_dbg(adapter, EVENT, "info: EVENT: SLEEP\n");
 
 		adapter->ps_state = PS_STATE_PRE_SLEEP;

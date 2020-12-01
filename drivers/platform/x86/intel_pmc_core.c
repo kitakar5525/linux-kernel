@@ -443,22 +443,22 @@ DEFINE_SHOW_ATTRIBUTE(pmc_core_ppfear);
 /* Copied from pmc_core_display_map() with the following changes:
    - remove seq_file argument
    - print message into dmesg instead */
-static void pmc_core_display_map_dmesg(int index, int idx, int ip,
-				 u8 pf_reg, const struct pmc_bit_map **pf_map)
+static void pmc_core_display_map_dmesg(int index, u8 pf_reg,
+				       const struct pmc_bit_map *pf_map)
 {
 	pr_warn("PCH IP: %-2d - %-32s\tState: %s\n",
-		   ip, pf_map[idx][index].name,
-		   pf_map[idx][index].bit_mask & pf_reg ? "Off" : "On");
+		index, pf_map[index].name,
+		pf_map[index].bit_mask & pf_reg ? "Off" : "On");
 }
 
 /* Copied from pmc_core_ppfear_show() with the following changes:
    - remove any arguments */
-static void pmc_core_ppfear_show_dmesg(void)
+static int pmc_core_ppfear_show_dmesg(void)
 {
 	struct pmc_dev *pmcdev = &pmc;
-	const struct pmc_bit_map **maps = pmcdev->map->pfear_sts;
+	const struct pmc_bit_map *map = pmcdev->map->pfear_sts;
 	u8 pf_regs[PPFEAR_MAX_NUM_ENTRIES];
-	int index, iter, idx, ip = 0;
+	int index, iter;
 
 	iter = pmcdev->map->ppfear0_offset;
 
@@ -466,12 +466,11 @@ static void pmc_core_ppfear_show_dmesg(void)
 	     index < PPFEAR_MAX_NUM_ENTRIES; index++, iter++)
 		pf_regs[index] = pmc_core_reg_read_byte(pmcdev, iter);
 
-	for (idx = 0; maps[idx]; idx++) {
-		for (index = 0; maps[idx][index].name &&
-		     index < pmcdev->map->ppfear_buckets * 8; ip++, index++)
-			pmc_core_display_map_dmesg(index, idx, ip,
-					     pf_regs[index / 8], maps);
-	}
+	for (index = 0; map[index].name &&
+	     index < pmcdev->map->ppfear_buckets * 8; index++)
+		pmc_core_display_map_dmesg(index, pf_regs[index / 8], map);
+
+	return 0;
 }
 
 /* This function should return link status, 0 means ready */

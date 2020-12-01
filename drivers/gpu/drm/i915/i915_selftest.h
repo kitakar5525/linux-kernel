@@ -115,7 +115,9 @@ static inline int i915_live_selftests(struct pci_dev *pdev) { return 0; }
 static inline int i915_perf_selftests(struct pci_dev *pdev) { return 0; }
 
 #define I915_SELFTEST_DECLARE(x)
-#define I915_SELFTEST_ONLY(x) 0
+
+static inline int i915_selftests_unlikely(void) { return 0; };
+#define I915_SELFTEST_ONLY(x) i915_selftests_unlikely()
 
 #endif
 

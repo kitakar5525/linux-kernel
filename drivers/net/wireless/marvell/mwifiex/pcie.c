@@ -85,13 +85,15 @@ static void mwifiex_unmap_pci_memory(struct mwifiex_adapter *adapter,
 }
 
 /*
- * This function writes data into PCIE card register.
+ * This function writes data into PCIE card register, ensuring it's
+ * completion before returning.
  */
 static int mwifiex_write_reg(struct mwifiex_adapter *adapter, int reg, u32 data)
 {
 	struct pcie_service_card *card = adapter->card;
 
 	iowrite32(data, card->pci_mmap1 + reg);
+	ioread32(card->pci_mmap1 + reg);
 
 	return 0;
 }
@@ -150,7 +152,8 @@ static bool mwifiex_pcie_ok_to_access_hw(struct mwifiex_adapter *adapter)
  * registered functions must have drivers with suspend and resume
  * methods. Failing that the kernel simply removes the whole card.
  *
- * This function shuts down the adapter.
+ * If already not suspended, this function allocates and sends a host
+ * sleep activate request to the firmware and turns off the traffic.
  */
 static int mwifiex_pcie_suspend(struct device *dev)
 {
@@ -158,21 +161,31 @@ static int mwifiex_pcie_suspend(struct device *dev)
 	struct pcie_service_card *card = dev_get_drvdata(dev);
 
 
+	/* Might still be loading firmware */
+	wait_for_completion(&card->fw_done);
+
 	adapter = card->adapter;
 	if (!adapter) {
 		dev_err(dev, "adapter is not valid\n");
 		return 0;
 	}
 
-	/* Shut down SW */
-	if (mwifiex_shutdown_sw(adapter)) {
+	mwifiex_enable_wake(adapter);
+
+	/* Enable the Host Sleep */
+	if (!mwifiex_enable_hs(adapter)) {
 		mwifiex_dbg(adapter, ERROR,
 			    "cmd: failed to suspend\n");
+		clear_bit(MWIFIEX_IS_HS_ENABLING, &adapter->work_flags);
+		mwifiex_disable_wake(adapter);
 		return -EFAULT;
 	}
 
+	flush_workqueue(adapter->workqueue);
+
 	/* Indicate device suspended */
 	set_bit(MWIFIEX_IS_SUSPENDED, &adapter->work_flags);
+	clear_bit(MWIFIEX_IS_HS_ENABLING, &adapter->work_flags);
 
 	return 0;
 }
@@ -182,13 +195,13 @@ static int mwifiex_pcie_suspend(struct device *dev)
  * registered functions must have drivers with suspend and resume
  * methods. Failing that the kernel simply removes the whole card.
  *
- * If already not resumed, this function reinits the adapter.
+ * If already not resumed, this function turns on the traffic and
+ * sends a host sleep cancel request to the firmware.
  */
 static int mwifiex_pcie_resume(struct device *dev)
 {
 	struct mwifiex_adapter *adapter;
 	struct pcie_service_card *card = dev_get_drvdata(dev);
-	int ret;
 
 
 	if (!card->adapter) {
@@ -206,11 +219,9 @@ static int mwifiex_pcie_resume(struct device *dev)
 
 	clear_bit(MWIFIEX_IS_SUSPENDED, &adapter->work_flags);
 
-	ret = mwifiex_reinit_sw(adapter);
-	if (ret)
-		dev_err(dev, "reinit failed: %d\n", ret);
-	else
-		mwifiex_dbg(adapter, INFO, "%s, successful\n", __func__);
+	mwifiex_cancel_hs(mwifiex_get_priv(adapter, MWIFIEX_BSS_ROLE_STA),
+			  MWIFIEX_ASYNC_CMD);
+	mwifiex_disable_wake(adapter);
 
 	return 0;
 }
@@ -228,6 +239,11 @@ static int mwifiex_pcie_probe(struct pci_dev *pdev,
 	struct pcie_service_card *card;
 	struct pci_dev *parent_pdev = pci_upstream_bridge(pdev);
 	int ret;
+
+	pr_alert("DEBUG: bridge_d3 state at top of probe()\n");
+	pr_alert("pdev->bridge_d3: %s\n", pdev->bridge_d3 ? "true" : "false");
+	pr_alert("parent_pdev->bridge_d3: %s\n",
+		 parent_pdev->bridge_d3 ? "true" : "false");
 
 	pr_debug("info: vendor=0x%4.04X device=0x%4.04X rev=%d\n",
 		 pdev->vendor, pdev->device, pdev->revision);
@@ -273,6 +289,11 @@ static int mwifiex_pcie_probe(struct pci_dev *pdev,
 	 */
 	if (card->quirks & QUIRK_NO_BRIDGE_D3)
 		parent_pdev->bridge_d3 = false;
+
+	pr_alert("DEBUG: bridge_d3 state at end of probe()\n");
+	pr_alert("pdev->bridge_d3: %s\n", pdev->bridge_d3 ? "true" : "false");
+	pr_alert("parent_pdev->bridge_d3: %s\n",
+		 parent_pdev->bridge_d3 ? "true" : "false");
 
 	return 0;
 }
@@ -1600,8 +1621,19 @@ mwifiex_pcie_send_boot_cmd(struct mwifiex_adapter *adapter, struct sk_buff *skb)
 static int mwifiex_pcie_init_fw_port(struct mwifiex_adapter *adapter)
 {
 	struct pcie_service_card *card = adapter->card;
+	struct pci_dev *pdev = card->dev;
+	struct pci_dev *parent_pdev = pci_upstream_bridge(pdev);
 	const struct mwifiex_pcie_card_reg *reg = card->pcie.reg;
 	int tx_wrap = card->txbd_wrptr & reg->tx_wrap_mask;
+
+	dev_alert(&pdev->dev, "%s() called\n", __func__);
+
+	/* Reset parent PCI bridge to allow system to enter package C-State C10
+	 * and opportunistic S0ix sleep, for some reason the card needs this.
+	 * We need to do it here because it must happen after firmware
+	 * initialization (again, for some reason) and this function is called
+	 * after that is done. */
+	pci_reset_function(parent_pdev);
 
 	/* Write the RX ring read pointer in to reg->rx_rdptr */
 	if (mwifiex_write_reg(adapter, reg->rx_rdptr, card->rxbd_rdptr |

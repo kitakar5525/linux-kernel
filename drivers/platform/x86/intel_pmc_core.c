@@ -440,6 +440,39 @@ static int pmc_core_ppfear_show(struct seq_file *s, void *unused)
 }
 DEFINE_SHOW_ATTRIBUTE(pmc_core_ppfear);
 
+/* Copied from pmc_core_display_map() with the following changes:
+   - remove seq_file argument
+   - print message into dmesg instead */
+static void pmc_core_display_map_dmesg(int index, u8 pf_reg,
+				       const struct pmc_bit_map *pf_map)
+{
+	pr_warn("PCH IP: %-2d - %-32s\tState: %s\n",
+		index, pf_map[index].name,
+		pf_map[index].bit_mask & pf_reg ? "Off" : "On");
+}
+
+/* Copied from pmc_core_ppfear_show() with the following changes:
+   - remove any arguments */
+static int pmc_core_ppfear_show_dmesg(void)
+{
+	struct pmc_dev *pmcdev = &pmc;
+	const struct pmc_bit_map *map = pmcdev->map->pfear_sts;
+	u8 pf_regs[PPFEAR_MAX_NUM_ENTRIES];
+	int index, iter;
+
+	iter = pmcdev->map->ppfear0_offset;
+
+	for (index = 0; index < pmcdev->map->ppfear_buckets &&
+	     index < PPFEAR_MAX_NUM_ENTRIES; index++, iter++)
+		pf_regs[index] = pmc_core_reg_read_byte(pmcdev, iter);
+
+	for (index = 0; map[index].name &&
+	     index < pmcdev->map->ppfear_buckets * 8; index++)
+		pmc_core_display_map_dmesg(index, pf_regs[index / 8], map);
+
+	return 0;
+}
+
 /* This function should return link status, 0 means ready */
 static int pmc_core_mtpmc_link_status(void)
 {
@@ -524,6 +557,62 @@ out_unlock:
 }
 DEFINE_SHOW_ATTRIBUTE(pmc_core_mphy_pg);
 
+/* Copied from pmc_core_mphy_pg_show() with the following changes:
+   - remove any arguments
+   - print message into dmesg instead */
+static int pmc_core_mphy_pg_show_dmesg(void)
+{
+	struct pmc_dev *pmcdev = &pmc;
+	const struct pmc_bit_map *map = pmcdev->map->mphy_sts;
+	u32 mphy_core_reg_low, mphy_core_reg_high;
+	u32 val_low, val_high;
+	int index, err = 0;
+
+	if (pmcdev->pmc_xram_read_bit) {
+		pr_err("Access denied: please disable PMC_READ_DISABLE setting in BIOS.");
+		return 0;
+	}
+
+	mphy_core_reg_low  = (SPT_PMC_MPHY_CORE_STS_0 << 16);
+	mphy_core_reg_high = (SPT_PMC_MPHY_CORE_STS_1 << 16);
+
+	mutex_lock(&pmcdev->lock);
+
+	if (pmc_core_send_msg(&mphy_core_reg_low) != 0) {
+		err = -EBUSY;
+		goto out_unlock;
+	}
+
+	msleep(10);
+	val_low = pmc_core_reg_read(pmcdev, SPT_PMC_MFPMC_OFFSET);
+
+	if (pmc_core_send_msg(&mphy_core_reg_high) != 0) {
+		err = -EBUSY;
+		goto out_unlock;
+	}
+
+	msleep(10);
+	val_high = pmc_core_reg_read(pmcdev, SPT_PMC_MFPMC_OFFSET);
+
+	for (index = 0; map[index].name && index < 8; index++) {
+		pr_warn("%-32s\tState: %s\n",
+			   map[index].name,
+			   map[index].bit_mask & val_low ? "Not power gated" :
+			   "Power gated");
+	}
+
+	for (index = 8; map[index].name; index++) {
+		pr_warn("%-32s\tState: %s\n",
+			   map[index].name,
+			   map[index].bit_mask & val_high ? "Not power gated" :
+			   "Power gated");
+	}
+
+out_unlock:
+	mutex_unlock(&pmcdev->lock);
+	return err;
+}
+
 static int pmc_core_pll_show(struct seq_file *s, void *unused)
 {
 	struct pmc_dev *pmcdev = s->private;
@@ -559,6 +648,44 @@ out_unlock:
 	return err;
 }
 DEFINE_SHOW_ATTRIBUTE(pmc_core_pll);
+
+/* Copied from pmc_core_pll() with the following changes:
+   - remove any arguments
+   - print message into dmesg instead */
+static int pmc_core_pll_dmesg(void)
+{
+	struct pmc_dev *pmcdev = &pmc;
+	const struct pmc_bit_map *map = pmcdev->map->pll_sts;
+	u32 mphy_common_reg, val;
+	int index, err = 0;
+
+	if (pmcdev->pmc_xram_read_bit) {
+		pr_err("Access denied: please disable PMC_READ_DISABLE setting in BIOS.");
+		return 0;
+	}
+
+	mphy_common_reg  = (SPT_PMC_MPHY_COM_STS_0 << 16);
+	mutex_lock(&pmcdev->lock);
+
+	if (pmc_core_send_msg(&mphy_common_reg) != 0) {
+		err = -EBUSY;
+		goto out_unlock;
+	}
+
+	/* Observed PMC HW response latency for MTPMC-MFPMC is ~10 ms */
+	msleep(10);
+	val = pmc_core_reg_read(pmcdev, SPT_PMC_MFPMC_OFFSET);
+
+	for (index = 0; map[index].name ; index++) {
+		pr_warn("%-32s\tState: %s\n",
+			   map[index].name,
+			   map[index].bit_mask & val ? "Active" : "Idle");
+	}
+
+out_unlock:
+	mutex_unlock(&pmcdev->lock);
+	return err;
+}
 
 static ssize_t pmc_core_ltr_ignore_write(struct file *file, const char __user
 *userbuf, size_t count, loff_t *ppos)
@@ -631,30 +758,41 @@ out_unlock:
 	mutex_unlock(&pmcdev->lock);
 }
 
-static int pmc_core_slps0_dbg_show(struct seq_file *s, void *unused)
+static void pmc_core_slps0_display(struct pmc_dev *pmcdev, struct device *dev,
+				   struct seq_file *s)
 {
-	struct pmc_dev *pmcdev = s->private;
 	const struct pmc_bit_map **maps = pmcdev->map->slps0_dbg_maps;
 	const struct pmc_bit_map *map;
-	int offset;
+	int offset = pmcdev->map->slps0_dbg_offset;
 	u32 data;
 
-	pmc_core_slps0_dbg_latch(pmcdev, false);
-	offset = pmcdev->map->slps0_dbg_offset;
 	while (*maps) {
 		map = *maps;
 		data = pmc_core_reg_read(pmcdev, offset);
 		offset += 4;
 		while (map->name) {
-			seq_printf(s, "SLP_S0_DBG: %-32s\tState: %s\n",
-				   map->name,
-				   data & map->bit_mask ?
-				   "Yes" : "No");
+			if (dev)
+				dev_warn(dev, "SLP_S0_DBG: %-32s\tState: %s\n",
+					map->name,
+					data & map->bit_mask ? "Yes" : "No");
+			if (s)
+				seq_printf(s, "SLP_S0_DBG: %-32s\tState: %s\n",
+					   map->name,
+					   data & map->bit_mask ? "Yes" : "No");
 			++map;
 		}
 		++maps;
 	}
+}
+
+static int pmc_core_slps0_dbg_show(struct seq_file *s, void *unused)
+{
+	struct pmc_dev *pmcdev = s->private;
+
+	pmc_core_slps0_dbg_latch(pmcdev, false);
+	pmc_core_slps0_display(pmcdev, NULL, s);
 	pmc_core_slps0_dbg_latch(pmcdev, true);
+
 	return 0;
 }
 DEFINE_SHOW_ATTRIBUTE(pmc_core_slps0_dbg);
@@ -729,6 +867,45 @@ static int pmc_core_ltr_show(struct seq_file *s, void *unused)
 	return 0;
 }
 DEFINE_SHOW_ATTRIBUTE(pmc_core_ltr);
+
+/* Copied from pmc_core_ltr_show() with the following changes:
+   - remove any arguments
+   - print message into dmesg instead*/
+static int pmc_core_ltr_show_dmesg(void)
+{
+	struct pmc_dev *pmcdev = &pmc;
+	const struct pmc_bit_map *map = pmcdev->map->ltr_show_sts;
+	u64 decoded_snoop_ltr, decoded_non_snoop_ltr;
+	u32 ltr_raw_data, scale, val;
+	u16 snoop_ltr, nonsnoop_ltr;
+	int index;
+
+	for (index = 0; map[index].name ; index++) {
+		decoded_snoop_ltr = decoded_non_snoop_ltr = 0;
+		ltr_raw_data = pmc_core_reg_read(pmcdev,
+						 map[index].bit_mask);
+		snoop_ltr = ltr_raw_data & ~MTPMC_MASK;
+		nonsnoop_ltr = (ltr_raw_data >> 0x10) & ~MTPMC_MASK;
+
+		if (FIELD_GET(LTR_REQ_NONSNOOP, ltr_raw_data)) {
+			scale = FIELD_GET(LTR_DECODED_SCALE, nonsnoop_ltr);
+			val = FIELD_GET(LTR_DECODED_VAL, nonsnoop_ltr);
+			decoded_non_snoop_ltr = val * convert_ltr_scale(scale);
+		}
+
+		if (FIELD_GET(LTR_REQ_SNOOP, ltr_raw_data)) {
+			scale = FIELD_GET(LTR_DECODED_SCALE, snoop_ltr);
+			val = FIELD_GET(LTR_DECODED_VAL, snoop_ltr);
+			decoded_snoop_ltr = val * convert_ltr_scale(scale);
+		}
+
+		pr_warn("%-32s\tLTR: RAW: 0x%-16x\tNon-Snoop(ns): %-16llu\tSnoop(ns): %-16llu\n",
+			   map[index].name, ltr_raw_data,
+			   decoded_non_snoop_ltr,
+			   decoded_snoop_ltr);
+	}
+	return 0;
+}
 
 static int pmc_core_pkgc_show(struct seq_file *s, void *unused)
 {
@@ -929,7 +1106,7 @@ static int pmc_core_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_PM_SLEEP
 
-static bool warn_on_s0ix_failures;
+static bool warn_on_s0ix_failures = true;
 module_param(warn_on_s0ix_failures, bool, 0644);
 MODULE_PARM_DESC(warn_on_s0ix_failures, "Check and warn for S0ix failures");
 
@@ -969,6 +1146,9 @@ static inline bool pmc_core_is_pc10_failed(struct pmc_dev *pmcdev)
 	if (pc10_counter == pmcdev->pc10_counter)
 		return true;
 
+	/* Update counter to the current value */
+	pmcdev->pc10_counter = pc10_counter;
+
 	return false;
 }
 
@@ -982,19 +1162,43 @@ static inline bool pmc_core_is_s0ix_failed(struct pmc_dev *pmcdev)
 	if (s0ix_counter == pmcdev->s0ix_counter)
 		return true;
 
+	/* Update counter to the current value */
+	pmcdev->s0ix_counter = s0ix_counter;
+
 	return false;
+}
+
+/* Required code is extracted from pmc_core_pkgc_show() */
+static inline long long unsigned pc10_count_to_usec(u64 pc10_counter)
+{
+	pc10_counter *= 1000;
+	do_div(pc10_counter, tsc_khz);
+
+	return pc10_counter;
 }
 
 static int pmc_core_resume(struct device *dev)
 {
 	struct pmc_dev *pmcdev = dev_get_drvdata(dev);
-	const struct pmc_bit_map **maps = pmcdev->map->slps0_dbg_maps;
-	int offset = pmcdev->map->slps0_dbg_offset;
-	const struct pmc_bit_map *map;
-	u32 data;
+	u64 pc10_cnt_after;
+	u64 pc10_diff_usec;
+	u64 s0ix_cnt_after;
 
 	if (!pmcdev->check_counters)
 		return 0;
+
+	/* Print PC10 diff between suspend/resume */
+	if (!rdmsrl_safe(MSR_PKG_C10_RESIDENCY, &pc10_cnt_after)) {
+		pc10_diff_usec = pc10_count_to_usec(pc10_cnt_after -
+						   pmcdev->pc10_counter);
+		dev_info(dev, "PC10 counter diff (can overflow): %llu usec (%llu sec)\n",
+			 pc10_diff_usec, DIV_ROUND_UP(pc10_diff_usec, 1000000));
+	}
+
+	/* Print S0ix diff between suspend/resume */
+	if (!pmc_core_dev_state_get(pmcdev, &s0ix_cnt_after))
+		dev_info(dev, "S0ix counter diff (can overflow): %llu\n",
+			 s0ix_cnt_after - pmcdev->s0ix_counter);
 
 	if (!pmc_core_is_s0ix_failed(pmcdev))
 		return 0;
@@ -1003,24 +1207,23 @@ static int pmc_core_resume(struct device *dev)
 		/* S0ix failed because of PC10 entry failure */
 		dev_info(dev, "CPU did not enter PC10!!! (PC10 cnt=0x%llx)\n",
 			 pmcdev->pc10_counter);
+		pmc_core_ltr_show_dmesg();
+		pmc_core_mphy_pg_show_dmesg();
+		pmc_core_ppfear_show_dmesg();
+		pmc_core_pll_dmesg();
 		return 0;
 	}
 
 	/* The real interesting case - S0ix failed - lets ask PMC why. */
 	dev_warn(dev, "CPU did not enter SLP_S0!!! (S0ix cnt=%llu)\n",
 		 pmcdev->s0ix_counter);
-	while (*maps) {
-		map = *maps;
-		data = pmc_core_reg_read(pmcdev, offset);
-		offset += 4;
-		while (map->name) {
-			dev_warn(dev, "SLP_S0_DBG: %-32s\tState: %s\n",
-				map->name,
-				data & map->bit_mask ? "Yes" : "No");
-			map++;
-		}
-		maps++;
-	}
+	if (pmcdev->map->slps0_dbg_maps)
+		pmc_core_slps0_display(pmcdev, dev, NULL);
+	pmc_core_ltr_show_dmesg();
+	pmc_core_mphy_pg_show_dmesg();
+	pmc_core_ppfear_show_dmesg();
+	pmc_core_pll_dmesg();
+
 	return 0;
 }
 

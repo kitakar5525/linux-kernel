@@ -14,7 +14,6 @@ endif
 
 atomisp-$(postfix)-objs := \
 		../atomisp_driver/atomisp_ioctl.o \
-		../atomisp_driver/atomisp_compat_ioctl32.o \
 		../atomisp_driver/atomisp_cmd.o \
 		../atomisp_driver/atomisp_fops.o \
 		../atomisp_driver/atomisp_subdev.o \

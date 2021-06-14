@@ -1285,7 +1285,11 @@ const struct v4l2_file_operations atomisp_fops = {
 	.mmap = atomisp_mmap,
 	.unlocked_ioctl = video_ioctl2,
 #ifdef CONFIG_COMPAT
+	/*
+	 * this was removed because of bugs, the interface
+	 * needs to be made safe for compat tasks instead.
 	.compat_ioctl32 = atomisp_compat_ioctl32,
+	 */
 #endif
 	.poll = atomisp_poll,
 };
@@ -1297,7 +1301,7 @@ const struct v4l2_file_operations atomisp_file_fops = {
 	.mmap = atomisp_file_mmap,
 	.unlocked_ioctl = video_ioctl2,
 #ifdef CONFIG_COMPAT
-	.compat_ioctl32 = atomisp_compat_ioctl32,
+	/* .compat_ioctl32 = atomisp_compat_ioctl32, */
 #endif
 	.poll = atomisp_poll,
 };

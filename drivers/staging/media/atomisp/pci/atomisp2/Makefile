@@ -154,7 +154,6 @@ atomisp-objs += \
 	./atomisp_fops.o \
 	./atomisp_subdev.o \
 	./atomisp_ioctl.o \
-	./atomisp_compat_ioctl32.o \
 	./atomisp_csi2.o \
 	./atomisp_cmd.o \
 	./atomisp_tpg.o \

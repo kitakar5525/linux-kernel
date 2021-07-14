@@ -1468,18 +1468,29 @@ static int cio2_parse_firmware(struct cio2_device *cio2)
 
 		ep = fwnode_graph_get_endpoint_by_id(dev_fwnode(dev), i, 0,
 						FWNODE_GRAPH_ENDPOINT_NEXT);
-		if (!ep)
+		if (!ep) {
+			dev_info(&cio2->pci_dev->dev,
+				 "%s(): endpoint not available for CIO2 port %d\n",
+				 __func__, i);
 			continue;
+		}
 
 		ret = v4l2_fwnode_endpoint_parse(ep, &vep);
-		if (ret)
+		if (ret) {
+			dev_info(&cio2->pci_dev->dev,
+				 "%s(): v4l2_fwnode_endpoint_parse() failed for CIO2 port %d : (ret: %d)\n",
+				 __func__, i, ret);
 			goto err_parse;
+		}
 
 		s_asd = v4l2_async_nf_add_fwnode_remote(&cio2->notifier, ep,
 							struct
 							sensor_async_subdev);
 		if (IS_ERR(s_asd)) {
 			ret = PTR_ERR(s_asd);
+			dev_info(&cio2->pci_dev->dev,
+				 "%s(): v4l2_async_notifier_add_fwnode_remote_subdev() failed for CIO2 port %d : (ret: %d)\n",
+				 __func__, i, ret);
 			goto err_parse;
 		}
 
@@ -1487,6 +1498,10 @@ static int cio2_parse_firmware(struct cio2_device *cio2)
 		s_asd->csi2.lanes = vep.bus.mipi_csi2.num_data_lanes;
 
 		fwnode_handle_put(ep);
+
+		dev_info(&cio2->pci_dev->dev,
+			 "%s(): CIO2 port %d available: csi2.port: %d csi2.lanes: %d\n",
+			 __func__, i, s_asd->csi2.port, s_asd->csi2.lanes);
 
 		continue;
 

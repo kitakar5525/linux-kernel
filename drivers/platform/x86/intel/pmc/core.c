@@ -1327,6 +1327,62 @@ out_unlock:
 }
 DEFINE_SHOW_ATTRIBUTE(pmc_core_mphy_pg);
 
+/* Copied from pmc_core_mphy_pg_show() with the following changes:
+   - remove any arguments
+   - then added *pmcdev as an argument
+   - print message into dmesg instead */
+static int pmc_core_mphy_pg_show_dmesg(struct pmc_dev *pmcdev)
+{
+	const struct pmc_bit_map *map = pmcdev->map->mphy_sts;
+	u32 mphy_core_reg_low, mphy_core_reg_high;
+	u32 val_low, val_high;
+	int index, err = 0;
+
+	if (pmcdev->pmc_xram_read_bit) {
+		pr_err("Access denied: please disable PMC_READ_DISABLE setting in BIOS.\n");
+		return 0;
+	}
+
+	mphy_core_reg_low  = (SPT_PMC_MPHY_CORE_STS_0 << 16);
+	mphy_core_reg_high = (SPT_PMC_MPHY_CORE_STS_1 << 16);
+
+	mutex_lock(&pmcdev->lock);
+
+	if (pmc_core_send_msg(pmcdev, &mphy_core_reg_low) != 0) {
+		err = -EBUSY;
+		goto out_unlock;
+	}
+
+	msleep(10);
+	val_low = pmc_core_reg_read(pmcdev, SPT_PMC_MFPMC_OFFSET);
+
+	if (pmc_core_send_msg(pmcdev, &mphy_core_reg_high) != 0) {
+		err = -EBUSY;
+		goto out_unlock;
+	}
+
+	msleep(10);
+	val_high = pmc_core_reg_read(pmcdev, SPT_PMC_MFPMC_OFFSET);
+
+	for (index = 0; index < 8 && map[index].name; index++) {
+		pr_warn("%-32s\tState: %s\n",
+			map[index].name,
+			map[index].bit_mask & val_low ? "Not power gated" :
+			"Power gated");
+	}
+
+	for (index = 8; map[index].name; index++) {
+		pr_warn("%-32s\tState: %s\n",
+			map[index].name,
+			map[index].bit_mask & val_high ? "Not power gated" :
+			"Power gated");
+	}
+
+out_unlock:
+	mutex_unlock(&pmcdev->lock);
+	return err;
+}
+
 static int pmc_core_pll_show(struct seq_file *s, void *unused)
 {
 	struct pmc_dev *pmcdev = s->private;
@@ -2161,6 +2217,7 @@ static __maybe_unused int pmc_core_resume(struct device *dev)
 		/* S0ix failed because of PC10 entry failure */
 		dev_info(dev, "CPU did not enter PC10!!! (PC10 cnt=0x%llx)\n",
 			 pmcdev->pc10_counter);
+		pmc_core_mphy_pg_show_dmesg(pmcdev);
 		pmc_core_ppfear_show_dmesg(pmcdev);
 		return 0;
 	}
@@ -2172,6 +2229,7 @@ static __maybe_unused int pmc_core_resume(struct device *dev)
 		pmc_core_slps0_display(pmcdev, dev, NULL);
 	if (pmcdev->map->lpm_sts)
 		pmc_core_lpm_display(pmcdev, dev, NULL, offset, "STATUS", maps);
+	pmc_core_mphy_pg_show_dmesg(pmcdev);
 	pmc_core_ppfear_show_dmesg(pmcdev);
 
 	return 0;

@@ -1624,6 +1624,45 @@ static int pmc_core_ltr_show(struct seq_file *s, void *unused)
 }
 DEFINE_SHOW_ATTRIBUTE(pmc_core_ltr);
 
+/* Copied from pmc_core_ltr_show() with the following changes:
+   - remove any arguments
+   - then added *pmcdev as an argument
+   - print message into dmesg instead*/
+static int pmc_core_ltr_show_dmesg(struct pmc_dev *pmcdev)
+{
+	const struct pmc_bit_map *map = pmcdev->map->ltr_show_sts;
+	u64 decoded_snoop_ltr, decoded_non_snoop_ltr;
+	u32 ltr_raw_data, scale, val;
+	u16 snoop_ltr, nonsnoop_ltr;
+	int index;
+
+	for (index = 0; map[index].name ; index++) {
+		decoded_snoop_ltr = decoded_non_snoop_ltr = 0;
+		ltr_raw_data = pmc_core_reg_read(pmcdev,
+						 map[index].bit_mask);
+		snoop_ltr = ltr_raw_data & ~MTPMC_MASK;
+		nonsnoop_ltr = (ltr_raw_data >> 0x10) & ~MTPMC_MASK;
+
+		if (FIELD_GET(LTR_REQ_NONSNOOP, ltr_raw_data)) {
+			scale = FIELD_GET(LTR_DECODED_SCALE, nonsnoop_ltr);
+			val = FIELD_GET(LTR_DECODED_VAL, nonsnoop_ltr);
+			decoded_non_snoop_ltr = val * convert_ltr_scale(scale);
+		}
+
+		if (FIELD_GET(LTR_REQ_SNOOP, ltr_raw_data)) {
+			scale = FIELD_GET(LTR_DECODED_SCALE, snoop_ltr);
+			val = FIELD_GET(LTR_DECODED_VAL, snoop_ltr);
+			decoded_snoop_ltr = val * convert_ltr_scale(scale);
+		}
+
+		pr_warn("%-32s\tLTR: RAW: 0x%-16x\tNon-Snoop(ns): %-16llu\tSnoop(ns): %-16llu\n",
+			map[index].name, ltr_raw_data,
+			decoded_non_snoop_ltr,
+			decoded_snoop_ltr);
+	}
+	return 0;
+}
+
 static inline u64 adjust_lpm_residency(struct pmc_dev *pmcdev, u32 offset,
 				       const int lpm_adj_x2)
 {
@@ -2255,6 +2294,7 @@ static __maybe_unused int pmc_core_resume(struct device *dev)
 		/* S0ix failed because of PC10 entry failure */
 		dev_info(dev, "CPU did not enter PC10!!! (PC10 cnt=0x%llx)\n",
 			 pmcdev->pc10_counter);
+		pmc_core_ltr_show_dmesg(pmcdev);
 		pmc_core_mphy_pg_show_dmesg(pmcdev);
 		pmc_core_ppfear_show_dmesg(pmcdev);
 		pmc_core_pll_show_dmesg(pmcdev);
@@ -2268,6 +2308,7 @@ static __maybe_unused int pmc_core_resume(struct device *dev)
 		pmc_core_slps0_display(pmcdev, dev, NULL);
 	if (pmcdev->map->lpm_sts)
 		pmc_core_lpm_display(pmcdev, dev, NULL, offset, "STATUS", maps);
+	pmc_core_ltr_show_dmesg(pmcdev);
 	pmc_core_mphy_pg_show_dmesg(pmcdev);
 	pmc_core_ppfear_show_dmesg(pmcdev);
 	pmc_core_pll_show_dmesg(pmcdev);

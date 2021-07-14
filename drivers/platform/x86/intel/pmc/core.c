@@ -1209,6 +1209,42 @@ static int pmc_core_ppfear_show(struct seq_file *s, void *unused)
 }
 DEFINE_SHOW_ATTRIBUTE(pmc_core_ppfear);
 
+/* Copied from pmc_core_display_map() with the following changes:
+   - remove seq_file argument
+   - print message into dmesg instead */
+static void pmc_core_display_map_dmesg(int index, int idx, int ip, u8 pf_reg,
+				       const struct pmc_bit_map **pf_map)
+{
+	pr_warn("PCH IP: %-2d - %-32s\tState: %s\n",
+		ip, pf_map[idx][index].name,
+		pf_map[idx][index].bit_mask & pf_reg ? "Off" : "On");
+}
+
+/* Copied from pmc_core_ppfear_show() with the following changes:
+   - remove any arguments
+   - then added *pmcdev as an argument */
+static int pmc_core_ppfear_show_dmesg(struct pmc_dev *pmcdev)
+{
+	const struct pmc_bit_map **maps = pmcdev->map->pfear_sts;
+	u8 pf_regs[PPFEAR_MAX_NUM_ENTRIES];
+	int index, iter, idx, ip = 0;
+
+	iter = pmcdev->map->ppfear0_offset;
+
+	for (index = 0; index < pmcdev->map->ppfear_buckets &&
+	     index < PPFEAR_MAX_NUM_ENTRIES; index++, iter++)
+		pf_regs[index] = pmc_core_reg_read_byte(pmcdev, iter);
+
+	for (idx = 0; maps[idx]; idx++) {
+		for (index = 0; maps[idx][index].name &&
+		     index < pmcdev->map->ppfear_buckets * 8; ip++, index++)
+			pmc_core_display_map_dmesg(index, idx, ip,
+						   pf_regs[index / 8], maps);
+	}
+
+	return 0;
+}
+
 /* This function should return link status, 0 means ready */
 static int pmc_core_mtpmc_link_status(struct pmc_dev *pmcdev)
 {
@@ -2125,6 +2161,7 @@ static __maybe_unused int pmc_core_resume(struct device *dev)
 		/* S0ix failed because of PC10 entry failure */
 		dev_info(dev, "CPU did not enter PC10!!! (PC10 cnt=0x%llx)\n",
 			 pmcdev->pc10_counter);
+		pmc_core_ppfear_show_dmesg(pmcdev);
 		return 0;
 	}
 
@@ -2135,6 +2172,7 @@ static __maybe_unused int pmc_core_resume(struct device *dev)
 		pmc_core_slps0_display(pmcdev, dev, NULL);
 	if (pmcdev->map->lpm_sts)
 		pmc_core_lpm_display(pmcdev, dev, NULL, offset, "STATUS", maps);
+	pmc_core_ppfear_show_dmesg(pmcdev);
 
 	return 0;
 }

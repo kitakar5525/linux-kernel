@@ -15,7 +15,6 @@
 #include <linux/bitfield.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
-#include <linux/dmi.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/pci.h>
@@ -1584,18 +1583,6 @@ static const struct pci_device_id pmc_pci_ids[] = {
 	{ }
 };
 
-/*
- * This quirk can be used on those platforms where
- * the platform BIOS enforces 24Mhz crystal to shutdown
- * before PMC can assert SLP_S0#.
- */
-static bool xtal_ignore;
-static int quirk_xtal_ignore(const struct dmi_system_id *id)
-{
-	xtal_ignore = true;
-	return 0;
-}
-
 static void pmc_core_xtal_ignore(struct pmc_dev *pmcdev)
 {
 	u32 value;
@@ -1608,24 +1595,9 @@ static void pmc_core_xtal_ignore(struct pmc_dev *pmcdev)
 	pmc_core_reg_write(pmcdev, pmcdev->map->pm_vric1_offset, value);
 }
 
-static const struct dmi_system_id pmc_core_dmi_table[]  = {
-	{
-	.callback = quirk_xtal_ignore,
-	.ident = "HP Elite x2 1013 G3",
-	.matches = {
-		DMI_MATCH(DMI_SYS_VENDOR, "HP"),
-		DMI_MATCH(DMI_PRODUCT_NAME, "HP Elite x2 1013 G3"),
-		},
-	},
-	{}
-};
-
 static void pmc_core_do_dmi_quirks(struct pmc_dev *pmcdev)
 {
-	dmi_check_system(pmc_core_dmi_table);
-
-	if (xtal_ignore)
-		pmc_core_xtal_ignore(pmcdev);
+	pmc_core_xtal_ignore(pmcdev);
 }
 
 static int pmc_core_probe(struct platform_device *pdev)

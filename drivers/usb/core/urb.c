@@ -411,10 +411,10 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 				"BOGUS control dir, pipe %x doesn't match bRequestType %x\n",
 				urb->pipe, setup->bRequestType);
 		if (le16_to_cpu(setup->wLength) != urb->transfer_buffer_length) {
-			dev_dbg(&dev->dev, "BOGUS control len %d doesn't match transfer length %d\n",
+			dev_err(&dev->dev, "BOGUS control len %d doesn't match transfer length %d\n",
 					le16_to_cpu(setup->wLength),
 					urb->transfer_buffer_length);
-			return -EBADR;
+			dev_info(&dev->dev, "continue anyway for now...\n");
 		}
 	} else {
 		is_out = usb_endpoint_dir_out(&ep->desc);

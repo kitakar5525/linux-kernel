@@ -313,12 +313,29 @@ static const struct gmin_cfg_var t100_vars[] = {
 	{},
 };
 
+/* These are guessed values because Surface 3 doesn't describe these
+ * values in DSDT or EFI. */
+static struct gmin_cfg_var surface3_vars[] = {
+	{"APTA0330:00_CsiPort", "0"},
+	{"APTA0330:00_CsiLanes", "1"},
+
+	/* when port=0 and lanes=4 for ov8835, atomisp fails to init saying:
+	 * atomisp_csi_lane_config: could not find the CSI port setting for 0-4-0
+	 * atomisp_register_entities failed (-22) */
+	{"OVTI8835:00_CsiPort", "1"},
+	{"OVTI8835:00_CsiLanes", "4"},
+	{},
+};
+
 static const struct {
 	const char *dmi_board_name;
 	const struct gmin_cfg_var *vars;
 } hard_vars[] = {
 	{ "BYT-T FFD8", ffrd8_vars },
 	{ "T100TA", t100_vars },
+	{ "Surface 3", surface3_vars },
+	/* For DMI-broken Surface 3 */
+	{ "OEMB", surface3_vars },
 };
 
 

@@ -453,11 +453,17 @@ static struct gmin_subdev *gmin_subdev_add(struct v4l2_subdev *subdev)
 
 static struct gmin_subdev *find_gmin_subdev(struct v4l2_subdev *subdev)
 {
+	struct gmin_subdev *gs;
 	int i;
 	for (i = 0; i < MAX_SUBDEVS; i++)
 		if (gmin_subdevs[i].subdev == subdev)
 			return &gmin_subdevs[i];
-	return gmin_subdev_add(subdev);
+	
+	gs = gmin_subdev_add(subdev);
+	if (WARN_ON(!gs))
+		pr_err("%s(): line %d: gmin_subdev_add() returned null\n",
+		       __func__, __LINE__);
+	return gs;
 }
 
 static int gmin_gpio0_ctrl(struct v4l2_subdev *subdev, int on)
@@ -752,6 +758,11 @@ struct camera_sensor_platform_data *gmin_camera_platform_data(
 		enum atomisp_bayer_order csi_bayer)
 {
 	struct gmin_subdev *gs = find_gmin_subdev(subdev);
+
+	if (WARN_ON(!gs))
+		pr_err("%s(): line %d: find_gmin_subdev() returned null\n",
+		       __func__, __LINE__);
+
 	gs->csi_fmt = csi_format;
 	gs->csi_bayer = csi_bayer;
 

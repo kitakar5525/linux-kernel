@@ -1245,15 +1245,6 @@ static int gmin_get_config_var(struct device *maindev,
 	struct efivar_entry *ev;
 	int i, ret;
 
-	/* For sensors, try first to use the _DSM table */
-	if (!is_gmin) {
-		ret = gmin_get_config_dsm_var(maindev, var, out, out_len);
-		if (!ret)
-			return 0;
-	}
-
-	/* Fall-back to other approaches */
-
 	if (!is_gmin && ACPI_COMPANION(dev))
 		dev = &ACPI_COMPANION(dev)->dev;
 
@@ -1276,6 +1267,15 @@ static int gmin_get_config_var(struct device *maindev,
 		if (!ret)
 			return 0;
 	}
+
+	/* For sensors, try first to use the _DSM table */
+	if (!is_gmin) {
+		ret = gmin_get_config_dsm_var(maindev, var, out, out_len);
+		if (!ret)
+			return 0;
+	}
+
+	/* Fall-back to other approaches */
 
 	/* Our variable names are ASCII by construction, but EFI names
 	 * are wide chars.  Convert and zero-pad.

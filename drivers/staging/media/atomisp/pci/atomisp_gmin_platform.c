@@ -376,6 +376,23 @@ static struct gmin_cfg_var surface3_vars[] = {
 	{},
 };
 
+/*
+ * Xiaomi Mi Pad 2 does not define any variables in DSDT or EFI, but
+ * hardcodes in the kernel driver. Here are the those variables.
+ */
+static struct gmin_cfg_var mipad2_vars[] = {
+	{"OVTI5693:00_CamClk", "1"},
+	{"OVTI5693:00_ClkSrc", "0"},
+	{"OVTI5693:00_CsiPort", "0"},
+	{"OVTI5693:00_CsiLanes", "2"},
+
+	{"TOSB0001:00_CamClk", "0"},
+	{"TOSB0001:00_ClkSrc", "0"},
+	{"TOSB0001:00_CsiPort", "1"},
+	{"TOSB0001:00_CsiLanes", "4"},
+	{},
+};
+
 static const struct dmi_system_id gmin_vars[] = {
 	{
 		.ident = "BYT-T FFD8",
@@ -430,6 +447,15 @@ static const struct dmi_system_id gmin_vars[] = {
 			DMI_MATCH(DMI_SYS_VENDOR, "OEMB"),
 		},
 		.driver_data = surface3_vars,
+	},
+	{
+		.ident = "Mi Pad 2",
+		.matches = {
+			DMI_MATCH(DMI_BOARD_VENDOR, "Xiaomi Inc"),
+			DMI_MATCH(DMI_BOARD_NAME, "Mipad"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Mipad2"),
+		},
+		.driver_data = mipad2_vars,
 	},
 	{}
 };

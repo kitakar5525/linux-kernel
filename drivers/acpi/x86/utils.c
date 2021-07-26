@@ -107,29 +107,6 @@ static const struct always_present_id always_present_ids[] = {
 		DMI_MATCH(DMI_PRODUCT_NAME, "Default string"),
 		DMI_MATCH(DMI_BIOS_DATE, "05/25/2017")
 	      }),
-
-	/*
-	 * Xiaomi Mi Pad 2 uses these camera ACPI devices but these are
-	 * hidden indide "OSID == 0x04".
-	 */
-	/* User-facing camera for Mi Pad 2*/
-	ENTRY("OVTI5693", "1", X86_MATCH(ATOM_AIRMONT), {
-		DMI_MATCH(DMI_BOARD_VENDOR, "Xiaomi Inc"),
-		DMI_MATCH(DMI_BOARD_NAME, "Mipad"),
-		DMI_MATCH(DMI_PRODUCT_NAME, "Mipad2"),
-	      }),
-	/* World-facing camera for some Mi Pad 2*/
-	ENTRY("TOSB0001", "1", X86_MATCH(ATOM_AIRMONT), {
-		DMI_MATCH(DMI_BOARD_VENDOR, "Xiaomi Inc"),
-		DMI_MATCH(DMI_BOARD_NAME, "Mipad"),
-		DMI_MATCH(DMI_PRODUCT_NAME, "Mipad2"),
-	      }),
-	/* World-facing camera for some Mi Pad 2*/
-	ENTRY("SS5K0008", "1", X86_MATCH(ATOM_AIRMONT), {
-		DMI_MATCH(DMI_BOARD_VENDOR, "Xiaomi Inc"),
-		DMI_MATCH(DMI_BOARD_NAME, "Mipad"),
-		DMI_MATCH(DMI_PRODUCT_NAME, "Mipad2"),
-	      }),
 };
 
 bool acpi_device_always_present(struct acpi_device *adev)

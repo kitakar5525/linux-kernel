@@ -377,10 +377,12 @@ static struct gmin_cfg_var surface3_vars[] = {
 };
 
 /*
- * Xiaomi Mi Pad 2 does not define any variables in DSDT or EFI, but
- * hardcodes in the kernel driver. Here are the those variables.
+ * Xiaomi Mi Pad 2 does not define any variables in DSDT or EFI
+ * (for when OSID=4), but hardcodes in the kernel driver. Here are the
+ * those variables.
  */
 static struct gmin_cfg_var mipad2_vars[] = {
+	/* When OSID=4. */
 	{"OVTI5693:00_CamClk", "1"},
 	{"OVTI5693:00_ClkSrc", "0"},
 	{"OVTI5693:00_CsiPort", "0"},
@@ -390,6 +392,24 @@ static struct gmin_cfg_var mipad2_vars[] = {
 	{"TOSB0001:00_ClkSrc", "0"},
 	{"TOSB0001:00_CsiPort", "1"},
 	{"TOSB0001:00_CsiLanes", "4"},
+
+	/* When OSID=1. */
+	/*
+	 * TODO: The _DSM defines different values against values hardcoded
+	 * in the Android kernel driver. Do these values really change
+	 * depending on what mode the BIOS sets?
+	 * (Windows (OSID=1) vs GMIN (OSID=4))
+	 * For now, use the same values with OSID=4
+	 */
+	{"INT33BE:00_CamClk", "1"},
+	{"INT33BE:00_ClkSrc", "0"},
+	{"INT33BE:00_CsiPort", "0"},
+	{"INT33BE:00_CsiLanes", "2"},
+
+	{"XMCC0003:00_CamClk", "0"},
+	{"XMCC0003:00_ClkSrc", "0"},
+	{"XMCC0003:00_CsiPort", "1"},
+	{"XMCC0003:00_CsiLanes", "4"},
 	{},
 };
 

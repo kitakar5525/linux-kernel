@@ -18,7 +18,34 @@
 #ifndef __INTEL_SOC_PMIC_H__
 #define __INTEL_SOC_PMIC_H__
 
+#include <linux/regmap.h>
 #include <linux/gpio.h>
+
+#define INTEL_PMIC_IRQ_MAX	128
+
+struct intel_soc_pmic {
+	const char			*label;
+	struct device			*dev;
+	struct mutex			io_lock; /* For registers */
+	struct mutex			irq_lock; /* irq_bus_lock */
+	int				irq_need_update;
+	int				irq;
+	unsigned long			irq_flags;
+	int				irq_num;
+	int				irq_base;
+	unsigned long			irq_mask[INTEL_PMIC_IRQ_MAX/32];
+	int				pmic_int_gpio;
+	int				default_client;
+	int				(*init)(void);
+	int				(*readb)(int);
+	int				(*writeb)(int, u8);
+	struct intel_pmic_irqregmap	*irq_regmap;
+	struct mfd_cell			*cell_dev;
+	struct intel_pmic_opregion	*opregion;
+	struct regmap			*regmap;
+	struct regmap_irq_chip_data	*irq_chip_data;
+	struct regmap_irq_chip_data	*irq_chip_data_level2;
+};
 
 #define	INTEL_PMIC_IRQBASE	456
 #define INTEL_NGPIO_SCORE	102

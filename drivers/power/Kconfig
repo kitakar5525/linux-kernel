@@ -509,6 +509,12 @@ config AXP20X_POWER
 	  This driver provides support for the power supply features of
 	  AXP20x PMIC.
 
+config INTEL_SOC_PMIC_CCSM
+	tristate "intel_pmic_ccsm driver"
+	depends on INTEL_SOC_PMIC
+	help
+	  This config is added only because of avoiding kernel link error.
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY

@@ -65,6 +65,7 @@ int xhci_intel_vendor_cap_init(struct xhci_hcd *xhci)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(xhci_intel_vendor_cap_init);
 
 /* Only used for device mode */
 int xhci_intel_phy_vbus_valid(struct xhci_hcd *xhci, int vbus_valid)

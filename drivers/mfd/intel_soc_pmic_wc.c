@@ -679,8 +679,8 @@ static struct regulator_init_data v1p2a_data = {
 				REGULATOR_CHANGE_STATUS,
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL,
 	},
-	.num_consumer_supplies	= ARRAY_SIZE(v1p8sx_consumer),
-	.consumer_supplies	= v1p8sx_consumer,
+	.num_consumer_supplies	= ARRAY_SIZE(v1p2a_consumer),
+	.consumer_supplies	= v1p2a_consumer,
 };
 
 /* v1p8sx regulator */
@@ -692,8 +692,8 @@ static struct regulator_init_data v1p8sx_data = {
 				REGULATOR_CHANGE_STATUS,
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL,
 	},
-	.num_consumer_supplies	= ARRAY_SIZE(v1p2a_consumer),
-	.consumer_supplies	= v1p2a_consumer,
+	.num_consumer_supplies	= ARRAY_SIZE(v1p8sx_consumer),
+	.consumer_supplies	= v1p8sx_consumer,
 };
 
 /* v2p8sx regulator */

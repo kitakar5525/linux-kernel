@@ -551,6 +551,8 @@ struct platform_device *acpi_create_platform_device(struct acpi_device *);
 
 struct fwnode_handle;
 
+static inline void acpi_dev_put(struct acpi_device *adev) {}
+
 static inline bool is_acpi_node(struct fwnode_handle *fwnode)
 {
 	return false;

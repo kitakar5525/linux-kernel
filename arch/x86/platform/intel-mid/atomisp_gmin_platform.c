@@ -364,9 +364,10 @@ static const struct dmi_system_id gmin_vars[] = {
 				       0xa9, 0x71, 0xe8, 0x77,	   \
 				       0x75, 0x60, 0x68, 0xf7)
 
-static const guid_t atomisp_dsm_guid = GUID_INIT(0xdc2f6c4f, 0x045b, 0x4f1d,
-						 0x97, 0xb9, 0x88, 0x2a,
-						 0x68, 0x60, 0xa4, 0xbe);
+static const u8 atomisp_dsm_guid[] = {
+		0x4f, 0x6c, 0x2f, 0xdc, 0x5b, 0x04, 0x1d, 0x4f,
+		0x97, 0xb9, 0x88, 0x2a, 0x68, 0x60, 0xa4, 0xbe
+	};
 
 #define CFG_VAR_NAME_MAX 64
 
@@ -1121,7 +1122,7 @@ static int gmin_get_config_dsm_var(struct device *dev,
 	if (!strcmp(var, "CamClk"))
 		return -EINVAL;
 
-	obj = acpi_evaluate_dsm(handle, &atomisp_dsm_guid, 0, 0, NULL);
+	obj = acpi_evaluate_dsm(handle, atomisp_dsm_guid, 0, 0, NULL);
 	if (!obj) {
 		dev_info_once(dev, "Didn't find ACPI _DSM table.\n");
 		return -EINVAL;

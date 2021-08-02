@@ -634,6 +634,12 @@ static inline bool acpi_device_can_poweroff(struct acpi_device *adev)
 	return adev->power.states[ACPI_STATE_D3_COLD].flags.valid;
 }
 
+static inline void acpi_dev_put(struct acpi_device *adev)
+{
+	if (adev)
+		put_device(&adev->dev);
+}
+
 #else	/* CONFIG_ACPI */
 
 static inline int register_acpi_bus_type(void *bus) { return 0; }

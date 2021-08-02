@@ -89,6 +89,9 @@ acpi_evaluate_dsm_typed(acpi_handle handle, const u8 *uuid, u64 rev, u64 func,
 
 bool acpi_dev_found(const char *hid);
 
+struct acpi_device *
+acpi_dev_get_first_match_dev(const char *hid, const char *uid, s64 hrv);
+
 #ifdef CONFIG_ACPI
 
 #include <linux/proc_fs.h>

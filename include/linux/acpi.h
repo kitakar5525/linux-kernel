@@ -593,6 +593,8 @@ static inline bool acpi_dev_found(const char *hid)
 	return false;
 }
 
+static inline void acpi_dev_put(struct acpi_device *adev) {}
+
 static inline bool is_acpi_node(struct fwnode_handle *fwnode)
 {
 	return false;

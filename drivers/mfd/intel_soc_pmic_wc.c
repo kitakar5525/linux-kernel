@@ -653,23 +653,44 @@ static void wc_set_thermal_pdata(void)
 }
 
 static struct regulator_consumer_supply xiaomi_mipad2_v1p8sx_consumer[] = {
+	/* When OSID=4 */
 	REGULATOR_SUPPLY("v1p8sx", "OVTI5693:00"),
 	REGULATOR_SUPPLY("v1p8sx", "SS5K0008:00"),
+
+	/* When OSID=1 */
+	/*
+	 * Note: there is no equivalent ACPI _HID for SS5K0008 when OSID
+	 * is this value. Just leave it out for now. The same thing applies
+	 * below.
+	 */
+	REGULATOR_SUPPLY("v1p8sx", "INT33BE:00"),
 };
 
 static struct regulator_consumer_supply xiaomi_mipad2_v2p8sx_consumer[] = {
+	/* When OSID=4 */
 	REGULATOR_SUPPLY("v2p8sx", "OVTI5693:00"),
 	REGULATOR_SUPPLY("v2p8sx", "SS5K0008:00"),
+
+	/* When OSID=1 */
+	REGULATOR_SUPPLY("v2p8sx", "INT33BE:00"),
 };
 
 static struct regulator_consumer_supply xiaomi_mipad2_v1p2sx_consumer[] = {
+	/* When OSID=4 */
 	REGULATOR_SUPPLY("v1p2sx", "OVTI5693:00"),
 	REGULATOR_SUPPLY("v1p2sx", "SS5K0008:00"),
+
+	/* When OSID=1 */
+	REGULATOR_SUPPLY("v1p2sx", "INT33BE:00"),
 };
 
 static struct regulator_consumer_supply xiaomi_mipad2_vprog4d_consumer[] = {
+	/* When OSID=4 */
 	REGULATOR_SUPPLY("vprog4d", "OVTI5693:00"),
 	REGULATOR_SUPPLY("vprog4d", "SS5K0008:00"),
+
+	/* When OSID=1 */
+	REGULATOR_SUPPLY("vprog4d", "INT33BE:00"),
 };
 
 /* v1p8sx regulator */

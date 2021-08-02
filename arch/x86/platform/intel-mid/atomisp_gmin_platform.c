@@ -438,10 +438,16 @@ static struct gmin_subdev *gmin_subdev_add(struct v4l2_subdev *subdev)
 	}
 
 	if (pmic_id == PMIC_REGULATOR) {
+		/*
+		 * TODO: regulator names may vary depending on devices it
+		 * seems. Need to be able to provide regulator names via
+		 * DMI matching or something...
+		 */
+		/* Regulators used on Xiaomi Mi Pad 2 */
 		gmin_subdevs[i].v1p8_reg = regulator_get(dev, "V1P8SX");
 		gmin_subdevs[i].v2p8_reg = regulator_get(dev, "V2P8SX");
-		gmin_subdevs[i].v1p2_reg = regulator_get(dev, "V1P2A");
-		gmin_subdevs[i].v2p8_vcm_reg = regulator_get(dev, "VPROG4B");
+		gmin_subdevs[i].v1p2_reg = regulator_get(dev, "V1P2SX");
+		gmin_subdevs[i].v2p8_vcm_reg = regulator_get(dev, "VPROG4D");
 
 		/* Note: ideally we would initialize v[12]p8_on to the
 		 * output of regulator_is_enabled(), but sadly that
@@ -604,10 +610,17 @@ int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
 		gpio_set_value(v1p8_gpio, on);
 
 	if (gs->v1p8_reg) {
-		if (on)
-			return regulator_enable(gs->v1p8_reg);
-		else
-			return regulator_disable(gs->v1p8_reg);
+		if (on) {
+			ret = regulator_enable(gs->v1p2_reg);
+			/* TODO: add error handling */
+			ret = regulator_enable(gs->v1p8_reg);
+			return ret;
+		} else {
+			ret = regulator_disable(gs->v1p2_reg);
+			/* TODO: add error handling */
+			ret = regulator_disable(gs->v1p8_reg);
+			return ret;
+		}
 	}
 
 	if (pmic_id == PMIC_AXP) {
@@ -663,10 +676,17 @@ int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
 		gpio_set_value(v2p8_gpio, on);
 
 	if (gs->v2p8_reg) {
-		if (on)
-			return regulator_enable(gs->v2p8_reg);
-		else
-			return regulator_disable(gs->v2p8_reg);
+		if (on) {
+			ret = regulator_enable(gs->v2p8_vcm_reg);
+			/* TODO: add error handling */
+			ret = regulator_enable(gs->v2p8_reg);
+			return ret;
+		} else {
+			ret = regulator_disable(gs->v2p8_vcm_reg);
+			/* TODO: add error handling */
+			ret = regulator_disable(gs->v2p8_reg);
+			return ret;
+		};
 	}
 
 	if (pmic_id == PMIC_AXP) {

@@ -732,11 +732,15 @@ static int gmin_subdev_add(struct gmin_subdev *gs)
 
 	switch (pmic_id) {
 	case PMIC_REGULATOR:
+		/*
+		 * TODO: regulator names may vary depending on devices it
+		 * seems. So, for now, this is mipad2-specific.
+		 */
+		/* Regulators used on Xiaomi Mi Pad 2 */
 		gs->v1p8_reg = regulator_get(dev, "V1P8SX");
 		gs->v2p8_reg = regulator_get(dev, "V2P8SX");
-
-		gs->v1p2_reg = regulator_get(dev, "V1P2A");
-		gs->v2p8_vcm_reg = regulator_get(dev, "VPROG4B");
+		gs->v1p2_reg = regulator_get(dev, "V1P2SX");
+		gs->v2p8_vcm_reg = regulator_get(dev, "VPROG4D");
 
 		/* Note: ideally we would initialize v[12]p8_on to the
 		 * output of regulator_is_enabled(), but sadly that
@@ -922,11 +926,22 @@ static int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
 		gpio_set_value(gs->v1p8_gpio, on);
 
 	if (gs->v1p8_reg) {
-		regulator_set_voltage(gs->v1p8_reg, 1800000, 1800000);
-		if (on)
-			return regulator_enable(gs->v1p8_reg);
-		else
-			return regulator_disable(gs->v1p8_reg);
+		/*
+		 * The original mipad2 driver does not set voltage manually.
+		 * So, I guess this is not needed for mipad2.
+		 */
+		// regulator_set_voltage(gs->v1p8_reg, 1800000, 1800000);
+		if (on) {
+			ret = regulator_enable(gs->v1p2_reg);
+			/* TODO: add error handling */
+			ret = regulator_enable(gs->v1p8_reg);
+			return ret;
+		} else {
+			ret = regulator_disable(gs->v1p2_reg);
+			/* TODO: add error handling */
+			ret = regulator_disable(gs->v1p8_reg);
+			return ret;
+		}
 	}
 
 	switch (pmic_id) {
@@ -979,11 +994,22 @@ static int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
 		gpio_set_value(gs->v2p8_gpio, on);
 
 	if (gs->v2p8_reg) {
-		regulator_set_voltage(gs->v2p8_reg, 2900000, 2900000);
-		if (on)
-			return regulator_enable(gs->v2p8_reg);
-		else
-			return regulator_disable(gs->v2p8_reg);
+		/*
+		 * The original mipad2 driver does not set voltage manually.
+		 * So, I guess this is not needed for mipad2.
+		 */
+		// regulator_set_voltage(gs->v2p8_reg, 2900000, 2900000);
+		if (on) {
+			ret = regulator_enable(gs->v2p8_vcm_reg);
+			/* TODO: add error handling */
+			ret = regulator_enable(gs->v2p8_reg);
+			return ret;
+		} else {
+			ret = regulator_disable(gs->v2p8_vcm_reg);
+			/* TODO: add error handling */
+			ret = regulator_disable(gs->v2p8_reg);
+			return ret;
+		}
 	}
 
 	switch (pmic_id) {

@@ -14,8 +14,16 @@
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/atomisp_platform.h>
+#include <asm/spid.h>
 
 #define MAX_SUBDEVS 8
+
+/* This needs to be initialized at runtime so the various
+ * platform-checking macros in spid.h return the correct results.
+ * Either that, or we need to fix up the usage of those macros so that
+ * it's checking more appropriate runtime-detectable data. */
+struct soft_platform_id spid;
+EXPORT_SYMBOL(spid);
 
 enum clock_rate {
 	VLV2_CLK_XTAL_25_0MHz = 0,

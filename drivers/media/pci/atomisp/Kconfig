@@ -3,11 +3,19 @@
 #
 
 config VIDEO_ATOMISP
-       tristate "Intel Atom Image Signal Processor Driver"
-        depends on VIDEO_V4L2
-       select VIDEOBUF_VMALLOC
-        ---help---
-          Say Y here if your platform supports Intel Atom SoC
-          camera imaging subsystem.
-          To compile this driver as a module, choose M here: the
-          module will be called atomisp
+	tristate "Intel Atom Image Signal Processor Driver"
+	depends on X86 && EFI && PCI && ACPI
+	depends on COMMON_CLK
+	depends on VIDEO_V4L2
+	depends on PMIC_OPREGION
+	depends on CRC_PMIC_OPREGION
+	depends on INTEL_MID_ISP
+	select IOSF_MBI
+	select MEDIA_CONTROLLER
+	select VIDEOBUF_VMALLOC
+	select VIDEO_V4L2_SUBDEV_API
+	help
+	  Say Y here if your platform supports Intel Atom SoC
+	  camera imaging subsystem.
+	  To compile this driver as a module, choose M here: the
+	  module will be called atomisp

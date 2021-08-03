@@ -313,65 +313,12 @@ static const struct gmin_cfg_var t100_vars[] = {
 	{},
 };
 
-/* These are guessed values because Surface 3 doesn't describe these
- * values in DSDT or EFI. */
-static struct gmin_cfg_var surface3_vars[] = {
-	{"APTA0330:00_CsiPort", "0"},
-	{"APTA0330:00_CsiLanes", "1"},
-	{"APTA0330:00_CamClk", "0"},
-
-	/* when port=0 and lanes=4 for ov8835, atomisp fails to init saying:
-	 * atomisp_csi_lane_config: could not find the CSI port setting for 0-4-0
-	 * atomisp_register_entities failed (-22) */
-	{"OVTI8835:00_CsiPort", "1"},
-	{"OVTI8835:00_CsiLanes", "4"},
-	{"OVTI8835:00_CamClk", "1"},
-	{"OVTI8835:00_ClkSrc", "0"},
-	{},
-};
-
-/* Xiaomi Mi Pad 2 does not define any variables in DSDT or EFI, but
- * hardcodes in the kernel driver. Here are the those variables. */
-static struct gmin_cfg_var mipad2_vars[] = {
-	/* When OSID=4. */
-	{"OVTI5693:00_CamClk", "1"},
-	{"OVTI5693:00_ClkSrc", "0"},
-	{"OVTI5693:00_CsiPort", "0"},
-	{"OVTI5693:00_CsiLanes", "2"},
-
-	{"TOSB0001:00_CamClk", "0"},
-	{"TOSB0001:00_ClkSrc", "0"},
-	{"TOSB0001:00_CsiPort", "1"},
-	{"TOSB0001:00_CsiLanes", "4"},
-
-	/* When OSID=1. */
-	/* TODO: The _DSM defines different values against values hardcoded
-	 * in the Android kernel driver. Do these values really change
-	 * depending on what mode the BIOS sets?
-	 * (Windows (OSID=1) vs GMIN (OSID=4))
-	 * For now, use the same values with OSID=4 */
-	{"INT33BE:00_CamClk", "1"},
-	{"INT33BE:00_ClkSrc", "0"},
-	{"INT33BE:00_CsiPort", "0"},
-	{"INT33BE:00_CsiLanes", "2"},
-
-	{"XMCC0003:00_CamClk", "0"},
-	{"XMCC0003:00_ClkSrc", "0"},
-	{"XMCC0003:00_CsiPort", "1"},
-	{"XMCC0003:00_CsiLanes", "4"},
-	{},
-};
-
 static const struct {
 	const char *dmi_board_name;
 	const struct gmin_cfg_var *vars;
 } hard_vars[] = {
 	{ "BYT-T FFD8", ffrd8_vars },
 	{ "T100TA", t100_vars },
-	{ "Surface 3", surface3_vars },
-	/* For DMI-broken Surface 3 */
-	{ "OEMB", surface3_vars },
-	{ "Mipad", mipad2_vars },
 };
 
 
@@ -471,16 +418,10 @@ static struct gmin_subdev *gmin_subdev_add(struct v4l2_subdev *subdev)
 	}
 
 	if (pmic_id == PMIC_REGULATOR) {
-		/*
-		 * TODO: regulator names may vary depending on devices it
-		 * seems. Need to be able to provide regulator names via
-		 * DMI matching or something...
-		 */
-		/* Regulators used on Xiaomi Mi Pad 2 */
 		gmin_subdevs[i].v1p8_reg = regulator_get(dev, "V1P8SX");
 		gmin_subdevs[i].v2p8_reg = regulator_get(dev, "V2P8SX");
-		gmin_subdevs[i].v1p2_reg = regulator_get(dev, "V1P2SX");
-		gmin_subdevs[i].v2p8_vcm_reg = regulator_get(dev, "VPROG4D");
+		gmin_subdevs[i].v1p2_reg = regulator_get(dev, "V1P2A");
+		gmin_subdevs[i].v2p8_vcm_reg = regulator_get(dev, "VPROG4B");
 
 		/* Note: ideally we would initialize v[12]p8_on to the
 		 * output of regulator_is_enabled(), but sadly that
@@ -495,17 +436,11 @@ static struct gmin_subdev *gmin_subdev_add(struct v4l2_subdev *subdev)
 
 static struct gmin_subdev *find_gmin_subdev(struct v4l2_subdev *subdev)
 {
-	struct gmin_subdev *gs;
 	int i;
 	for (i = 0; i < MAX_SUBDEVS; i++)
 		if (gmin_subdevs[i].subdev == subdev)
 			return &gmin_subdevs[i];
-	
-	gs = gmin_subdev_add(subdev);
-	if (WARN_ON(!gs))
-		pr_err("%s(): line %d: gmin_subdev_add() returned null\n",
-		       __func__, __LINE__);
-	return gs;
+	return gmin_subdev_add(subdev);
 }
 
 static int gmin_gpio0_ctrl(struct v4l2_subdev *subdev, int on)
@@ -643,17 +578,10 @@ int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
 		gpio_set_value(v1p8_gpio, on);
 
 	if (gs->v1p8_reg) {
-		if (on) {
-			ret = regulator_enable(gs->v1p2_reg);
-			/* TODO: add error handling */
-			ret = regulator_enable(gs->v1p8_reg);
-			return ret;
-		} else {
-			ret = regulator_disable(gs->v1p2_reg);
-			/* TODO: add error handling */
-			ret = regulator_disable(gs->v1p8_reg);
-			return ret;
-		}
+		if (on)
+			return regulator_enable(gs->v1p8_reg);
+		else
+			return regulator_disable(gs->v1p8_reg);
 	}
 
 	if (pmic_id == PMIC_AXP) {
@@ -709,17 +637,10 @@ int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
 		gpio_set_value(v2p8_gpio, on);
 
 	if (gs->v2p8_reg) {
-		if (on) {
-			ret = regulator_enable(gs->v2p8_vcm_reg);
-			/* TODO: add error handling */
-			ret = regulator_enable(gs->v2p8_reg);
-			return ret;
-		} else {
-			ret = regulator_disable(gs->v2p8_vcm_reg);
-			/* TODO: add error handling */
-			ret = regulator_disable(gs->v2p8_reg);
-			return ret;
-		};
+		if (on)
+			return regulator_enable(gs->v2p8_reg);
+		else
+			return regulator_disable(gs->v2p8_reg);
 	}
 
 	if (pmic_id == PMIC_AXP) {
@@ -814,11 +735,6 @@ struct camera_sensor_platform_data *gmin_camera_platform_data(
 		enum atomisp_bayer_order csi_bayer)
 {
 	struct gmin_subdev *gs = find_gmin_subdev(subdev);
-
-	if (WARN_ON(!gs))
-		pr_err("%s(): line %d: find_gmin_subdev() returned null\n",
-		       __func__, __LINE__);
-
 	gs->csi_fmt = csi_format;
 	gs->csi_bayer = csi_bayer;
 

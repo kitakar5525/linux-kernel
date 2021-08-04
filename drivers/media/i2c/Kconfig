@@ -2,6 +2,8 @@
 # Multimedia Video device configuration
 #
 
+source "drivers/media/i2c/micam/Kconfig"
+
 if VIDEO_V4L2
 
 config VIDEO_IR_I2C

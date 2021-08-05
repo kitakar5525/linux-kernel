@@ -1998,7 +1998,6 @@ static int t4ka3_remove(struct i2c_client *client)
 	media_entity_cleanup(&dev->sd.entity);
 	atomisp_gmin_remove_subdev(sd);
 	t4ka3_vendorid_procfs_uninit();
-	kfree(dev);
 
 	return 0;
 }
@@ -2033,11 +2032,9 @@ static int t4ka3_probe(struct i2c_client *client,
 	dev_info(&client->dev, "%s() called\n", __func__);
 
 	/* allocate sensor device & init sub device */
-	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
-	if (!dev) {
-		dev_err(&client->dev, "%s: out of memory\n", __func__);
+	dev = devm_kzalloc(&client->dev, sizeof(*dev), GFP_KERNEL);
+	if (!dev)
 		return -ENOMEM;
-	}
 
 	mutex_init(&dev->input_lock);
 
@@ -2102,7 +2099,6 @@ static int t4ka3_probe(struct i2c_client *client,
 
 out_free:
 	v4l2_device_unregister_subdev(&dev->sd);
-	kfree(dev);
 	return ret;
 }
 
@@ -2110,19 +2106,18 @@ static const struct i2c_device_id t4ka3_id[] = {
 	{T4KA3_NAME, 0},
 	{ }
 };
+MODULE_DEVICE_TABLE(i2c, t4ka3_id);
+
 /*Temp ID, need change to official one after get from TOSHIBA*/
 static struct acpi_device_id T4KA3_acpi_match[] = {
 	{ "TOSB0001" },
 	{ "XMCC0003" },
 	{},
 };
-
-
-MODULE_DEVICE_TABLE(i2c, t4ka3_id);
+MODULE_DEVICE_TABLE(acpi, T4KA3_acpi_match);
 
 static struct i2c_driver t4ka3_driver = {
 	.driver = {
-		.owner = THIS_MODULE,
 		.name = T4KA3_NAME,
 		.acpi_match_table = ACPI_PTR(T4KA3_acpi_match),
 	},
@@ -2131,18 +2126,7 @@ static struct i2c_driver t4ka3_driver = {
 	.id_table = t4ka3_id,
 };
 
-static __init int init_t4ka3(void)
-{
-	return i2c_add_driver(&t4ka3_driver);
-}
-
-static __exit void exit_t4ka3(void)
-{
-	i2c_del_driver(&t4ka3_driver);
-}
-
-module_init(init_t4ka3);
-module_exit(exit_t4ka3);
+module_i2c_driver(t4ka3_driver)
 
 MODULE_DESCRIPTION("A low-level driver for T4KA3 sensor");
 MODULE_AUTHOR("HARVEY LV <harvey.lv@intel.com>");

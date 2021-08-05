@@ -2201,9 +2201,8 @@ static int ov5693_probe(struct i2c_client *client,
 	}
 
 	dev = devm_kzalloc(&client->dev, sizeof(*dev), GFP_KERNEL);
-	if (!dev) {
+	if (!dev)
 		return -ENOMEM;
-	}
 
 	mutex_init(&dev->input_lock);
 

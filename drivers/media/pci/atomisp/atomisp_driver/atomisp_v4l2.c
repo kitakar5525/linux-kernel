@@ -794,7 +794,7 @@ static int atomisp_subdev_probe(struct atomisp_device *isp)
 			    subdevs->type == SOC_CAMERA)
 				camera_count ++;
 		}
-		if (camera_count)
+		if (camera_count > 1)
 			break;
 		msleep(SUBDEV_WAIT_TIMEOUT);
 	}

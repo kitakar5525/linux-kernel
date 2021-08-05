@@ -56,7 +56,7 @@
 
 /* Timeouts to wait for all subdevs to be registered */
 #define SUBDEV_WAIT_TIMEOUT		50 /* ms */
-#define SUBDEV_WAIT_TIMEOUT_MAX_COUNT	80 /* up to 4 seconds */
+#define SUBDEV_WAIT_TIMEOUT_MAX_COUNT	40 /* up to 2 seconds */
 
 #ifdef CONFIG_INTEL_MID_ISP
 /* G-Min addition: pull this in from intel_mid_pm.h */

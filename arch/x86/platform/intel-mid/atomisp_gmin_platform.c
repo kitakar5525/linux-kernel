@@ -16,9 +16,6 @@
 #include <linux/atomisp_platform.h>
 #include <asm/spid.h>
 
-/* Timeout value to wait for regulators */
-#define REGULATOR_WAIT_TIMEOUT			2000 /* ms */
-
 #define MAX_SUBDEVS 8
 
 /* This needs to be initialized at runtime so the various
@@ -779,18 +776,6 @@ static int gmin_subdev_add(struct gmin_subdev *gs)
 		 * seems. So, for now, this is mipad2-specific.
 		 */
 		/* Regulators used on Xiaomi Mi Pad 2 */
-
-		/*
-		 * HACK: Wait for regulators to become available. On my
-		 * setup where regulator driver is built as module, at
-		 * least need to wait for about 1300 msec
-		 *
-		 * [    4.541241] kernel: i2c-INT33BE:00 supply V1P8SX not found, using dummy regulator
-		 * [...]
-		 * [    5.811885] kernel: V1P8SX: 1650 <--> 1950 mV at 1800 mV normal
-		 */
-		msleep(REGULATOR_WAIT_TIMEOUT);
-
 		gs->v1p8_reg = regulator_get(dev, "V1P8SX");
 		gs->v2p8_reg = regulator_get(dev, "V2P8SX");
 		gs->v1p2_reg = regulator_get(dev, "V1P2SX");

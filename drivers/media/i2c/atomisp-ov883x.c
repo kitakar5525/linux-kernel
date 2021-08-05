@@ -1174,6 +1174,144 @@ static int nearest_resolution_index(struct v4l2_subdev *sd, int w, int h)
 	return idx;
 }
 
+static int get_resolution_index(struct v4l2_subdev *sd, int w, int h)
+{
+	int i;
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+
+	for (i = 0; i < dev->entries_curr_table; i++) {
+		if (w != dev->curr_res_table[i].width)
+			continue;
+		if (h != dev->curr_res_table[i].height)
+			continue;
+		/* Found it */
+		return i;
+	}
+	return -1;
+}
+
+static int __ov8830_try_mbus_fmt(struct v4l2_subdev *sd,
+				 struct v4l2_mbus_framefmt *fmt)
+{
+	int idx;
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+
+	if (!fmt)
+		return -EINVAL;
+
+	if ((fmt->width > OV8830_RES_WIDTH_MAX) ||
+	    (fmt->height > OV8830_RES_HEIGHT_MAX)) {
+		fmt->width = OV8830_RES_WIDTH_MAX;
+		fmt->height = OV8830_RES_HEIGHT_MAX;
+	} else {
+		idx = nearest_resolution_index(sd, fmt->width, fmt->height);
+
+		/*
+		 * nearest_resolution_index() doesn't return smaller resolutions.
+		 * If it fails, it means the requested resolution is higher than we
+		 * can support. Fallback to highest possible resolution in this case.
+		 */
+		if (idx == -1)
+			idx = dev->entries_curr_table - 1;
+
+		fmt->width = dev->curr_res_table[idx].width;
+		fmt->height = dev->curr_res_table[idx].height;
+	}
+
+	fmt->code = MEDIA_BUS_FMT_SBGGR10_1X10;
+	return 0;
+}
+
+static int ov8830_try_mbus_fmt(struct v4l2_subdev *sd,
+			       struct v4l2_mbus_framefmt *fmt)
+{
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+	int r;
+
+	mutex_lock(&dev->input_lock);
+	r = __ov8830_try_mbus_fmt(sd, fmt);
+	mutex_unlock(&dev->input_lock);
+
+	return r;
+}
+
+static int ov8830_s_mbus_fmt(struct v4l2_subdev *sd,
+			      struct v4l2_mbus_framefmt *fmt)
+{
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+	struct camera_mipi_info *ov8830_info = NULL;
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	u16 hts, vts;
+	int ret;
+	const struct ov8830_resolution *res;
+
+	ov8830_info = v4l2_get_subdev_hostdata(sd);
+	if (ov8830_info == NULL)
+		return -EINVAL;
+
+	mutex_lock(&dev->input_lock);
+
+	ret = __ov8830_try_mbus_fmt(sd, fmt);
+	if (ret)
+		goto out;
+
+	dev->fmt_idx = get_resolution_index(sd, fmt->width, fmt->height);
+	/* Sanity check */
+	if (unlikely(dev->fmt_idx == -1)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* Sets the default FPS */
+	dev->fps_index = 0;
+
+	/* Get the current resolution setting */
+	res = &dev->curr_res_table[dev->fmt_idx];
+
+	/* Write the selected resolution table values to the registers */
+	ret = ov8830_write_reg_array(client, res->regs);
+	if (ret)
+		goto out;
+
+	/* Frame timing registers are updates as part of exposure */
+	hts = res->fps_options[dev->fps_index].pixels_per_line;
+	vts = res->fps_options[dev->fps_index].lines_per_frame;
+
+	/*
+	 * update hts, vts, exposure and gain as one block. Note that the vts
+	 * will be changed according to the exposure used. But the maximum vts
+	 * dev->curr_res_table[dev->fmt_idx] should not be changed at all.
+	 */
+	ret = __ov8830_set_exposure(sd, dev->exposure, dev->gain,
+					dev->digital_gain, &hts, &vts);
+	if (ret)
+		goto out;
+
+	ret = ov8830_get_intg_factor(sd, ov8830_info, dev->basic_settings_list);
+
+out:
+	mutex_unlock(&dev->input_lock);
+
+	return ret;
+}
+
+static int ov8830_g_mbus_fmt(struct v4l2_subdev *sd,
+			      struct v4l2_mbus_framefmt *fmt)
+{
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+
+	if (!fmt)
+		return -EINVAL;
+
+	mutex_lock(&dev->input_lock);
+	fmt->width = dev->curr_res_table[dev->fmt_idx].width;
+	fmt->height = dev->curr_res_table[dev->fmt_idx].height;
+	fmt->code = MEDIA_BUS_FMT_SBGGR10_1X10;
+	mutex_unlock(&dev->input_lock);
+
+	return 0;
+}
+
 static int ov8830_detect(struct i2c_client *client, u16 *id, u8 *revision)
 {
 	struct i2c_adapter *adapter = client->adapter;
@@ -1255,6 +1393,74 @@ static int ov8830_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
+/*
+ * ov8830 enum frame size, frame intervals
+ */
+static int ov8830_enum_framesizes(struct v4l2_subdev *sd,
+				   struct v4l2_frmsizeenum *fsize)
+{
+	unsigned int index = fsize->index;
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+
+	mutex_lock(&dev->input_lock);
+	if (index >= dev->entries_curr_table) {
+		mutex_unlock(&dev->input_lock);
+		return -EINVAL;
+	}
+
+	fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
+	fsize->discrete.width = dev->curr_res_table[index].width;
+	fsize->discrete.height = dev->curr_res_table[index].height;
+	fsize->reserved[0] = dev->curr_res_table[index].used;
+	mutex_unlock(&dev->input_lock);
+
+	return 0;
+}
+
+static int ov8830_enum_frameintervals(struct v4l2_subdev *sd,
+				       struct v4l2_frmivalenum *fival)
+{
+	unsigned int index = fival->index;
+	int fmt_index;
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+	const struct ov8830_resolution *res;
+
+	mutex_lock(&dev->input_lock);
+
+	/*
+	 * since the isp will donwscale the resolution to the right size,
+	 * find the nearest one that will allow the isp to do so important to
+	 * ensure that the resolution requested is padded correctly by the
+	 * requester, which is the atomisp driver in this case.
+	 */
+	fmt_index = nearest_resolution_index(sd, fival->width, fival->height);
+	if (-1 == fmt_index)
+		fmt_index = dev->entries_curr_table - 1;
+
+	res = &dev->curr_res_table[fmt_index];
+
+	/* Check if this index is supported */
+	if (index > __ov8830_get_max_fps_index(res->fps_options)) {
+		mutex_unlock(&dev->input_lock);
+		return -EINVAL;
+	}
+
+	fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
+	fival->discrete.numerator = 1;
+	fival->discrete.denominator = res->fps_options[index].fps;
+
+	mutex_unlock(&dev->input_lock);
+
+	return 0;
+}
+
+static int ov8830_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
+				 u32 *code)
+{
+	*code = MEDIA_BUS_FMT_SBGGR10_1X10;
+	return 0;
+}
+
 static int ov8830_s_config(struct v4l2_subdev *sd,
 			    int irq, void *platform_data)
 {
@@ -1332,9 +1538,6 @@ ov8830_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg
 	return 0;
 }
 
-/*
- * ov8830 enum frame size
- */
 static int
 ov8830_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
 			struct v4l2_subdev_frame_size_enum *fse)
@@ -1352,46 +1555,6 @@ ov8830_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cf
 	fse->min_height = dev->curr_res_table[index].height;
 	fse->max_width = dev->curr_res_table[index].width;
 	fse->max_height = dev->curr_res_table[index].height;
-	mutex_unlock(&dev->input_lock);
-
-	return 0;
-}
-
-/*
- * ov8830 frame intervals
- */
-static int ov8830_enum_frame_interval(struct v4l2_subdev *sd,
-				        struct v4l2_subdev_pad_config *cfg,
-						struct v4l2_subdev_frame_interval_enum *fie)
-{
-	unsigned int index = fie->index;
-	int fmt_index;
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
-	const struct ov8830_resolution *res;
-
-	mutex_lock(&dev->input_lock);
-
-	/*
-	 * since the isp will donwscale the resolution to the right size,
-	 * find the nearest one that will allow the isp to do so important to
-	 * ensure that the resolution requested is padded correctly by the
-	 * requester, which is the atomisp driver in this case.
-	 */
-	fmt_index = nearest_resolution_index(sd, fie->width, fie->height);
-	if (-1 == fmt_index)
-		fmt_index = dev->entries_curr_table - 1;
-
-	res = &dev->curr_res_table[fmt_index];
-
-	/* Check if this index is supported */
-	if (index > __ov8830_get_max_fps_index(res->fps_options)) {
-		mutex_unlock(&dev->input_lock);
-		return -EINVAL;
-	}
-
-	fie->interval.numerator = 1;
-	fie->interval.denominator = res->fps_options[index].fps;
-
 	mutex_unlock(&dev->input_lock);
 
 	return 0;
@@ -1581,6 +1744,12 @@ static int ov8830_g_skip_frames(struct v4l2_subdev *sd, u32 *frames)
 
 static const struct v4l2_subdev_video_ops ov8830_video_ops = {
 	.s_stream = ov8830_s_stream,
+	.enum_framesizes = ov8830_enum_framesizes,
+	.enum_frameintervals = ov8830_enum_frameintervals,
+	.enum_mbus_fmt = ov8830_enum_mbus_fmt,
+	.try_mbus_fmt = ov8830_try_mbus_fmt,
+	.g_mbus_fmt = ov8830_g_mbus_fmt,
+	.s_mbus_fmt = ov8830_s_mbus_fmt,
 	.g_frame_interval = ov8830_g_frame_interval,
 	.s_frame_interval = ov8830_s_frame_interval,
 };
@@ -1590,6 +1759,9 @@ static const struct v4l2_subdev_sensor_ops ov8830_sensor_ops = {
 };
 
 static const struct v4l2_subdev_core_ops ov8830_core_ops = {
+	.queryctrl = v4l2_subdev_queryctrl,
+	.g_ctrl = v4l2_subdev_g_ctrl,
+	.s_ctrl = v4l2_subdev_s_ctrl,
 	.s_power = ov8830_s_power,
 	.ioctl = ov8830_ioctl,
 	.init = ov8830_init,
@@ -1598,7 +1770,6 @@ static const struct v4l2_subdev_core_ops ov8830_core_ops = {
 static const struct v4l2_subdev_pad_ops ov8830_pad_ops = {
 	.enum_mbus_code = ov8830_enum_mbus_code,
 	.enum_frame_size = ov8830_enum_frame_size,
-	.enum_frame_interval = ov8830_enum_frame_interval,
 	.get_fmt = ov8830_get_pad_format,
 	.set_fmt = ov8830_set_pad_format,
 };

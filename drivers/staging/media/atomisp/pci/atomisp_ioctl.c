@@ -646,11 +646,6 @@ static int atomisp_g_input(struct file *file, void *fh, unsigned int *input)
 	struct atomisp_device *isp = video_get_drvdata(vdev);
 	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
 
-	if (!asd) {
-		dev_warn(isp->dev, "%s(): asd is null\n", __func__);
-		return -EINVAL;
-	}
-
 	rt_mutex_lock(&isp->mutex);
 	*input = asd->input_curr;
 	rt_mutex_unlock(&isp->mutex);
@@ -770,11 +765,6 @@ static int atomisp_enum_fmt_cap(struct file *file, void *fh,
 	unsigned int i, fi = 0;
 	int rval;
 
-	if (!asd) {
-		dev_warn(isp->dev, "%s(): asd is null\n", __func__);
-		return -EINVAL;
-	}
-
 	rt_mutex_lock(&isp->mutex);
 	rval = v4l2_subdev_call(isp->inputs[asd->input_curr].camera, pad,
 				enum_mbus_code, NULL, &code);
@@ -852,11 +842,6 @@ static int atomisp_try_fmt_cap(struct file *file, void *fh,
 	struct atomisp_device *isp = video_get_drvdata(vdev);
 	int ret;
 
-	if (!isp->asd) {
-		dev_warn(isp->dev, "%s(): asd is null\n", __func__);
-		return -EINVAL;
-	}
-
 	rt_mutex_lock(&isp->mutex);
 	ret = atomisp_try_fmt(vdev, &f->fmt.pix, NULL);
 	rt_mutex_unlock(&isp->mutex);
@@ -869,11 +854,6 @@ static int atomisp_s_fmt_cap(struct file *file, void *fh,
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_device *isp = video_get_drvdata(vdev);
 	int ret;
-
-	if (!isp->asd) {
-		dev_warn(isp->dev, "%s(): asd is null\n", __func__);
-		return -EINVAL;
-	}
 
 	rt_mutex_lock(&isp->mutex);
 	if (isp->isp_fatal_error) {
@@ -2610,11 +2590,6 @@ static int atomisp_g_parm(struct file *file, void *fh,
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
 	struct atomisp_device *isp = video_get_drvdata(vdev);
-
-	if (!asd) {
-		dev_warn(isp->dev, "%s(): asd is null\n", __func__);
-		return -EINVAL;
-	}
 
 	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		dev_err(isp->dev, "unsupported v4l2 buf type\n");

@@ -618,13 +618,6 @@ static int power_up(struct ar0330 *ar0330)
 			goto fail_power;
 	}
 
-	if (WARN_ON(!ar0330->platform_data->flisclk_ctrl)) {
-		pr_err("%s(): line %d: flisclk_ctrl() is null\n",
-		       __func__, __LINE__);
-		ret = -ENODEV;
-		goto fail_clk;
-	}
-
 	/* flis clock control */
 	ret = ar0330->platform_data->flisclk_ctrl(&ar0330->subdev, 1);
 	if (ret)
@@ -653,12 +646,6 @@ static int power_down(struct ar0330 *ar0330)
 	if (!ar0330->platform_data) {
 		dev_err(&client->dev,
 			"no camera_sensor_platform_data");
-		return -ENODEV;
-	}
-
-	if (WARN_ON(!ar0330->platform_data->flisclk_ctrl)) {
-		pr_err("%s(): line %d: flisclk_ctrl() is null\n",
-		       __func__, __LINE__);
 		return -ENODEV;
 	}
 

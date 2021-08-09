@@ -1,4 +1,3 @@
-obj-y        += imx/
 msp3400-objs	:=	msp3400-driver.o msp3400-kthreads.o
 obj-$(CONFIG_VIDEO_MSP3400) += msp3400.o
 
@@ -6,11 +5,8 @@ obj-$(CONFIG_VIDEO_SMIAPP)	+= smiapp/
 obj-$(CONFIG_VIDEO_CX25840) += cx25840/
 obj-$(CONFIG_VIDEO_M5MOLS)	+= m5mols/
 obj-y				+= soc_camera/
-obj-y				+= micam/
 
 obj-$(CONFIG_VIDEO_APTINA_PLL) += aptina-pll.o
-obj-$(CONFIG_VIDEO_ATOMISP_AR0330) += atomisp-ar0330.o
-obj-$(CONFIG_VIDEO_ATOMISP_OV883X) += atomisp-ov883x.o
 obj-$(CONFIG_VIDEO_TVAUDIO) += tvaudio.o
 obj-$(CONFIG_VIDEO_TDA7432) += tda7432.o
 obj-$(CONFIG_VIDEO_SAA6588) += saa6588.o
@@ -58,7 +54,6 @@ obj-$(CONFIG_VIDEO_VP27SMPX) += vp27smpx.o
 obj-$(CONFIG_VIDEO_SONY_BTF_MPX) += sony-btf-mpx.o
 obj-$(CONFIG_VIDEO_UPD64031A) += upd64031a.o
 obj-$(CONFIG_VIDEO_UPD64083) += upd64083.o
-obj-$(CONFIG_VIDEO_OV7251) += ov7251.o
 obj-$(CONFIG_VIDEO_OV7640) += ov7640.o
 obj-$(CONFIG_VIDEO_OV7670) += ov7670.o
 obj-$(CONFIG_VIDEO_OV9650) += ov9650.o

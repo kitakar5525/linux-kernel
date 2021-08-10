@@ -15,6 +15,7 @@
 #include <linux/platform_device.h>
 #include <linux/atomisp_platform.h>
 #include <asm/spid.h>
+#include <linux/mfd/intel_soc_pmic.h>
 
 /* This needs to be initialized at runtime so the various
  * platform-checking macros in spid.h return the correct results.
@@ -69,6 +70,15 @@ enum clock_rate {
 #define CRYSTAL_ON		0x63
 #define CRYSTAL_OFF		0x62
 
+/* WHISKEY COVE PMIC register set */
+#define WCOVE_V1P8SX_CTRL	0x57
+#define WCOVE_V2P8SX_CTRL	0x5d
+#define WCOVE_V1P2SX_CTRL	0x5a /* value from https://github.com/MiCode/Xiaomi_Kernel_OpenSource/blob/latte-l-oss/drivers/regulator/pmic_whiskey_cove.c */
+#define WCOVE_VPROG4D_CTRL	0x9f /* same as above */
+#define WCOVE_CTRL_MASK		0x07
+#define WCOVE_CTRL_ENABLE	0x02
+#define WCOVE_CTRL_DISABLE	0x00
+
 struct gmin_subdev {
 	struct v4l2_subdev *subdev;
 	enum clock_rate clock_src;
@@ -106,6 +116,7 @@ static struct gmin_subdev gmin_subdevs[MAX_SUBDEVS];
 #define PMIC_ACPI_AXP		"INT33F4"	/* XPower AXP288 PMIC */
 #define PMIC_ACPI_TI		"INT33F5"	/* Dollar Cove TI PMIC */
 #define PMIC_ACPI_CRYSTALCOVE	"INT33FD"	/* Crystal Cove PMIC */
+#define PMIC_ACPI_WHISKEYCOVE	"INT34D3"	/* Whiskey Cove PMIC */
 
 #define PMIC_PLATFORM_TI	"intel_soc_pmic_chtdc_ti"
 
@@ -114,7 +125,8 @@ static enum {
 	PMIC_REGULATOR,
 	PMIC_AXP,
 	PMIC_TI,
-	PMIC_CRYSTALCOVE
+	PMIC_CRYSTALCOVE,
+	PMIC_WHISKEYCOVE
 } pmic_id;
 
 static const char *pmic_name[] = {
@@ -123,6 +135,7 @@ static const char *pmic_name[] = {
 	[PMIC_AXP]		= "XPower AXP288 PMIC",
 	[PMIC_TI]		= "Dollar Cove TI PMIC",
 	[PMIC_CRYSTALCOVE]	= "Crystal Cove PMIC",
+	[PMIC_WHISKEYCOVE]	= "Whiskey Cove PMIC",
 };
 
 /* The atomisp uses type==0 for the end-of-list marker, so leave space. */
@@ -618,6 +631,8 @@ static u8 gmin_get_pmic_id_and_addr(struct device *dev)
 		pmic_id = PMIC_AXP;
 	else if (gmin_i2c_dev_exists(dev, PMIC_ACPI_CRYSTALCOVE, &power))
 		pmic_id = PMIC_CRYSTALCOVE;
+	else if (gmin_i2c_dev_exists(dev, PMIC_ACPI_WHISKEYCOVE, &power))
+		pmic_id = PMIC_WHISKEYCOVE;
 	else
 		pmic_id = PMIC_REGULATOR;
 
@@ -945,6 +960,8 @@ static int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
 	struct gmin_subdev *gs = find_gmin_subdev(subdev);
 	int ret;
 	int value;
+	int wc_readb_val;
+	int wc_writeb_val;
 
 	if (!gs || gs->v1p8_on == on)
 		return 0;
@@ -999,6 +1016,24 @@ static int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
 
 		return gmin_i2c_write(subdev->dev, gs->pwm_i2c_addr,
 				      CRYSTAL_1P8V_REG, value, 0xff);
+	case PMIC_WHISKEYCOVE:
+		/*
+		 * TODO: regulator names may vary depending on devices it
+		 * seems. So, for now, this is mipad2-specific.
+		 */
+		value = on ? WCOVE_CTRL_ENABLE : WCOVE_CTRL_DISABLE;
+		wc_readb_val = intel_soc_pmic_readb(WCOVE_V1P2SX_CTRL);
+		wc_writeb_val = (wc_readb_val & ~WCOVE_CTRL_MASK) | value;
+
+		ret = intel_soc_pmic_writeb(WCOVE_V1P2SX_CTRL, wc_writeb_val);
+		/* TODO: add error handling */
+
+		wc_readb_val = intel_soc_pmic_readb(WCOVE_V1P8SX_CTRL);
+		wc_writeb_val = (wc_readb_val & ~WCOVE_CTRL_MASK) | value;
+
+		ret = intel_soc_pmic_writeb(WCOVE_V1P8SX_CTRL, wc_writeb_val);
+
+		return ret;
 	default:
 		dev_err(subdev->dev, "Couldn't set power mode for v1p2\n");
 	}
@@ -1011,6 +1046,8 @@ static int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
 	struct gmin_subdev *gs = find_gmin_subdev(subdev);
 	int ret;
 	int value;
+	int wc_readb_val;
+	int wc_writeb_val;
 
 	if (WARN_ON(!gs))
 		return -ENODEV;
@@ -1066,6 +1103,24 @@ static int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
 
 		return gmin_i2c_write(subdev->dev, gs->pwm_i2c_addr,
 				      CRYSTAL_2P8V_REG, value, 0xff);
+	case PMIC_WHISKEYCOVE:
+		/*
+		 * TODO: regulator names may vary depending on devices it
+		 * seems. So, for now, this is mipad2-specific.
+		 */
+		value = on ? WCOVE_CTRL_ENABLE : WCOVE_CTRL_DISABLE;
+		wc_readb_val = intel_soc_pmic_readb(WCOVE_VPROG4D_CTRL);
+		wc_writeb_val = (wc_readb_val & ~WCOVE_CTRL_MASK) | value;
+
+		ret = intel_soc_pmic_writeb(WCOVE_VPROG4D_CTRL, wc_writeb_val);
+		/* TODO: add error handling */
+
+		wc_readb_val = intel_soc_pmic_readb(WCOVE_V2P8SX_CTRL);
+		wc_writeb_val = (wc_readb_val & ~WCOVE_CTRL_MASK) | value;
+
+		ret = intel_soc_pmic_writeb(WCOVE_V2P8SX_CTRL, wc_writeb_val);
+
+		return ret;
 	default:
 		dev_err(subdev->dev, "Couldn't set power mode for v1p2\n");
 	}

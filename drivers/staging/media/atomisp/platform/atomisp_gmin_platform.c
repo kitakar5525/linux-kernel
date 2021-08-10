@@ -1025,12 +1025,18 @@ static int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
 		wc_readb_val = intel_soc_pmic_readb(WCOVE_V1P2SX_CTRL);
 		wc_writeb_val = (wc_readb_val & ~WCOVE_CTRL_MASK) | value;
 
+		pr_info("%s(): V1P2SX en: %d\n", __func__, on);
+		pr_info("%s(): wc_readb_val: 0x%x\n", __func__, wc_readb_val);
+		pr_info("%s(): wc_writeb_val: 0x%x\n", __func__, wc_writeb_val);
 		ret = intel_soc_pmic_writeb(WCOVE_V1P2SX_CTRL, wc_writeb_val);
 		/* TODO: add error handling */
 
 		wc_readb_val = intel_soc_pmic_readb(WCOVE_V1P8SX_CTRL);
 		wc_writeb_val = (wc_readb_val & ~WCOVE_CTRL_MASK) | value;
 
+		pr_info("%s(): V1P8SX en: %d\n", __func__, on);
+		pr_info("%s(): wc_readb_val: 0x%x\n", __func__, wc_readb_val);
+		pr_info("%s(): wc_writeb_val: 0x%x\n", __func__, wc_writeb_val);
 		ret = intel_soc_pmic_writeb(WCOVE_V1P8SX_CTRL, wc_writeb_val);
 
 		return ret;
@@ -1112,12 +1118,18 @@ static int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
 		wc_readb_val = intel_soc_pmic_readb(WCOVE_VPROG4D_CTRL);
 		wc_writeb_val = (wc_readb_val & ~WCOVE_CTRL_MASK) | value;
 
+		pr_info("%s(): VPROG4D en: %d\n", __func__, on);
+		pr_info("%s(): wc_readb_val: 0x%x\n", __func__, wc_readb_val);
+		pr_info("%s(): wc_writeb_val: 0x%x\n", __func__, wc_writeb_val);
 		ret = intel_soc_pmic_writeb(WCOVE_VPROG4D_CTRL, wc_writeb_val);
 		/* TODO: add error handling */
 
 		wc_readb_val = intel_soc_pmic_readb(WCOVE_V2P8SX_CTRL);
 		wc_writeb_val = (wc_readb_val & ~WCOVE_CTRL_MASK) | value;
 
+		pr_info("%s(): V2P8SX en: %d\n", __func__, on);
+		pr_info("%s(): wc_readb_val: 0x%x\n", __func__, wc_readb_val);
+		pr_info("%s(): wc_writeb_val: 0x%x\n", __func__, wc_writeb_val);
 		ret = intel_soc_pmic_writeb(WCOVE_V2P8SX_CTRL, wc_writeb_val);
 
 		return ret;

@@ -137,7 +137,8 @@ static const struct regmap_irq_chip cht_wc_regmap_irq_chip = {
 	.num_regs = 1,
 };
 
-static int cht_wc_probe(struct i2c_client *client)
+static int cht_wc_probe(struct i2c_client *client,
+			const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct intel_soc_pmic *pmic;
@@ -224,7 +225,7 @@ static struct i2c_driver cht_wc_driver = {
 		.pm     = &cht_wc_pm_ops,
 		.acpi_match_table = cht_wc_acpi_ids,
 	},
-	.probe_new = cht_wc_probe,
+	.probe = cht_wc_probe,
 	.shutdown = cht_wc_shutdown,
 	.id_table = cht_wc_i2c_id,
 };

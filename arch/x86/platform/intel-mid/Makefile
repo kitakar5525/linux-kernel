@@ -1,6 +1,6 @@
 obj-$(CONFIG_X86_INTEL_MID) += intel-mid.o intel_mid_vrtc.o mfld.o mrfld.o pwr.o
 
-obj-$(CONFIG_INTEL_MID_ISP) += intel_mid_atomisp.o
+obj-$(CONFIG_INTEL_MID_ISP) += atomisp_gmin_platform.o
 obj-y += intel_mid_pcihelpers.o
 
 # SFI specific code

@@ -273,6 +273,8 @@ static int intel_cht_wc_pmic_opregion_probe(struct platform_device *pdev)
 {
 	struct intel_soc_pmic *pmic = dev_get_drvdata(pdev->dev.parent);
 
+	pr_alert("%s() called\n", __func__);
+
 	return intel_pmic_install_opregion_handler(&pdev->dev,
 			ACPI_HANDLE(pdev->dev.parent),
 			pmic->regmap,

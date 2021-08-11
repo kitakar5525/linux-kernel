@@ -162,6 +162,8 @@ static int cht_wc_probe(struct i2c_client *client,
 	unsigned long long hrv;
 	int ret;
 
+	pr_alert("%s() called\n", __func__);
+
 	status = acpi_evaluate_integer(ACPI_HANDLE(dev), "_HRV", NULL, &hrv);
 	if (ACPI_FAILURE(status)) {
 		dev_err(dev, "Failed to get PMIC hardware revision\n");

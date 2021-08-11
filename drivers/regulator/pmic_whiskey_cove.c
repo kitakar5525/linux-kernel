@@ -360,6 +360,8 @@ static int wcove_regulator_probe(struct platform_device *pdev)
 	struct wcove_regulator_info *reg_info = NULL;
 	struct regmap *regmap;
 	struct regulator_dev *regulator;
+
+	pr_alert("%s() called\n", __func__);
 /*
 	if (!pdata) {
 		dev_err(&pdev->dev, "No regulator info\n");

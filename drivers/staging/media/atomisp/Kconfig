@@ -1,3 +1,8 @@
+config INTEL_MID_ISP
+	bool "Intel MID ISP Subsystem Support"
+	help
+	  Select to build support for Intel MID ISP Subsystem.
+
 menuconfig INTEL_ATOMISP
 	bool "Enable support to Intel Atom ISP camera drivers"
 	depends on X86 && EFI && PCI && ACPI

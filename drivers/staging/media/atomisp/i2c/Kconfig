@@ -148,3 +148,5 @@ config VIDEO_ATOMISP_LM3554
 
 	 To compile this driver as a module, choose M here: the
 	 module will be called lm3554
+
+source "drivers/staging/media/atomisp/i2c/micam/Kconfig"

@@ -63,6 +63,20 @@ static struct mfd_cell cht_wc_dev[] = {
 	},
 	{	.name = "cht_wcove_region", },
 	{	.name = "cht_wcove_leds", },
+
+	/* Regulators used for Xiaomi Mi Pad 2 cameras */
+	{	.name = "cht_wcove_regulator",
+		.id = WCOVE_ID_V1P8SX+1,
+	},
+	{	.name = "cht_wcove_regulator",
+		.id = WCOVE_ID_V2P8SX+1,
+	},
+	{	.name = "cht_wcove_regulator",
+		.id = WCOVE_ID_V1P2SX+1,
+	},
+	{	.name = "cht_wcove_regulator",
+		.id = WCOVE_ID_VPROG4D+1,
+	},
 };
 
 /*

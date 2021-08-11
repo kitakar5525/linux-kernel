@@ -35,7 +35,7 @@
 #ifndef CONFIG_INTEL_MID_ISP
 #include <linux/kct.h>
 #endif
-#include <asm/intel-mid.h>
+#include <asm/intel_mid_pcihelpers.h>
 
 #include <media/v4l2-event.h>
 #include <media/videobuf-vmalloc.h>

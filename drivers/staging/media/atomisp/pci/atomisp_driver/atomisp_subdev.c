@@ -146,7 +146,16 @@ bool atomisp_subdev_copy_format_conversion(struct atomisp_sub_device *asd,
 
 uint16_t atomisp_subdev_source_pad(struct video_device *vdev)
 {
-	return vdev->entity.links[0].source->index;
+	struct media_link *link;
+	u16 ret = 0;
+
+	list_for_each_entry(link, &vdev->entity.links, list) {
+		if (link->source) {
+			ret = link->source->index;
+			break;
+		}
+	}
+	return ret;
 }
 
 /*

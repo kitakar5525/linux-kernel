@@ -246,7 +246,7 @@ static int mipi_csi2_init_entities(struct atomisp_mipi_csi2_device *csi2,
 
 	me->ops = &csi2_media_ops;
 	me->function = MEDIA_ENT_F_V4L2_SUBDEV_UNKNOWN;
-	ret = media_entity_init(me, CSI2_PADS_NUM, pads, 0);
+	ret = media_entity_pads_init(me, CSI2_PADS_NUM, pads);
 	if (ret < 0)
 		return ret;
 

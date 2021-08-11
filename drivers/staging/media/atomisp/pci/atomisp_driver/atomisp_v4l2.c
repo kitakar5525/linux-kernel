@@ -152,7 +152,7 @@ int atomisp_video_init(struct atomisp_video_pipe *video, const char *name)
 		return -EINVAL;
 	}
 
-	ret = media_entity_init(&video->vdev.entity, 1, &video->pad, 0);
+	ret = media_entity_pads_init(&video->vdev.entity, 1, &video->pad);
 	if (ret < 0)
 		return ret;
 

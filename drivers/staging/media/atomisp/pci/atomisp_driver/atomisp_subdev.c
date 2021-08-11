@@ -1396,7 +1396,7 @@ static int isp_subdev_init_entities(struct atomisp_sub_device *asd)
 
 	me->ops = &isp_subdev_media_ops;
 	me->function = MEDIA_ENT_F_V4L2_SUBDEV_UNKNOWN;
-	ret = media_entity_init(me, ATOMISP_SUBDEV_PADS_NUM, pads, 0);
+	ret = media_entity_pads_init(me, ATOMISP_SUBDEV_PADS_NUM, pads);
 	if (ret < 0)
 		return ret;
 

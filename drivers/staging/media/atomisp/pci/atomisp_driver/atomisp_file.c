@@ -290,5 +290,5 @@ int atomisp_file_input_init(struct atomisp_device *isp)
 	pads[0].flags = MEDIA_PAD_FL_SINK;
 	me->function = MEDIA_ENT_F_V4L2_SUBDEV_UNKNOWN;
 
-	return media_entity_init(me, 1, pads, 0);
+	return media_entity_pads_init(me, 1, pads);
 }

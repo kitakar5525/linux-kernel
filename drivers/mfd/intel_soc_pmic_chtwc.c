@@ -229,4 +229,4 @@ static struct i2c_driver cht_wc_driver = {
 	.shutdown = cht_wc_shutdown,
 	.id_table = cht_wc_i2c_id,
 };
-builtin_i2c_driver(cht_wc_driver);
+module_i2c_driver(cht_wc_driver);

@@ -288,7 +288,7 @@ int atomisp_file_input_init(struct atomisp_device *isp)
 	v4l2_set_subdevdata(sd, file_dev);
 
 	pads[0].flags = MEDIA_PAD_FL_SINK;
-	me->function = MEDIA_ENT_T_V4L2_SUBDEV;
+	me->function = MEDIA_ENT_F_V4L2_SUBDEV_UNKNOWN;
 
 	return media_entity_init(me, 1, pads, 0);
 }

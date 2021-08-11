@@ -52,3 +52,5 @@ config VIDEO_ATOMISP_OV883X
 	  module will be called OV8830/OV8835.
 
 	  It currently only works with atopmisp driver.
+
+source "drivers/staging/media/atomisp/i2c/micam/Kconfig"

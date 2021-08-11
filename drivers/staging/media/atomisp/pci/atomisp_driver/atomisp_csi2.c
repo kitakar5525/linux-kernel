@@ -192,7 +192,7 @@ static int csi2_link_setup(struct media_entity *entity,
 {
 	struct v4l2_subdev *sd = media_entity_to_v4l2_subdev(entity);
 	struct atomisp_mipi_csi2_device *csi2 = v4l2_get_subdevdata(sd);
-	u32 result = local->index | media_entity_type(remote->entity);
+	u32 result = local->index | is_media_entity_v4l2_subdev(remote->entity);
 
 	switch (result) {
 	case CSI2_PAD_SOURCE | MEDIA_ENT_F_OLD_BASE:

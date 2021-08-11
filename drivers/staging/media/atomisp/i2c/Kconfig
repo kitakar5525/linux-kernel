@@ -106,6 +106,33 @@ config VIDEO_ATOMISP_OV7251
 
 	  It currently only works with atopmisp driver.
 
+config VIDEO_ATOMISP_AR0330
+	tristate "Aptina AR0330 sensor support"
+	depends on I2C && VIDEO_V4L2
+	depends on MEDIA_CAMERA_SUPPORT
+	default y
+	help
+	  This is a Video4Linux2 sensor-level driver for the Aptina
+	  AR0330 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called AR0330.
+
+	  It currently only works with atopmisp driver.
+
+config VIDEO_ATOMISP_OV883X
+	tristate "OmniVision OV8830/OV8835 sensor support"
+	depends on I2C && VIDEO_V4L2
+	depends on MEDIA_CAMERA_SUPPORT
+	default y
+	help
+	  This is a Video4Linux2 sensor-level driver for the OmniVision
+	  OV8830/OV8835 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called OV8830/OV8835.
+
+	  It currently only works with atopmisp driver.
 
 #
 # Kconfig for flash drivers

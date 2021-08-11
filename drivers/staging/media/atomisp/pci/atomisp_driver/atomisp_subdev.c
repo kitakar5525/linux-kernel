@@ -1033,7 +1033,7 @@ static int isp_subdev_link_setup(struct media_entity *entity,
 	struct atomisp_device *isp = isp_sd->isp;
 	unsigned int i;
 
-	switch (local->index | media_entity_type(remote->entity)) {
+	switch (local->index | is_media_entity_v4l2_subdev(remote->entity)) {
 	case ATOMISP_SUBDEV_PAD_SINK | MEDIA_ENT_F_V4L2_SUBDEV_UNKNOWN:
 		/* Read from the sensor CSI2-ports. */
 		if (!(flags & MEDIA_LNK_FL_ENABLED)) {

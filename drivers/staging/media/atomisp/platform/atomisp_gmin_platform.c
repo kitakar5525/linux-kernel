@@ -13,8 +13,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
-#include "../../include/linux/atomisp_platform.h"
-#include "../../include/linux/atomisp_gmin_platform.h"
+#include <linux/atomisp_platform.h>
 #include <asm/spid.h>
 
 /* This needs to be initialized at runtime so the various

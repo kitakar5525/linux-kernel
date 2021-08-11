@@ -63,10 +63,6 @@ static struct mfd_cell cht_wc_dev[] = {
 	},
 	{	.name = "cht_wcove_region", },
 	{	.name = "cht_wcove_leds", },
-
-	{	.name = "cht_wcove_regulator",
-		.id = WCOVE_ID_VPROG1B+1,
-	},
 };
 
 /*

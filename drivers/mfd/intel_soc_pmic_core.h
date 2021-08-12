@@ -13,7 +13,6 @@
  * GNU General Public License for more details.
  *
  * Author: Yang, Bin <bin.yang@intel.com>
- * Author: Zhu, Lejun <lejun.zhu@linux.intel.com>
  */
 
 #ifndef __INTEL_SOC_PMIC_CORE_H__
@@ -26,7 +25,55 @@ struct intel_soc_pmic_config {
 	const struct regmap_config *regmap_config;
 	const struct regmap_irq_chip *irq_chip;
 };
+#define INTEL_PMIC_REG_NULL	{-1,}
 
-extern struct intel_soc_pmic_config intel_soc_pmic_config_crc;
+#define INTEL_PMIC_REG_INV	(1<<0) /*value revert*/
+#define INTEL_PMIC_REG_WO	(1<<1) /*write only*/
+#define INTEL_PMIC_REG_RO	(1<<2) /*read only*/
+#define INTEL_PMIC_REG_W1C	(1<<3) /*write 1 clear*/
+#define INTEL_PMIC_REG_RC	(1<<4) /*read clear*/
+#define IS_PMIC_REG_INV(_map)	(_map->flags & INTEL_PMIC_REG_INV)
+#define IS_PMIC_REG_WO(_map)	(_map->flags & INTEL_PMIC_REG_WO)
+#define IS_PMIC_REG_RO(_map)	(_map->flags & INTEL_PMIC_REG_RO)
+#define IS_PMIC_REG_W1C(_map)	(_map->flags & INTEL_PMIC_REG_W1C)
+#define IS_PMIC_REG_RC(_map)	(_map->flags & INTEL_PMIC_REG_RC)
+#define IS_PMIC_REG_VALID(_map) \
+	((_map->mask != 0) && (_map->offset >= 0))
+
+#define PMIC_IRQREG_MASK	0
+#define PMIC_IRQREG_STATUS	1
+#define PMIC_IRQREG_ACK		2
+
+struct intel_pmic_regmap {
+	int				offset;
+	int				shift;
+	int				mask;
+	int				flags;
+};
+
+struct intel_pmic_irqregmap {
+	struct intel_pmic_regmap	mask;
+	struct intel_pmic_regmap	status;
+	struct intel_pmic_regmap	ack;
+};
+
+struct acpi_lpat {
+	int tmp;
+	int raw;
+};
+
+struct intel_pmic_opregion {
+	struct acpi_lpat *lpat;
+	int lpat_count;
+};
+
+int intel_pmic_add(struct intel_soc_pmic *chip);
+int intel_pmic_remove(struct intel_soc_pmic *chip);
+void intel_pmic_install_handlers(struct intel_soc_pmic *);
+
+extern struct intel_soc_pmic crystal_cove_pmic;
+extern struct intel_soc_pmic dollar_cove_pmic;
+extern struct intel_soc_pmic dollar_cove_ti_pmic;
+extern struct intel_soc_pmic whiskey_cove_pmic;
 
 #endif	/* __INTEL_SOC_PMIC_CORE_H__ */

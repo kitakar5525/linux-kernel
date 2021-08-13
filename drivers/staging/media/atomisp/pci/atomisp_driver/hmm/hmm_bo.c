@@ -1113,8 +1113,7 @@ static int alloc_user_pages(struct hmm_buffer_object *bo,
 		/*Handle frame buffer allocated in user space*/
 		mutex_unlock(&bo->mutex);
 		down_read(&current->mm->mmap_sem);
-		page_nr = get_user_pages(current, current->mm,
-					 (unsigned long)userptr,
+		page_nr = get_user_pages((unsigned long)userptr,
 					 (int)(bo->pgnr), FOLL_WRITE, pages,
 					 NULL);
 		up_read(&current->mm->mmap_sem);

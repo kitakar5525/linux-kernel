@@ -2500,7 +2500,7 @@ static int imx_probe(struct i2c_client *client,
 	dev->format.code = imx_translate_bayer_order(
 		imx_info->raw_bayer_order);
 	dev->sd.entity.ops = &imx_entity_ops;
-	dev->sd.entity.function = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;
+	dev->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
 	ret = media_entity_init(&dev->sd.entity, 1, &dev->pad, 0);
 	if (ret) {

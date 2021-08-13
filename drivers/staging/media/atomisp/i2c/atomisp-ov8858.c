@@ -2241,7 +2241,7 @@ static int ov8858_probe(struct i2c_client *client,
 	dev->pad.flags = MEDIA_PAD_FL_SOURCE;
 	dev->format.code = MEDIA_BUS_FMT_SBGGR10_1X10;
 	dev->sd.entity.ops = &ov_entity_ops;
-	dev->sd.entity.function = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;
+	dev->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
 	ret = v4l2_ctrl_handler_init(&dev->ctrl_handler, ARRAY_SIZE(ctrls) + 1);
 	if (ret) {

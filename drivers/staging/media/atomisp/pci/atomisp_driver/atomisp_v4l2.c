@@ -1667,7 +1667,7 @@ static void atomisp_pci_remove(struct pci_dev *dev)
 	hmm_pool_unregister(HMM_POOL_TYPE_RESERVED);
 }
 
-static DEFINE_PCI_DEVICE_TABLE(atomisp_pci_tbl) = {
+static const struct pci_device_id atomisp_pci_tbl[] = {
 #if defined(ISP2400) || defined(ISP2400B0)
 	/* Merrifield */
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1178)},

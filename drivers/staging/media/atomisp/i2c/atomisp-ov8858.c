@@ -2274,7 +2274,7 @@ static int ov8858_probe(struct i2c_client *client,
 
 	__ov8858_s_power(&dev->sd, 0);
 
-	ret = media_entity_init(&dev->sd.entity, 1, &dev->pad, 0);
+	ret = media_entity_pads_init(&dev->sd.entity, 1, &dev->pad);
 	if (ret) {
 		ov8858_remove(client);
 		return ret;

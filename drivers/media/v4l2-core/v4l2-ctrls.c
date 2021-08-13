@@ -3316,6 +3316,14 @@ int v4l2_queryctrl(struct v4l2_ctrl_handler *hdl, struct v4l2_queryctrl *qc)
 }
 EXPORT_SYMBOL(v4l2_queryctrl);
 
+int v4l2_subdev_queryctrl(struct v4l2_subdev *sd, struct v4l2_queryctrl *qc)
+{
+	if (qc->id & (V4L2_CTRL_FLAG_NEXT_CTRL | V4L2_CTRL_FLAG_NEXT_COMPOUND))
+		return -EINVAL;
+	return v4l2_queryctrl(sd->ctrl_handler, qc);
+}
+EXPORT_SYMBOL(v4l2_subdev_queryctrl);
+
 /* Implement VIDIOC_QUERYMENU */
 int v4l2_querymenu(struct v4l2_ctrl_handler *hdl, struct v4l2_querymenu *qm)
 {
@@ -3358,6 +3366,12 @@ int v4l2_querymenu(struct v4l2_ctrl_handler *hdl, struct v4l2_querymenu *qm)
 	return 0;
 }
 EXPORT_SYMBOL(v4l2_querymenu);
+
+int v4l2_subdev_querymenu(struct v4l2_subdev *sd, struct v4l2_querymenu *qm)
+{
+	return v4l2_querymenu(sd->ctrl_handler, qm);
+}
+EXPORT_SYMBOL(v4l2_subdev_querymenu);
 
 static int v4l2_ctrl_request_clone(struct v4l2_ctrl_handler *hdl,
 				   const struct v4l2_ctrl_handler *from)
@@ -3836,6 +3850,12 @@ int v4l2_g_ext_ctrls(struct v4l2_ctrl_handler *hdl, struct video_device *vdev,
 }
 EXPORT_SYMBOL(v4l2_g_ext_ctrls);
 
+int v4l2_subdev_g_ext_ctrls(struct v4l2_subdev *sd, struct v4l2_ext_controls *cs)
+{
+	return v4l2_g_ext_ctrls(sd->ctrl_handler, cs);
+}
+EXPORT_SYMBOL(v4l2_subdev_g_ext_ctrls);
+
 /* Helper function to get a single control */
 static int get_ctrl(struct v4l2_ctrl *ctrl, struct v4l2_ext_control *c)
 {
@@ -3880,6 +3900,12 @@ int v4l2_g_ctrl(struct v4l2_ctrl_handler *hdl, struct v4l2_control *control)
 	return ret;
 }
 EXPORT_SYMBOL(v4l2_g_ctrl);
+
+int v4l2_subdev_g_ctrl(struct v4l2_subdev *sd, struct v4l2_control *control)
+{
+	return v4l2_g_ctrl(sd->ctrl_handler, control);
+}
+EXPORT_SYMBOL(v4l2_subdev_g_ctrl);
 
 s32 v4l2_ctrl_g_ctrl(struct v4l2_ctrl *ctrl)
 {
@@ -4242,6 +4268,18 @@ int v4l2_s_ext_ctrls(struct v4l2_fh *fh,
 }
 EXPORT_SYMBOL(v4l2_s_ext_ctrls);
 
+int v4l2_subdev_try_ext_ctrls(struct v4l2_subdev *sd, struct v4l2_ext_controls *cs)
+{
+	return try_set_ext_ctrls(NULL, sd->ctrl_handler, cs, false);
+}
+EXPORT_SYMBOL(v4l2_subdev_try_ext_ctrls);
+
+int v4l2_subdev_s_ext_ctrls(struct v4l2_subdev *sd, struct v4l2_ext_controls *cs)
+{
+	return try_set_ext_ctrls(NULL, sd->ctrl_handler, cs, true);
+}
+EXPORT_SYMBOL(v4l2_subdev_s_ext_ctrls);
+
 /* Helper function for VIDIOC_S_CTRL compatibility */
 static int set_ctrl(struct v4l2_fh *fh, struct v4l2_ctrl *ctrl, u32 ch_flags)
 {
@@ -4303,6 +4341,12 @@ int v4l2_s_ctrl(struct v4l2_fh *fh, struct v4l2_ctrl_handler *hdl,
 	return ret;
 }
 EXPORT_SYMBOL(v4l2_s_ctrl);
+
+int v4l2_subdev_s_ctrl(struct v4l2_subdev *sd, struct v4l2_control *control)
+{
+	return v4l2_s_ctrl(NULL, sd->ctrl_handler, control);
+}
+EXPORT_SYMBOL(v4l2_subdev_s_ctrl);
 
 int __v4l2_ctrl_s_ctrl(struct v4l2_ctrl *ctrl, s32 val)
 {

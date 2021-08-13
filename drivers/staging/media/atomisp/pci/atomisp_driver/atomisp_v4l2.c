@@ -1050,7 +1050,7 @@ static int atomisp_register_entities(struct atomisp_device *isp)
 			goto link_failed;
 		}
 
-		ret = media_entity_create_link(
+		ret = media_create_pad_link(
 			&isp->inputs[i].camera->entity, 0,
 			&isp->csi2_port[isp->inputs[i].port].subdev.entity,
 			CSI2_PAD_SINK,
@@ -1143,7 +1143,7 @@ static int atomisp_initialize_modules(struct atomisp_device *isp)
 	/* connet submoduels */
 	for (i = 0; i < ATOMISP_CAMERA_NR_PORTS; i++) {
 		for (j = 0; j < isp->num_of_streams; j++) {
-			ret = media_entity_create_link(
+			ret = media_create_pad_link(
 				&isp->csi2_port[i].subdev.entity,
 				CSI2_PAD_SOURCE,
 				&isp->asd[j].subdev.entity,

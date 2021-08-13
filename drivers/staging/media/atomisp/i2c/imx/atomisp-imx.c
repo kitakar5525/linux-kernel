@@ -2502,7 +2502,7 @@ static int imx_probe(struct i2c_client *client,
 	dev->sd.entity.ops = &imx_entity_ops;
 	dev->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
-	ret = media_entity_init(&dev->sd.entity, 1, &dev->pad, 0);
+	ret = media_entity_pads_init(&dev->sd.entity, 1, &dev->pad);
 	if (ret) {
 		imx_remove(client);
 		return ret;

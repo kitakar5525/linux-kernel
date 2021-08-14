@@ -1448,36 +1448,6 @@ static int isp_subdev_init_entities(struct atomisp_sub_device *asd)
 
 	atomisp_acc_init(&asd->video_acc, "ACC");
 
-	/* Connect the isp subdev to the video node. */
-	ret = media_entity_create_link(&asd->video_in.vdev.entity,
-		0, &asd->subdev.entity, ATOMISP_SUBDEV_PAD_SINK, 0);
-	if (ret < 0)
-		return ret;
-
-	ret = media_entity_create_link(&asd->subdev.entity,
-		ATOMISP_SUBDEV_PAD_SOURCE_PREVIEW,
-		&asd->video_out_preview.vdev.entity, 0, 0);
-	if (ret < 0)
-		return ret;
-
-	ret = media_entity_create_link(&asd->subdev.entity,
-		ATOMISP_SUBDEV_PAD_SOURCE_VF,
-		&asd->video_out_vf.vdev.entity, 0, 0);
-	if (ret < 0)
-		return ret;
-
-	ret = media_entity_create_link(&asd->subdev.entity,
-		ATOMISP_SUBDEV_PAD_SOURCE_CAPTURE,
-		&asd->video_out_capture.vdev.entity, 0, 0);
-	if (ret < 0)
-		return ret;
-
-	ret = media_entity_create_link(&asd->subdev.entity,
-		ATOMISP_SUBDEV_PAD_SOURCE_VIDEO,
-		&asd->video_out_video_capture.vdev.entity, 0, 0);
-	if (ret < 0)
-		return ret;
-
 	ret = v4l2_ctrl_handler_init(&asd->ctrl_handler, 1);
 	if (ret)
 		return ret;
@@ -1515,6 +1485,81 @@ static int isp_subdev_init_entities(struct atomisp_sub_device *asd)
 	asd->subdev.ctrl_handler = &asd->ctrl_handler;
 	spin_lock_init(&asd->raw_buffer_bitmap_lock);
 	return asd->ctrl_handler.error;
+}
+
+/*
+ * Connect the isp subdev to the video node.
+ */
+int atomisp_create_pads_links(struct atomisp_device *isp)
+{
+	struct atomisp_sub_device *asd;
+	int i, j, ret = 0;
+
+	isp->num_of_streams = 2;
+	/* connet submoduels */
+	for (i = 0; i < ATOMISP_CAMERA_NR_PORTS; i++) {
+		for (j = 0; j < isp->num_of_streams; j++) {
+			ret =
+			    media_create_pad_link(&isp->csi2_port[i].subdev.
+						  entity, CSI2_PAD_SOURCE,
+						  &isp->asd[j].subdev.entity,
+						  ATOMISP_SUBDEV_PAD_SINK, 0);
+			if (ret < 0)
+				return ret;
+		}
+	}
+	for (i = 0; i < isp->input_cnt - 2; i++) {
+		ret = media_create_pad_link(&isp->inputs[i].camera->entity, 0,
+					    &isp->csi2_port[isp->inputs[i].
+						    port].subdev.entity,
+					    CSI2_PAD_SINK,
+					    MEDIA_LNK_FL_ENABLED |
+					    MEDIA_LNK_FL_IMMUTABLE);
+		if (ret < 0) {
+			dev_err(isp->dev,
+				"link create from sensor to csi-2 receiver failed\n");
+			return ret;
+		}
+	}
+	for (i = 0; i < isp->num_of_streams; i++) {
+		asd = &isp->asd[i];
+		ret = media_create_pad_link(&asd->subdev.entity,
+					    ATOMISP_SUBDEV_PAD_SOURCE_PREVIEW,
+					    &asd->video_out_preview.vdev.entity,
+					    0, 0);
+		if (ret < 0)
+			return ret;
+		ret = media_create_pad_link(&asd->subdev.entity,
+					    ATOMISP_SUBDEV_PAD_SOURCE_VF,
+					    &asd->video_out_vf.vdev.entity, 0,
+					    0);
+		if (ret < 0)
+			return ret;
+		ret = media_create_pad_link(&asd->subdev.entity,
+					    ATOMISP_SUBDEV_PAD_SOURCE_CAPTURE,
+					    &asd->video_out_capture.vdev.entity,
+					    0, 0);
+		if (ret < 0)
+			return ret;
+		ret = media_create_pad_link(&asd->subdev.entity,
+					    ATOMISP_SUBDEV_PAD_SOURCE_VIDEO,
+					    &asd->video_out_video_capture.vdev.
+					    entity, 0, 0);
+		if (ret < 0)
+			return ret;
+		/*
+		 * file input only supported on subdev0
+		 * so do not create pad link for subdevs other then subdev0
+		 */
+		if (asd->index)
+			return 0;
+		ret = media_create_pad_link(&asd->video_in.vdev.entity,
+					    0, &asd->subdev.entity,
+					    ATOMISP_SUBDEV_PAD_SINK, 0);
+		if (ret < 0)
+			return ret;
+	}
+	return 0;
 }
 
 static void atomisp_subdev_cleanup_entities(struct atomisp_sub_device *asd)

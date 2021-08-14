@@ -958,13 +958,7 @@ static int atomisp_register_entities(struct atomisp_device *isp)
 	strlcpy(isp->media_dev.model, "Intel Atom ISP",
 		sizeof(isp->media_dev.model));
 
-	ret = media_device_register(&isp->media_dev);
-	if (ret < 0) {
-		dev_err(isp->dev, "%s: Media device registration failed (%d)\n",
-				__func__, ret);
-		return ret;
-	}
-
+	media_device_init(&isp->media_dev);
 	isp->v4l2_dev.mdev = &isp->media_dev;
 	ret = v4l2_device_register(isp->dev, &isp->v4l2_dev);
 	if (ret < 0) {
@@ -1075,7 +1069,7 @@ static int atomisp_register_entities(struct atomisp_device *isp)
 	if (ret < 0)
 		goto link_failed;
 
-	return ret;
+	return media_device_register(&isp->media_dev);
 
 link_failed:
 	for (i = 0; i < isp->num_of_streams; i++)
@@ -1096,6 +1090,7 @@ csi_and_subdev_probe_failed:
 	v4l2_device_unregister(&isp->v4l2_dev);
 v4l2_device_failed:
 	media_device_unregister(&isp->media_dev);
+	media_device_cleanup(&isp->media_dev);
 	return ret;
 }
 

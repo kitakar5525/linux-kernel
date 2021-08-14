@@ -38,7 +38,7 @@ int qos;
 
 static int intel_mid_msgbus_init(void)
 {
-	pci_root = pci_get_bus_and_slot(0, PCI_DEVFN(0, 0));
+	pci_root = pci_get_domain_bus_and_slot(0, 0, PCI_DEVFN(0, 0));
 	if (!pci_root) {
 		pr_err("%s: Error: msgbus PCI handle NULL\n", __func__);
 		return -ENODEV;

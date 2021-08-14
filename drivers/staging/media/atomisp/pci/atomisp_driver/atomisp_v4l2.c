@@ -1049,17 +1049,6 @@ static int atomisp_register_entities(struct atomisp_device *isp)
 			ret = -EINVAL;
 			goto link_failed;
 		}
-
-		ret = media_entity_create_link(
-			&isp->inputs[i].camera->entity, 0,
-			&isp->csi2_port[isp->inputs[i].port].subdev.entity,
-			CSI2_PAD_SINK,
-			MEDIA_LNK_FL_ENABLED | MEDIA_LNK_FL_IMMUTABLE);
-		if (ret < 0) {
-			dev_err(isp->dev,
-				"link create from sensor to csi-2 receiver failed\n");
-			goto link_failed;
-		}
 	}
 
 	dev_dbg(isp->dev,
@@ -1113,7 +1102,6 @@ v4l2_device_failed:
 static int atomisp_initialize_modules(struct atomisp_device *isp)
 {
 	int ret;
-	unsigned int i, j;
 
 	ret = atomisp_mipi_csi2_init(isp);
 	if (ret < 0) {
@@ -1140,22 +1128,8 @@ static int atomisp_initialize_modules(struct atomisp_device *isp)
 		goto error_isp_subdev;
 	}
 
-	/* connet submoduels */
-	for (i = 0; i < ATOMISP_CAMERA_NR_PORTS; i++) {
-		for (j = 0; j < isp->num_of_streams; j++) {
-			ret = media_entity_create_link(
-				&isp->csi2_port[i].subdev.entity,
-				CSI2_PAD_SOURCE,
-				&isp->asd[j].subdev.entity,
-				ATOMISP_SUBDEV_PAD_SINK,
-				0);
-			if (ret < 0)
-				goto error_link;
-		}
-	}
 	return 0;
 
-error_link:
 error_isp_subdev:
 error_tpg:
 	atomisp_tpg_cleanup(isp);
@@ -1541,6 +1515,10 @@ static int atomisp_pci_probe(struct pci_dev *dev,
 			err);
 		goto register_entities_fail;
 	}
+
+	err = atomisp_create_pads_links(isp);
+	if (err < 0)
+		goto register_entities_fail;
 
 	/* init atomisp wdts */
 	if (init_atomisp_wdts(isp) != 0)

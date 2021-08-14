@@ -1449,30 +1449,30 @@ static int isp_subdev_init_entities(struct atomisp_sub_device *asd)
 	atomisp_acc_init(&asd->video_acc, "ACC");
 
 	/* Connect the isp subdev to the video node. */
-	ret = media_create_pad_link(&asd->video_in.vdev.entity,
+	ret = media_entity_create_link(&asd->video_in.vdev.entity,
 		0, &asd->subdev.entity, ATOMISP_SUBDEV_PAD_SINK, 0);
 	if (ret < 0)
 		return ret;
 
-	ret = media_create_pad_link(&asd->subdev.entity,
+	ret = media_entity_create_link(&asd->subdev.entity,
 		ATOMISP_SUBDEV_PAD_SOURCE_PREVIEW,
 		&asd->video_out_preview.vdev.entity, 0, 0);
 	if (ret < 0)
 		return ret;
 
-	ret = media_create_pad_link(&asd->subdev.entity,
+	ret = media_entity_create_link(&asd->subdev.entity,
 		ATOMISP_SUBDEV_PAD_SOURCE_VF,
 		&asd->video_out_vf.vdev.entity, 0, 0);
 	if (ret < 0)
 		return ret;
 
-	ret = media_create_pad_link(&asd->subdev.entity,
+	ret = media_entity_create_link(&asd->subdev.entity,
 		ATOMISP_SUBDEV_PAD_SOURCE_CAPTURE,
 		&asd->video_out_capture.vdev.entity, 0, 0);
 	if (ret < 0)
 		return ret;
 
-	ret = media_create_pad_link(&asd->subdev.entity,
+	ret = media_entity_create_link(&asd->subdev.entity,
 		ATOMISP_SUBDEV_PAD_SOURCE_VIDEO,
 		&asd->video_out_video_capture.vdev.entity, 0, 0);
 	if (ret < 0)

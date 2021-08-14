@@ -41,6 +41,8 @@
 #include <linux/io.h>
 #include <asm/current.h>
 #include <linux/sched.h>
+#include <linux/sched/signal.h>
+#include <asm/set_memory.h>
 
 #ifdef CONFIG_ION
 #include <linux/ion.h>

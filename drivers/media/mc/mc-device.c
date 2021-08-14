@@ -867,6 +867,8 @@ void media_device_pci_init(struct media_device *mdev,
 	mdev->hw_revision = (pci_dev->subsystem_vendor << 16)
 			    | pci_dev->subsystem_device;
 
+	mdev->driver_version = LINUX_VERSION_CODE;
+
 	media_device_init(mdev);
 }
 EXPORT_SYMBOL_GPL(media_device_pci_init);
@@ -894,6 +896,7 @@ void __media_device_usb_init(struct media_device *mdev,
 		strscpy(mdev->serial, udev->serial, sizeof(mdev->serial));
 	usb_make_path(udev, mdev->bus_info, sizeof(mdev->bus_info));
 	mdev->hw_revision = le16_to_cpu(udev->descriptor.bcdDevice);
+	mdev->driver_version = LINUX_VERSION_CODE;
 
 	media_device_init(mdev);
 }

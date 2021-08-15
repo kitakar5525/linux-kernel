@@ -81,6 +81,32 @@ config VIDEO_ATOMISP_OV5693
 
 	  It currently only works with the atomisp driver.
 
+config VIDEO_ATOMISP_OV8858
+	tristate "Omnivision ov8858 sensor support"
+	depends on I2C && VIDEO_V4L2
+	depends on MEDIA_CAMERA_SUPPORT
+	help
+	  This is a Video4Linux2 sensor-level driver for the Omnivision
+	  ov8858 RAW sensor.
+
+	  OV8858 is a 8M raw sensor.
+
+	  It currently only works with the atomisp driver.
+
+config VIDEO_ATOMISP_OV7251
+	tristate "OmniVision OV7251 sensor support"
+	depends on I2C && VIDEO_V4L2
+	depends on MEDIA_CAMERA_SUPPORT
+	help
+	  This is a Video4Linux2 sensor-level driver for the OmniVision
+	  OV7251 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ov7251.
+
+	  It currently only works with atopmisp driver.
+
+
 #
 # Kconfig for flash drivers
 #

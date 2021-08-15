@@ -459,7 +459,8 @@ EXPORT_SYMBOL(v4l2_g_ext_ctrls);
 
 int v4l2_subdev_g_ext_ctrls(struct v4l2_subdev *sd, struct v4l2_ext_controls *cs)
 {
-	return v4l2_g_ext_ctrls(sd->ctrl_handler, cs);
+	return v4l2_g_ext_ctrls(sd->ctrl_handler, sd->devnode,
+				sd->v4l2_dev->mdev, cs);
 }
 EXPORT_SYMBOL(v4l2_subdev_g_ext_ctrls);
 
@@ -693,13 +694,15 @@ EXPORT_SYMBOL(v4l2_s_ext_ctrls);
 
 int v4l2_subdev_try_ext_ctrls(struct v4l2_subdev *sd, struct v4l2_ext_controls *cs)
 {
-	return try_set_ext_ctrls(NULL, sd->ctrl_handler, cs, false);
+	return try_set_ext_ctrls(NULL, sd->ctrl_handler, sd->devnode,
+				 sd->v4l2_dev->mdev, cs, false);
 }
 EXPORT_SYMBOL(v4l2_subdev_try_ext_ctrls);
 
 int v4l2_subdev_s_ext_ctrls(struct v4l2_subdev *sd, struct v4l2_ext_controls *cs)
 {
-	return try_set_ext_ctrls(NULL, sd->ctrl_handler, cs, true);
+	return try_set_ext_ctrls(NULL, sd->ctrl_handler, sd->devnode,
+				 sd->v4l2_dev->mdev, cs, true);
 }
 EXPORT_SYMBOL(v4l2_subdev_s_ext_ctrls);
 

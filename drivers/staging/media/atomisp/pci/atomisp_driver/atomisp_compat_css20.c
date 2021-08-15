@@ -788,8 +788,11 @@ static bool is_pipe_valid_to_current_run_mode(struct atomisp_sub_device *asd,
 	case ATOMISP_RUN_MODE_STILL_CAPTURE:
 		if (pipe_id == IA_CSS_PIPE_ID_CAPTURE)
 			return true;
-		else
-			return false;
+
+		pr_err("%s(): (pipe_id != IA_CSS_PIPE_ID_CAPTURE) on ATOMISP_RUN_MODE_STILL_CAPTURE\n", __func__);
+		pr_warn("%s(): setting run_mode->val to ATOMISP_RUN_MODE_PREVIEW\n", __func__);
+		asd->run_mode->val = ATOMISP_RUN_MODE_PREVIEW;
+		fallthrough;
 	case ATOMISP_RUN_MODE_PREVIEW:
 		if (!asd->continuous_mode->val) {
 			if (pipe_id == IA_CSS_PIPE_ID_PREVIEW)

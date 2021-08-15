@@ -107,7 +107,7 @@ static phys_addr_t alloc_page_table(struct isp_mmu *mmu)
 	 * GFP_DMA32 flag, so we have to use buddy allocator.
 	 */
 #ifdef USE_KMEM_CACHE
-	if (totalram_pages > (unsigned long)NR_PAGES_2GB)
+	if (totalram_pages() > (unsigned long)NR_PAGES_2GB)
 		virt = (void *)__get_free_page(GFP_KERNEL | GFP_DMA32);
 	else
 		virt = kmem_cache_zalloc(mmu->tbl_cache, GFP_KERNEL);
@@ -148,7 +148,7 @@ static void free_page_table(struct isp_mmu *mmu, phys_addr_t page)
 #endif
 
 #ifdef USE_KMEM_CACHE
-	if (totalram_pages > (unsigned long)NR_PAGES_2GB)
+	if (totalram_pages() > (unsigned long)NR_PAGES_2GB)
 		free_page((unsigned long)virt);
 	else
 		kmem_cache_free(mmu->tbl_cache, virt);

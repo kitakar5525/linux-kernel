@@ -22,7 +22,8 @@
 
 #ifndef __OV8830_H__
 #define __OV8830_H__
-#include <linux/atomisp_platform.h>
+#include "../include/linux/atomisp_platform.h"
+#include "../include/linux/atomisp.h"
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/kernel.h>
@@ -57,7 +58,7 @@
 struct drv201_device {
 	bool initialized;		/* true if drv201 is detected */
 	s32 focus;			/* Current focus value */
-	struct timespec focus_time;	/* Time when focus was last time set */
+	struct timespec64 focus_time;	/* Time when focus was last time set */
 	__u8 buffer[4];			/* Used for i2c transactions */
 	const struct atomisp_platform_data *platform_data;
 };

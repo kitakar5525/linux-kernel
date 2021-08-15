@@ -35,7 +35,7 @@
 #include <media/v4l2-device.h>
 #include <linux/io.h>
 #include <linux/acpi.h>
-#include <linux/atomisp_platform.h>
+#include "../include/linux/atomisp_gmin_platform.h"
 
 #include "ov8830.h"
 #include "ov8835.h"
@@ -472,7 +472,7 @@ static int drv201_t_focus_abs(struct v4l2_subdev *sd, s32 value)
 	if (r < 0)
 		return r;
 
-	getnstimeofday(&dev->focus_time);
+	ktime_get_real_ts64(&dev->focus_time);
 	dev->focus = value;
 	return 0;
 }
@@ -1161,152 +1161,6 @@ static int nearest_resolution_index(struct v4l2_subdev *sd, int w, int h)
 	return idx;
 }
 
-static int get_resolution_index(struct v4l2_subdev *sd, int w, int h)
-{
-	int i;
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
-
-	for (i = 0; i < dev->entries_curr_table; i++) {
-		if (w != dev->curr_res_table[i].width)
-			continue;
-		if (h != dev->curr_res_table[i].height)
-			continue;
-		/* Found it */
-		return i;
-	}
-	return -1;
-}
-
-static int __ov8830_try_mbus_fmt(struct v4l2_subdev *sd,
-				 struct v4l2_mbus_framefmt *fmt)
-{
-	int idx;
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
-
-	pr_info("%s() called\n", __func__);
-
-	if (!fmt)
-		return -EINVAL;
-
-	if ((fmt->width > OV8830_RES_WIDTH_MAX) ||
-	    (fmt->height > OV8830_RES_HEIGHT_MAX)) {
-		fmt->width = OV8830_RES_WIDTH_MAX;
-		fmt->height = OV8830_RES_HEIGHT_MAX;
-	} else {
-		idx = nearest_resolution_index(sd, fmt->width, fmt->height);
-
-		/*
-		 * nearest_resolution_index() doesn't return smaller resolutions.
-		 * If it fails, it means the requested resolution is higher than we
-		 * can support. Fallback to highest possible resolution in this case.
-		 */
-		if (idx == -1)
-			idx = dev->entries_curr_table - 1;
-
-		fmt->width = dev->curr_res_table[idx].width;
-		fmt->height = dev->curr_res_table[idx].height;
-	}
-
-	fmt->code = MEDIA_BUS_FMT_SBGGR10_1X10;
-	return 0;
-}
-
-static int ov8830_try_mbus_fmt(struct v4l2_subdev *sd,
-			       struct v4l2_mbus_framefmt *fmt)
-{
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
-	int r;
-
-	pr_info("%s() called\n", __func__);
-
-	mutex_lock(&dev->input_lock);
-	r = __ov8830_try_mbus_fmt(sd, fmt);
-	mutex_unlock(&dev->input_lock);
-
-	return r;
-}
-
-static int ov8830_s_mbus_fmt(struct v4l2_subdev *sd,
-			      struct v4l2_mbus_framefmt *fmt)
-{
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
-	struct camera_mipi_info *ov8830_info = NULL;
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	u16 hts, vts;
-	int ret;
-	const struct ov8830_resolution *res;
-
-	pr_info("%s() called\n", __func__);
-
-	ov8830_info = v4l2_get_subdev_hostdata(sd);
-	if (ov8830_info == NULL)
-		return -EINVAL;
-
-	mutex_lock(&dev->input_lock);
-
-	ret = __ov8830_try_mbus_fmt(sd, fmt);
-	if (ret)
-		goto out;
-
-	dev->fmt_idx = get_resolution_index(sd, fmt->width, fmt->height);
-	/* Sanity check */
-	if (unlikely(dev->fmt_idx == -1)) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	/* Sets the default FPS */
-	dev->fps_index = 0;
-
-	/* Get the current resolution setting */
-	res = &dev->curr_res_table[dev->fmt_idx];
-
-	/* Write the selected resolution table values to the registers */
-	ret = ov8830_write_reg_array(client, res->regs);
-	if (ret)
-		goto out;
-
-	/* Frame timing registers are updates as part of exposure */
-	hts = res->fps_options[dev->fps_index].pixels_per_line;
-	vts = res->fps_options[dev->fps_index].lines_per_frame;
-
-	/*
-	 * update hts, vts, exposure and gain as one block. Note that the vts
-	 * will be changed according to the exposure used. But the maximum vts
-	 * dev->curr_res_table[dev->fmt_idx] should not be changed at all.
-	 */
-	ret = __ov8830_set_exposure(sd, dev->exposure, dev->gain,
-					dev->digital_gain, &hts, &vts);
-	if (ret)
-		goto out;
-
-	ret = ov8830_get_intg_factor(sd, ov8830_info, dev->basic_settings_list);
-
-out:
-	mutex_unlock(&dev->input_lock);
-
-	return ret;
-}
-
-static int ov8830_g_mbus_fmt(struct v4l2_subdev *sd,
-			      struct v4l2_mbus_framefmt *fmt)
-{
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
-
-	pr_info("%s() called\n", __func__);
-
-	if (!fmt)
-		return -EINVAL;
-
-	mutex_lock(&dev->input_lock);
-	fmt->width = dev->curr_res_table[dev->fmt_idx].width;
-	fmt->height = dev->curr_res_table[dev->fmt_idx].height;
-	fmt->code = MEDIA_BUS_FMT_SBGGR10_1X10;
-	mutex_unlock(&dev->input_lock);
-
-	return 0;
-}
-
 static int ov8830_detect(struct i2c_client *client, u16 *id, u8 *revision)
 {
 	struct i2c_adapter *adapter = client->adapter;
@@ -1388,79 +1242,6 @@ static int ov8830_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
-/*
- * ov8830 enum frame size, frame intervals
- */
-static int ov8830_enum_framesizes(struct v4l2_subdev *sd,
-				   struct v4l2_frmsizeenum *fsize)
-{
-	unsigned int index = fsize->index;
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
-
-	pr_info("%s() called\n", __func__);
-
-	mutex_lock(&dev->input_lock);
-	if (index >= dev->entries_curr_table) {
-		mutex_unlock(&dev->input_lock);
-		return -EINVAL;
-	}
-
-	fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
-	fsize->discrete.width = dev->curr_res_table[index].width;
-	fsize->discrete.height = dev->curr_res_table[index].height;
-	fsize->reserved[0] = dev->curr_res_table[index].used;
-	mutex_unlock(&dev->input_lock);
-
-	return 0;
-}
-
-static int ov8830_enum_frameintervals(struct v4l2_subdev *sd,
-				       struct v4l2_frmivalenum *fival)
-{
-	unsigned int index = fival->index;
-	int fmt_index;
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
-	const struct ov8830_resolution *res;
-
-	pr_info("%s() called\n", __func__);
-
-	mutex_lock(&dev->input_lock);
-
-	/*
-	 * since the isp will donwscale the resolution to the right size,
-	 * find the nearest one that will allow the isp to do so important to
-	 * ensure that the resolution requested is padded correctly by the
-	 * requester, which is the atomisp driver in this case.
-	 */
-	fmt_index = nearest_resolution_index(sd, fival->width, fival->height);
-	if (-1 == fmt_index)
-		fmt_index = dev->entries_curr_table - 1;
-
-	res = &dev->curr_res_table[fmt_index];
-
-	/* Check if this index is supported */
-	if (index > __ov8830_get_max_fps_index(res->fps_options)) {
-		mutex_unlock(&dev->input_lock);
-		return -EINVAL;
-	}
-
-	fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
-	fival->discrete.numerator = 1;
-	fival->discrete.denominator = res->fps_options[index].fps;
-
-	mutex_unlock(&dev->input_lock);
-
-	return 0;
-}
-
-static int ov8830_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
-				 u32 *code)
-{
-	pr_info("%s() called\n", __func__);
-	*code = MEDIA_BUS_FMT_SBGGR10_1X10;
-	return 0;
-}
-
 static int ov8830_s_config(struct v4l2_subdev *sd,
 			    int irq, void *platform_data)
 {
@@ -1528,10 +1309,11 @@ fail_power_off:
 }
 
 static int
-ov8830_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+ov8830_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_state *sd_state,
 		       struct v4l2_subdev_mbus_code_enum *code)
 {
 	pr_info("%s() called\n", __func__);
+
 	if (code->index)
 		return -EINVAL;
 	code->code = MEDIA_BUS_FMT_SBGGR10_1X10;
@@ -1539,8 +1321,11 @@ ov8830_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg
 	return 0;
 }
 
+/*
+ * ov8830 enum frame size
+ */
 static int
-ov8830_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+ov8830_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_state *sd_state,
 			struct v4l2_subdev_frame_size_enum *fse)
 {
 	int index = fse->index;
@@ -1567,53 +1352,206 @@ ov8830_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cf
  * ov8830 frame intervals
  */
 static int ov8830_enum_frame_interval(struct v4l2_subdev *sd,
-				      struct v4l2_subdev_pad_config *cfg,
-				      struct v4l2_subdev_frame_interval_enum *fie)
+				        struct v4l2_subdev_state *sd_state,
+						struct v4l2_subdev_frame_interval_enum *fie)
 {
+	unsigned int index = fie->index;
+	int fmt_index;
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+	const struct ov8830_resolution *res;
+
 	pr_info("%s() called\n", __func__);
+
+	mutex_lock(&dev->input_lock);
+
+	/*
+	 * since the isp will donwscale the resolution to the right size,
+	 * find the nearest one that will allow the isp to do so important to
+	 * ensure that the resolution requested is padded correctly by the
+	 * requester, which is the atomisp driver in this case.
+	 */
+	fmt_index = nearest_resolution_index(sd, fie->width, fie->height);
+	if (-1 == fmt_index)
+		fmt_index = dev->entries_curr_table - 1;
+
+	res = &dev->curr_res_table[fmt_index];
+
+	/* Check if this index is supported */
+	if (index > __ov8830_get_max_fps_index(res->fps_options)) {
+		mutex_unlock(&dev->input_lock);
+		return -EINVAL;
+	}
+
+	fie->interval.numerator = 1;
+	fie->interval.denominator = res->fps_options[index].fps;
+
+	mutex_unlock(&dev->input_lock);
 
 	return 0;
 }
 
 static struct v4l2_mbus_framefmt *
 __ov8830_get_pad_format(struct ov8830_device *sensor,
-			 struct v4l2_subdev_pad_config *cfg, unsigned int pad,
+			 struct v4l2_subdev_state *sd_state, unsigned int pad,
 			 enum v4l2_subdev_format_whence which)
 {
 	pr_info("%s() called\n", __func__);
 
 	if (which == V4L2_SUBDEV_FORMAT_TRY)
-		return v4l2_subdev_get_try_format(&sensor->sd, cfg, pad);
+		return v4l2_subdev_get_try_format(&sensor->sd, sd_state, pad);
 
 	return &sensor->format;
 }
 
 static int
-ov8830_get_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+ov8830_get_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_state *sd_state,
 		       struct v4l2_subdev_format *fmt)
 {
 	struct ov8830_device *dev = to_ov8830_sensor(sd);
 
 	pr_info("%s() called\n", __func__);
 
-	fmt->format = *__ov8830_get_pad_format(dev, cfg, fmt->pad, fmt->which);
+	fmt->format = *__ov8830_get_pad_format(dev, sd_state, fmt->pad, fmt->which);
 
 	return 0;
 }
 
-static int
-ov8830_set_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
-		       struct v4l2_subdev_format *fmt)
+static int get_resolution_index(struct v4l2_subdev *sd, int w, int h)
 {
+	int i;
 	struct ov8830_device *dev = to_ov8830_sensor(sd);
-	struct v4l2_mbus_framefmt *format =
-			__ov8830_get_pad_format(dev, cfg, fmt->pad, fmt->which);
+
+	for (i = 0; i < dev->entries_curr_table; i++) {
+		if (w != dev->curr_res_table[i].width)
+			continue;
+		if (h != dev->curr_res_table[i].height)
+			continue;
+		/* Found it */
+		return i;
+	}
+	return -1;
+}
+
+static int __ov8830_try_mbus_fmt(struct v4l2_subdev *sd,
+				 struct v4l2_mbus_framefmt *fmt)
+{
+	int idx;
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
 
 	pr_info("%s() called\n", __func__);
 
-	*format = fmt->format;
+	if (!fmt)
+		return -EINVAL;
 
+	if ((fmt->width > OV8830_RES_WIDTH_MAX) ||
+	    (fmt->height > OV8830_RES_HEIGHT_MAX)) {
+		fmt->width = OV8830_RES_WIDTH_MAX;
+		fmt->height = OV8830_RES_HEIGHT_MAX;
+	} else {
+		idx = nearest_resolution_index(sd, fmt->width, fmt->height);
+
+		/*
+		 * nearest_resolution_index() doesn't return smaller resolutions.
+		 * If it fails, it means the requested resolution is higher than we
+		 * can support. Fallback to highest possible resolution in this case.
+		 */
+		if (idx == -1)
+			idx = dev->entries_curr_table - 1;
+
+		fmt->width = dev->curr_res_table[idx].width;
+		fmt->height = dev->curr_res_table[idx].height;
+	}
+
+	fmt->code = MEDIA_BUS_FMT_SBGGR10_1X10;
 	return 0;
+}
+
+static int __ov8830_s_mbus_fmt(struct v4l2_subdev *sd,
+			       struct v4l2_mbus_framefmt *fmt)
+{
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+	struct camera_mipi_info *ov8830_info = NULL;
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	u16 hts, vts;
+	int ret;
+	const struct ov8830_resolution *res;
+
+	pr_info("%s() called\n", __func__);
+
+	ov8830_info = v4l2_get_subdev_hostdata(sd);
+	if (ov8830_info == NULL)
+		return -EINVAL;
+
+	mutex_lock(&dev->input_lock);
+
+	ret = __ov8830_try_mbus_fmt(sd, fmt);
+	if (ret)
+		goto out;
+
+	dev->fmt_idx = get_resolution_index(sd, fmt->width, fmt->height);
+	/* Sanity check */
+	if (unlikely(dev->fmt_idx == -1)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* Sets the default FPS */
+	dev->fps_index = 0;
+
+	/* Get the current resolution setting */
+	res = &dev->curr_res_table[dev->fmt_idx];
+
+	/* Write the selected resolution table values to the registers */
+	ret = ov8830_write_reg_array(client, res->regs);
+	if (ret)
+		goto out;
+
+	/* Frame timing registers are updates as part of exposure */
+	hts = res->fps_options[dev->fps_index].pixels_per_line;
+	vts = res->fps_options[dev->fps_index].lines_per_frame;
+
+	/*
+	 * update hts, vts, exposure and gain as one block. Note that the vts
+	 * will be changed according to the exposure used. But the maximum vts
+	 * dev->curr_res_table[dev->fmt_idx] should not be changed at all.
+	 */
+	ret = __ov8830_set_exposure(sd, dev->exposure, dev->gain,
+					dev->digital_gain, &hts, &vts);
+	if (ret)
+		goto out;
+
+	ret = ov8830_get_intg_factor(sd, ov8830_info, dev->basic_settings_list);
+
+out:
+	mutex_unlock(&dev->input_lock);
+
+	return ret;
+}
+
+static int
+ov8830_set_pad_format(struct v4l2_subdev *sd,
+		      struct v4l2_subdev_state *sd_state,
+		      struct v4l2_subdev_format *format)
+{
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+	struct v4l2_mbus_framefmt *fmt = &format->format;
+	int r;
+
+	pr_info("%s() called\n", __func__);
+
+	if (format->pad)
+		return -EINVAL;
+
+	mutex_lock(&dev->input_lock);
+	r = __ov8830_try_mbus_fmt(sd, fmt);
+	mutex_unlock(&dev->input_lock);
+
+	if (format->which == V4L2_SUBDEV_FORMAT_ACTIVE)
+		__ov8830_s_mbus_fmt(sd, fmt);
+	else
+		sd_state->pads->try_fmt = *fmt;
+
+	return r;
 }
 
 static int ov8830_s_ctrl(struct v4l2_ctrl *ctrl)
@@ -1621,6 +1559,8 @@ static int ov8830_s_ctrl(struct v4l2_ctrl *ctrl)
 	struct ov8830_device *dev = container_of(
 		ctrl->handler, struct ov8830_device, ctrl_handler);
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+
+	pr_info("%s() called\n", __func__);
 
 	/* input_lock is taken by the control framework, so it
 	 * doesn't need to be taken here.
@@ -1677,17 +1617,17 @@ static int ov8830_g_ctrl(struct v4l2_ctrl *ctrl)
 	switch (ctrl->id) {
 	case V4L2_CID_FOCUS_STATUS: {
 #if 0
-		static const struct timespec move_time = {
+		static const struct timespec64 move_time = {
 			/* The time required for focus motor to move the lens */
 			.tv_sec = 0,
 			.tv_nsec = 60000000,
 		};
 		struct drv201_device *drv201 = to_drv201_device(&dev->sd);
-		struct timespec current_time, finish_time, delta_time;
+		struct timespec64 current_time, finish_time, delta_time;
 
-		getnstimeofday(&current_time);
-		finish_time = timespec_add(drv201->focus_time, move_time);
-		delta_time = timespec_sub(current_time, finish_time);
+		ktime_get_real_ts64(&current_time);
+		finish_time = timespec64_add(drv201->focus_time, move_time);
+		delta_time = timespec64_sub(current_time, finish_time);
 		if (delta_time.tv_sec >= 0 && delta_time.tv_nsec >= 0) {
 			/* VCM motor is not moving */
 			ctrl->val = ATOMISP_FOCUS_HP_COMPLETE |
@@ -1765,12 +1705,6 @@ static int ov8830_g_skip_frames(struct v4l2_subdev *sd, u32 *frames)
 
 static const struct v4l2_subdev_video_ops ov8830_video_ops = {
 	.s_stream = ov8830_s_stream,
-	.enum_framesizes = ov8830_enum_framesizes,
-	.enum_frameintervals = ov8830_enum_frameintervals,
-	.enum_mbus_fmt = ov8830_enum_mbus_fmt,
-	.try_mbus_fmt = ov8830_try_mbus_fmt,
-	.g_mbus_fmt = ov8830_g_mbus_fmt,
-	.s_mbus_fmt = ov8830_s_mbus_fmt,
 	.g_frame_interval = ov8830_g_frame_interval,
 	.s_frame_interval = ov8830_s_frame_interval,
 };
@@ -1780,9 +1714,6 @@ static const struct v4l2_subdev_sensor_ops ov8830_sensor_ops = {
 };
 
 static const struct v4l2_subdev_core_ops ov8830_core_ops = {
-	.queryctrl = v4l2_subdev_queryctrl,
-	.g_ctrl = v4l2_subdev_g_ctrl,
-	.s_ctrl = v4l2_subdev_s_ctrl,
 	.s_power = ov8830_s_power,
 	.ioctl = ov8830_ioctl,
 	.init = ov8830_init,
@@ -1930,8 +1861,7 @@ static const struct v4l2_ctrl_config ctrls[] = {
 	}
 };
 
-static int ov8830_probe(struct i2c_client *client,
-			 const struct i2c_device_id *id)
+static int ov8830_probe(struct i2c_client *client)
 {
 	struct ov8830_device *dev;
 	unsigned int i;
@@ -1970,7 +1900,7 @@ static int ov8830_probe(struct i2c_client *client,
 
 	dev->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	dev->pad.flags = MEDIA_PAD_FL_SOURCE;
-	dev->sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;
+	dev->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	dev->format.code = MEDIA_BUS_FMT_SBGGR10_1X10;
 
 	ret = v4l2_ctrl_handler_init(&dev->ctrl_handler, ARRAY_SIZE(ctrls) + 1);
@@ -1995,7 +1925,7 @@ static int ov8830_probe(struct i2c_client *client,
 	dev->sd.ctrl_handler = &dev->ctrl_handler;
 	v4l2_ctrl_handler_setup(&dev->ctrl_handler);
 
-	ret = media_entity_init(&dev->sd.entity, 1, &dev->pad, 0);
+	ret = media_entity_pads_init(&dev->sd.entity, 1, &dev->pad);
 	if (ret) {
 		ov8830_remove(client);
 		return ret;
@@ -2009,13 +1939,6 @@ out_free:
 	return ret;
 }
 
-static const struct i2c_device_id ov8830_id[] = {
-	{OV8830_NAME, 0},
-	{}
-};
-
-MODULE_DEVICE_TABLE(i2c, ov8830_id);
-
 static const struct acpi_device_id ov8830_acpi_ids[] = {
        {"OVTI8835"},
        {},
@@ -2027,9 +1950,8 @@ static struct i2c_driver ov8830_driver = {
 		.name = OV8830_NAME,
 		.acpi_match_table = ACPI_PTR(ov8830_acpi_ids),
 	},
-	.probe = ov8830_probe,
+	.probe_new = ov8830_probe,
 	.remove = ov8830_remove,
-	.id_table = ov8830_id,
 };
 module_i2c_driver(ov8830_driver);
 

@@ -1580,6 +1580,7 @@ initialize_modules_fail:
 	rt_mutex_unlock(&isp->loading);
 	pm_qos_remove_request(&isp->pm_qos);
 	atomisp_msi_irq_uninit(isp, dev);
+	pci_disable_msi(dev);
 enable_msi_fail:
 fw_validation_fail:
 	release_firmware(isp->firmware);

@@ -30,7 +30,7 @@
 #include <linux/i2c.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
-#include <linux/libmsrlisthelper.h>
+#include <linux/atomisp-libmsrlisthelper.h>
 #include <linux/mm.h>
 #include <linux/kmod.h>
 #include <linux/module.h>

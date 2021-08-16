@@ -51,4 +51,14 @@ config VIDEO_ATOMISP_OV883X
 
 	  It currently only works with atopmisp driver.
 
+config VIDEO_ATOMISP_MSRLIST_HELPER
+	tristate "Helper library to load, parse and apply large register lists."
+	depends on I2C
+	help
+	  This is a helper library to be used from a sensor driver to load, parse
+	  and apply large register lists.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called libmsrlisthelper.
+
 source "drivers/staging/media/atomisp/i2c/micam/Kconfig"

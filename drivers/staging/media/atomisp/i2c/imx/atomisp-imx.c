@@ -2058,8 +2058,8 @@ fail_csi_cfg:
 }
 
 static int
-imx_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
-		       struct v4l2_subdev_mbus_code_enum *code)
+imx_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+		   struct v4l2_subdev_mbus_code_enum *code)
 {
 	struct imx_device *dev = to_imx_sensor(sd);
 	if (code->index >= MAX_FMTS)
@@ -2072,8 +2072,8 @@ imx_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
 }
 
 static int
-imx_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
-			struct v4l2_subdev_frame_size_enum *fse)
+imx_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+		    struct v4l2_subdev_frame_size_enum *fse)
 {
 	int index = fse->index;
 	struct imx_device *dev = to_imx_sensor(sd);
@@ -2094,12 +2094,12 @@ imx_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
 
 static struct v4l2_mbus_framefmt *
 __imx_get_pad_format(struct imx_device *sensor,
-			 struct v4l2_subdev_fh *fh, unsigned int pad,
-			 enum v4l2_subdev_format_whence which)
+		     struct v4l2_subdev_pad_config *cfg, unsigned int pad,
+		     enum v4l2_subdev_format_whence which)
 {
 	switch (which) {
 	case V4L2_SUBDEV_FORMAT_TRY:
-		return v4l2_subdev_get_try_format(fh, pad);
+		return v4l2_subdev_get_try_format(&sensor->sd, cfg, pad);
 	case V4L2_SUBDEV_FORMAT_ACTIVE:
 		return &sensor->format;
 	default:
@@ -2108,12 +2108,12 @@ __imx_get_pad_format(struct imx_device *sensor,
 }
 
 static int
-imx_get_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
-		       struct v4l2_subdev_format *fmt)
+imx_get_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+		   struct v4l2_subdev_format *fmt)
 {
 	struct imx_device *dev = to_imx_sensor(sd);
 	struct v4l2_mbus_framefmt *format =
-			__imx_get_pad_format(dev, fh, fmt->pad, fmt->which);
+			__imx_get_pad_format(dev, cfg, fmt->pad, fmt->which);
 
 	fmt->format = *format;
 
@@ -2121,8 +2121,8 @@ imx_get_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
 }
 
 static int
-imx_set_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
-		       struct v4l2_subdev_format *fmt)
+imx_set_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+		   struct v4l2_subdev_format *fmt)
 {
 	struct imx_device *dev = to_imx_sensor(sd);
 

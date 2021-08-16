@@ -62,3 +62,4 @@ config VIDEO_ATOMISP_MSRLIST_HELPER
 	  module will be called libmsrlisthelper.
 
 source "drivers/staging/media/atomisp/i2c/micam/Kconfig"
+source "drivers/staging/media/atomisp/i2c/imx/Kconfig"

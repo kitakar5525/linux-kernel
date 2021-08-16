@@ -61,31 +61,6 @@ struct __kernel_timex;
 int get_old_timex32(struct __kernel_timex *, const struct old_timex32 __user *);
 int put_old_timex32(struct old_timex32 __user *, const struct __kernel_timex *);
 
-extern void set_normalized_timespec(struct timespec *ts, time_t sec, s64 nsec);
-
-static inline struct timespec timespec_add(struct timespec lhs,
-						struct timespec rhs)
-{
-	struct timespec ts_delta;
-
-	set_normalized_timespec(&ts_delta, lhs.tv_sec + rhs.tv_sec,
-				lhs.tv_nsec + rhs.tv_nsec);
-	return ts_delta;
-}
-
-/*
- * sub = lhs - rhs, in normalized form
- */
-static inline struct timespec timespec_sub(struct timespec lhs,
-						struct timespec rhs)
-{
-	struct timespec ts_delta;
-
-	set_normalized_timespec(&ts_delta, lhs.tv_sec - rhs.tv_sec,
-				lhs.tv_nsec - rhs.tv_nsec);
-	return ts_delta;
-}
-
 /**
  * ns_to_kernel_old_timeval - Convert nanoseconds to timeval
  * @nsec:	the nanoseconds value to be converted

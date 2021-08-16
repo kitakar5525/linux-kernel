@@ -915,13 +915,13 @@ imx_translate_bayer_order(enum atomisp_bayer_order code)
 {
 	switch (code) {
 	case atomisp_bayer_order_rggb:
-		return V4L2_MBUS_FMT_SRGGB10_1X10;
+		return MEDIA_BUS_FMT_SRGGB10_1X10;
 	case atomisp_bayer_order_grbg:
-		return V4L2_MBUS_FMT_SGRBG10_1X10;
+		return MEDIA_BUS_FMT_SGRBG10_1X10;
 	case atomisp_bayer_order_bggr:
-		return V4L2_MBUS_FMT_SBGGR10_1X10;
+		return MEDIA_BUS_FMT_SBGGR10_1X10;
 	case atomisp_bayer_order_gbrg:
-		return V4L2_MBUS_FMT_SGBRG10_1X10;
+		return MEDIA_BUS_FMT_SGBRG10_1X10;
 	}
 	return 0;
 }

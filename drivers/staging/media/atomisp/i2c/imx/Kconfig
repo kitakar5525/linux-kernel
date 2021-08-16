@@ -1,4 +1,4 @@
-config VIDEO_IMX
+config VIDEO_ATOMISP_IMX
 	tristate "sony imx sensor support"
 	depends on I2C && VIDEO_V4L2 && VIDEO_MSRLIST_HELPER
 	---help---

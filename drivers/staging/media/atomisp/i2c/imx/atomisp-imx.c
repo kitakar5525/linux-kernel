@@ -910,8 +910,7 @@ static int imx_test_pattern(struct v4l2_subdev *sd)
 		(u16)(dev->tp_mode->val));
 }
 
-static enum v4l2_mbus_pixelcode
-imx_translate_bayer_order(enum atomisp_bayer_order code)
+u32 imx_translate_bayer_order(enum atomisp_bayer_order code)
 {
 	switch (code) {
 	case atomisp_bayer_order_rggb:
@@ -1955,7 +1954,7 @@ out:
 }
 
 static int imx_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
-				 enum v4l2_mbus_pixelcode *code)
+			     u32 *code)
 {
 	struct imx_device *dev = to_imx_sensor(sd);
 	if (index >= MAX_FMTS)

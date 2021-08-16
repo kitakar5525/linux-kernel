@@ -1,8 +1,7 @@
-config VIDEO_OV8858
+config VIDEO_ATOMISP_OV8858
 	tristate "Omnivision ov8858 sensor support"
 	depends on I2C && VIDEO_V4L2
 	depends on MEDIA_CAMERA_SUPPORT
-	default y
 	help
 	  This is a Video4Linux2 sensor-level driver for the Omnivision
 	  ov8858 RAW sensor.
@@ -11,11 +10,10 @@ config VIDEO_OV8858
 
 	  It currently only works with the atomisp driver.
 
-config VIDEO_OV7251
+config VIDEO_ATOMISP_OV7251
 	tristate "OmniVision OV7251 sensor support"
 	depends on I2C && VIDEO_V4L2
 	depends on MEDIA_CAMERA_SUPPORT
-	default y
 	help
 	  This is a Video4Linux2 sensor-level driver for the OmniVision
 	  OV7251 camera.

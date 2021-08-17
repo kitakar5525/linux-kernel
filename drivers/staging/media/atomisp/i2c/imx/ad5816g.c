@@ -153,7 +153,7 @@ int ad5816g_t_focus_abs(struct v4l2_subdev *sd, s32 value)
 	if (ret == 0) {
 		ad5816g_dev.number_of_steps = value - ad5816g_dev.focus;
 		ad5816g_dev.focus = value;
-		getnstimeofday(&(ad5816g_dev.timestamp_t_focus_abs));
+		ad5816g_dev.timestamp_t_focus_abs = ktime_get();
 	}
 
 	return ret;
@@ -168,18 +168,14 @@ int ad5816g_t_focus_rel(struct v4l2_subdev *sd, s32 value)
 int ad5816g_q_focus_status(struct v4l2_subdev *sd, s32 *value)
 {
 	u32 status = 0;
-	struct timespec temptime;
-	const struct timespec timedelay = {
-		0,
-		min_t(u32, abs(ad5816g_dev.number_of_steps) * DELAY_PER_STEP_NS,
-			DELAY_MAX_PER_STEP_NS),
-	};
+	ktime_t temptime;
+	ktime_t timedelay = ns_to_ktime(min_t(u32,
+			abs(ad5816g_dev.number_of_steps) * DELAY_PER_STEP_NS,
+			DELAY_MAX_PER_STEP_NS));
 
-	ktime_get_ts(&temptime);
+	temptime = ktime_sub(ktime_get(), (ad5816g_dev.timestamp_t_focus_abs));
 
-	temptime = timespec_sub(temptime, (ad5816g_dev.timestamp_t_focus_abs));
-
-	if (timespec_compare(&temptime, &timedelay) <= 0) {
+	if (ktime_compare(temptime, timedelay) <= 0) {
 		status |= ATOMISP_FOCUS_STATUS_MOVING;
 		status |= ATOMISP_FOCUS_HP_IN_PROGRESS;
 	} else {

@@ -10,8 +10,8 @@
 /* drv201 device structure */
 struct drv201_device {
 	const struct camera_af_platform_data *platform_data;
-	struct timespec timestamp_t_focus_abs;
-	struct timespec focus_time;	/* Time when focus was last time set */
+	ktime_t timestamp_t_focus_abs;
+	ktime_t focus_time;	/* Time when focus was last time set */
 	s32 focus;			/* Current focus value */
 	s16 number_of_steps;
 	bool initialized;		/* true if drv201 is detected */

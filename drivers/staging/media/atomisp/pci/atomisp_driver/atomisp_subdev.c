@@ -1109,7 +1109,16 @@ static int __atomisp_update_run_mode(struct atomisp_sub_device *asd)
 			CI_MODE_STILL_CAPTURE,
 			CI_MODE_CONTINUOUS,
 			CI_MODE_PREVIEW };
+	char *modes_str[] = { "CI_MODE_NONE",
+			      "CI_MODE_VIDEO",
+			      "CI_MODE_STILL_CAPTURE",
+			      "CI_MODE_CONTINUOUS",
+			      "CI_MODE_PREVIEW" };
 	s32 mode;
+
+	pr_alert("%s() called\n", __func__);
+	pr_alert("%s(): ctrl->val: %s\n", __func__, modes_str[ctrl->val]);
+	dump_stack();
 
 	if (ctrl->val != ATOMISP_RUN_MODE_VIDEO &&
 	    asd->continuous_mode->val)

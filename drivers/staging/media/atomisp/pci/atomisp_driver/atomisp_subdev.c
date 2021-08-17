@@ -1642,7 +1642,7 @@ int atomisp_subdev_register_entities(struct atomisp_sub_device *asd,
 	else
 		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
 	asd->video_out_capture.vdev.device_caps = device_caps;
-	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(video_dev, VFL_TYPE_VIDEO, -1);
 	if (ret < 0)
 		goto error;
 
@@ -1654,7 +1654,7 @@ int atomisp_subdev_register_entities(struct atomisp_sub_device *asd,
 	else
 		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
 	asd->video_out_vf.vdev.device_caps = device_caps;
-	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(video_dev, VFL_TYPE_VIDEO, -1);
 	if (ret < 0)
 		goto error;
 
@@ -1666,7 +1666,7 @@ int atomisp_subdev_register_entities(struct atomisp_sub_device *asd,
 	else
 		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
 	asd->video_out_preview.vdev.device_caps = device_caps;
-	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(video_dev, VFL_TYPE_VIDEO, -1);
 	if (ret < 0)
 		goto error;
 
@@ -1678,7 +1678,7 @@ int atomisp_subdev_register_entities(struct atomisp_sub_device *asd,
 	else
 		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
 	asd->video_out_video_capture.vdev.device_caps = device_caps;
-	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(video_dev, VFL_TYPE_VIDEO, -1);
 	if (ret < 0)
 		goto error;
 
@@ -1690,7 +1690,7 @@ int atomisp_subdev_register_entities(struct atomisp_sub_device *asd,
 	else
 		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
 	asd->video_acc.vdev.device_caps = device_caps;
-	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(video_dev, VFL_TYPE_VIDEO, -1);
 	if (ret < 0)
 		goto error;
 
@@ -1709,7 +1709,7 @@ int atomisp_subdev_register_entities(struct atomisp_sub_device *asd,
 	else
 		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
 	asd->video_in.vdev.device_caps = device_caps;
-	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(video_dev, VFL_TYPE_VIDEO, -1);
 	if (ret < 0)
 		goto error;
 

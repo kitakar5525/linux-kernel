@@ -139,7 +139,7 @@ int dw9714_t_focus_abs(struct v4l2_subdev *sd, s32 value)
 	if (ret == 0) {
 		dw9714_dev.number_of_steps = value - dw9714_dev.focus;
 		dw9714_dev.focus = value;
-		getnstimeofday(&(dw9714_dev.timestamp_t_focus_abs));
+		dw9714_dev.timestamp_t_focus_abs = ktime_get();
 	}
 
 	return ret;
@@ -154,7 +154,7 @@ int dw9714_t_focus_abs_init(struct v4l2_subdev *sd)
 		dw9714_dev.number_of_steps =
 			DW9714_DEFAULT_FOCUS_POS - dw9714_dev.focus;
 		dw9714_dev.focus = DW9714_DEFAULT_FOCUS_POS;
-		getnstimeofday(&(dw9714_dev.timestamp_t_focus_abs));
+		dw9714_dev.timestamp_t_focus_abs = ktime_get();
 	}
 
 	return ret;
@@ -169,18 +169,14 @@ int dw9714_t_focus_rel(struct v4l2_subdev *sd, s32 value)
 int dw9714_q_focus_status(struct v4l2_subdev *sd, s32 *value)
 {
 	u32 status = 0;
-	struct timespec temptime;
-	const struct timespec timedelay = {
-		0,
-		min_t(u32, abs(dw9714_dev.number_of_steps)*DELAY_PER_STEP_NS,
-			DELAY_MAX_PER_STEP_NS),
-	};
+	ktime_t temptime;
+	ktime_t timedelay = ns_to_ktime(min_t(u32,
+			abs(dw9714_dev.number_of_steps) * DELAY_PER_STEP_NS,
+			DELAY_MAX_PER_STEP_NS));
 
-	ktime_get_ts(&temptime);
+	temptime = ktime_sub(ktime_get(), (dw9714_dev.timestamp_t_focus_abs));
 
-	temptime = timespec_sub(temptime, (dw9714_dev.timestamp_t_focus_abs));
-
-	if (timespec_compare(&temptime, &timedelay) <= 0) {
+	if (ktime_compare(temptime, timedelay) <= 0) {
 		status |= ATOMISP_FOCUS_STATUS_MOVING;
 		status |= ATOMISP_FOCUS_HP_IN_PROGRESS;
 	} else {

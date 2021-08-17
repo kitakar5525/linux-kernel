@@ -147,7 +147,7 @@ int drv201_t_focus_abs(struct v4l2_subdev *sd, s32 value)
 	if (ret == 0) {
 		drv201_dev.number_of_steps = value - drv201_dev.focus;
 		drv201_dev.focus = value;
-		getnstimeofday(&(drv201_dev.timestamp_t_focus_abs));
+		drv201_dev.timestamp_t_focus_abs = ktime_get();
 	}
 
 	return ret;
@@ -161,18 +161,14 @@ int drv201_t_focus_rel(struct v4l2_subdev *sd, s32 value)
 int drv201_q_focus_status(struct v4l2_subdev *sd, s32 *value)
 {
 	u32 status = 0;
-	struct timespec temptime;
-	const struct timespec timedelay = {
-		0,
-		min_t(u32, abs(drv201_dev.number_of_steps)*DELAY_PER_STEP_NS,
-			DELAY_MAX_PER_STEP_NS),
-	};
+	ktime_t temptime;
+	ktime_t timedelay = ns_to_ktime(min_t(u32,
+			abs(drv201_dev.number_of_steps) * DELAY_PER_STEP_NS,
+			DELAY_MAX_PER_STEP_NS));
 
-	ktime_get_ts(&temptime);
+	temptime = ktime_sub(ktime_get(), (drv201_dev.timestamp_t_focus_abs));
 
-	temptime = timespec_sub(temptime, (drv201_dev.timestamp_t_focus_abs));
-
-	if (timespec_compare(&temptime, &timedelay) <= 0) {
+	if (ktime_compare(temptime, timedelay) <= 0) {
 		status |= ATOMISP_FOCUS_STATUS_MOVING;
 		status |= ATOMISP_FOCUS_HP_IN_PROGRESS;
 	} else {

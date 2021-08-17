@@ -17118,6 +17118,13 @@ S:	Maintained
 F:	Documentation/devicetree/bindings/i3c/silvaco,i3c-master.yaml
 F:	drivers/i3c/master/svc-i3c-master.c
 
+SIMPLE FIRMWARE INTERFACE (SFI)
+S:	Obsolete
+W:	http://simplefirmware.org/
+F:	arch/x86/platform/sfi/
+F:	drivers/sfi/
+F:	include/linux/sfi*.h
+
 SIMPLEFB FB DRIVER
 M:	Hans de Goede <hdegoede@redhat.com>
 L:	linux-fbdev@vger.kernel.org

@@ -420,10 +420,11 @@ bool atomisp_subdev_copy_format_conversion(struct atomisp_sub_device *asd,
 
 /* Get pointer to appropriate format */
 struct v4l2_mbus_framefmt
-*atomisp_subdev_get_ffmt(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+*atomisp_subdev_get_ffmt(struct v4l2_subdev *sd,
+			 struct v4l2_subdev_state *sd_state,
 			 uint32_t which, uint32_t pad);
 struct v4l2_rect *atomisp_subdev_get_rect(struct v4l2_subdev *sd,
-					  struct v4l2_subdev_pad_config *cfg,
+					  struct v4l2_subdev_state *sd_state,
 					  uint32_t which, uint32_t pad,
 					  uint32_t target);
 int atomisp_subdev_set_selection(struct v4l2_subdev *sd,

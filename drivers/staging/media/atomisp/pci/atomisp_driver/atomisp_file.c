@@ -184,7 +184,7 @@ static int file_input_s_power(struct v4l2_subdev *sd, int on)
 }
 
 static int file_input_enum_mbus_code(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_pad_config *cfg,
+				 struct v4l2_subdev_state *sd_state,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
 	/*to fake*/
@@ -192,7 +192,7 @@ static int file_input_enum_mbus_code(struct v4l2_subdev *sd,
 }
 
 static int file_input_enum_frame_size(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_state *sd_state,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
 	/*to fake*/
@@ -200,7 +200,7 @@ static int file_input_enum_frame_size(struct v4l2_subdev *sd,
 }
 
 static int file_input_enum_frame_ival(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_state *sd_state,
 				  struct v4l2_subdev_frame_interval_enum *fie)
 {
 	/*to fake*/

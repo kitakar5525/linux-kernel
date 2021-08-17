@@ -1687,7 +1687,8 @@ fail_csi_cfg:
 }
 
 static int
-ov8858_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+ov8858_enum_mbus_code(struct v4l2_subdev *sd,
+		      struct v4l2_subdev_state *sd_state,
 		      struct v4l2_subdev_mbus_code_enum *code)
 {
 	if (code->index)
@@ -1698,7 +1699,8 @@ ov8858_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg
 }
 
 static int
-ov8858_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+ov8858_enum_frame_size(struct v4l2_subdev *sd,
+		       struct v4l2_subdev_state *sd_state,
 		       struct v4l2_subdev_frame_size_enum *fse)
 {
 	int index = fse->index;
@@ -1721,33 +1723,37 @@ ov8858_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cf
 
 static struct v4l2_mbus_framefmt *
 __ov8858_get_pad_format(struct ov8858_device *sensor, struct v4l2_subdev *sd,
-			struct v4l2_subdev_pad_config *cfg, unsigned int pad,
+			struct v4l2_subdev_state *sd_state, unsigned int pad,
 			enum v4l2_subdev_format_whence which)
 {
 	if (which == V4L2_SUBDEV_FORMAT_TRY)
-		return v4l2_subdev_get_try_format(sd, cfg, pad);
+		return v4l2_subdev_get_try_format(sd, sd_state, pad);
 
 	return &sensor->format;
 }
 
 static int
-ov8858_get_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+ov8858_get_pad_format(struct v4l2_subdev *sd,
+		      struct v4l2_subdev_state *sd_state,
 		      struct v4l2_subdev_format *fmt)
 {
 	struct ov8858_device *dev = to_ov8858_sensor(sd);
 
-	fmt->format = *__ov8858_get_pad_format(dev, sd, cfg, fmt->pad, fmt->which);
+	fmt->format = *__ov8858_get_pad_format(dev, sd, sd_state, fmt->pad,
+					       fmt->which);
 
 	return 0;
 }
 
 static int
-ov8858_set_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
+ov8858_set_pad_format(struct v4l2_subdev *sd,
+		      struct v4l2_subdev_state *sd_state,
 		      struct v4l2_subdev_format *fmt)
 {
 	struct ov8858_device *dev = to_ov8858_sensor(sd);
 	struct v4l2_mbus_framefmt *format =
-			__ov8858_get_pad_format(dev, sd, cfg, fmt->pad, fmt->which);
+			__ov8858_get_pad_format(dev, sd, sd_state, fmt->pad,
+						fmt->which);
 
 	*format = fmt->format;
 

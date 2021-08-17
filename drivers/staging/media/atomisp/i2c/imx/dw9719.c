@@ -140,16 +140,16 @@ int dw9719_vcm_power_down(struct v4l2_subdev *sd)
 
 int dw9719_q_focus_status(struct v4l2_subdev *sd, s32 *value)
 {
-	static const struct timespec move_time = {
+	static const struct timespec64 move_time = {
 
 		.tv_sec = 0,
 		.tv_nsec = 60000000
 	};
-	struct timespec current_time, finish_time, delta_time;
+	struct timespec64 current_time, finish_time, delta_time;
 
-	getnstimeofday(&current_time);
-	finish_time = timespec_add(dw9719_dev.focus_time, move_time);
-	delta_time = timespec_sub(current_time, finish_time);
+	ktime_get_real_ts64(&current_time);
+	finish_time = timespec64_add(dw9719_dev.focus_time, move_time);
+	delta_time = timespec64_sub(current_time, finish_time);
 	if (delta_time.tv_sec >= 0 && delta_time.tv_nsec >= 0) {
 		*value = ATOMISP_FOCUS_HP_COMPLETE |
 			 ATOMISP_FOCUS_STATUS_ACCEPTS_NEW_MOVE;
@@ -176,7 +176,7 @@ int dw9719_t_focus_abs(struct v4l2_subdev *sd, s32 value)
 	if (ret < 0)
 		return ret;
 
-	getnstimeofday(&dw9719_dev.focus_time);
+	ktime_get_real_ts64(&dw9719_dev.focus_time);
 	dw9719_dev.focus = value;
 
 	return 0;

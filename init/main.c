@@ -77,6 +77,7 @@
 #include <linux/kgdb.h>
 #include <linux/ftrace.h>
 #include <linux/async.h>
+#include <linux/sfi.h>
 #include <linux/shmem_fs.h>
 #include <linux/slab.h>
 #include <linux/perf_event.h>
@@ -1119,6 +1120,7 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 
 	acpi_subsystem_init();
 	arch_post_acpi_subsys_init();
+	sfi_init_late();
 	kcsan_init();
 
 	/* Do the rest non-__init'ed, we're now alive */

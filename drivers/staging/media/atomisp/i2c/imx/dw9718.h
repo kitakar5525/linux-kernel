@@ -29,11 +29,11 @@
 
 /* dw9718 device structure */
 struct dw9718_device {
-	struct timespec timestamp_t_focus_abs;
+	struct timespec64 timestamp_t_focus_abs;
 	s16 number_of_steps;
 	bool initialized;		/* true if dw9718 is detected */
 	s32 focus;			/* Current focus value */
-	struct timespec focus_time;	/* Time when focus was last time set */
+	struct timespec64 focus_time;	/* Time when focus was last time set */
 	__u8 buffer[4];			/* Used for i2c transactions */
 	const struct camera_af_platform_data *platform_data;
 	__u8 power_on;

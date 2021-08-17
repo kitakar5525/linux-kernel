@@ -45,9 +45,8 @@ static int intel_mid_msgbus_init(void)
 	}
 
 	if (DW_I2C_NEED_QOS) {
-		pm_qos_add_request(&pm_qos,
-			PM_QOS_CPU_DMA_LATENCY,
-			PM_QOS_DEFAULT_VALUE);
+		cpu_latency_qos_update_request(&pm_qos,
+					       PM_QOS_DEFAULT_VALUE);
 	}
 	return 0;
 }
@@ -226,7 +225,8 @@ int intel_mid_dw_i2c_acquire_ownership(void)
 	int timeout = 1000;
 
 	if (DW_I2C_NEED_QOS)
-		pm_qos_update_request(&pm_qos, CSTATE_EXIT_LATENCY_C1 - 1);
+		cpu_latency_qos_update_request(&pm_qos,
+					       CSTATE_EXIT_LATENCY_C1 - 1);
 
 	/*
 	 * We need disable irq. Otherwise, the main thread
@@ -271,8 +271,8 @@ int intel_mid_dw_i2c_acquire_ownership(void)
 			local_irq_enable();
 
 			if (DW_I2C_NEED_QOS) {
-				pm_qos_update_request(&pm_qos,
-					 PM_QOS_DEFAULT_VALUE);
+				cpu_latency_qos_update_request(&pm_qos,
+							       PM_QOS_DEFAULT_VALUE);
 			}
 
 			return ret;
@@ -290,7 +290,7 @@ int intel_mid_dw_i2c_release_ownership(void)
 	local_irq_enable();
 
 	if (DW_I2C_NEED_QOS)
-		pm_qos_update_request(&pm_qos, PM_QOS_DEFAULT_VALUE);
+		cpu_latency_qos_update_request(&pm_qos, PM_QOS_DEFAULT_VALUE);
 
 	return 0;
 }

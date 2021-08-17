@@ -28,12 +28,12 @@ enum dw9714_vcm_mode {
 /* dw9714 device structure */
 struct dw9714_device {
 	struct dw9714_vcm_settings vcm_settings;
-	struct timespec timestamp_t_focus_abs;
+	ktime_t timestamp_t_focus_abs;
 	enum dw9714_vcm_mode vcm_mode;
 	s16 number_of_steps;
 	bool initialized;		/* true if dw9714 is detected */
 	s32 focus;			/* Current focus value */
-	struct timespec focus_time;	/* Time when focus was last time set */
+	ktime_t focus_time;	/* Time when focus was last time set */
 	__u8 buffer[4];			/* Used for i2c transactions */
 	const struct camera_af_platform_data *platform_data;
 };

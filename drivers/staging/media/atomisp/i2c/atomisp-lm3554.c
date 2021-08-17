@@ -26,7 +26,7 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <linux/acpi.h>
-#include "../include/linux/atomisp_gmin_platform.h"
+#include "../include/linux/atomisp_platform.h"
 #include "../include/linux/atomisp.h"
 
 /* Registers */

@@ -1612,30 +1612,85 @@ void atomisp_subdev_unregister_entities(struct atomisp_sub_device *asd)
 int atomisp_subdev_register_entities(struct atomisp_sub_device *asd,
 	struct v4l2_device *vdev)
 {
+	struct atomisp_video_pipe *video_pipe;
+	struct video_device *video_dev;
 	int ret;
+	u32 device_caps;
+
+	/*
+	 * FIXME: check if all device caps are properly initialized.
+	 * Should any of those use V4L2_CAP_META_OUTPUT? Probably yes.
+	 *
+	 * kitakar5525: According to the intel-aero version atomisp,
+	 * if video_pipe->type is V4L2_BUF_TYPE_VIDEO_CAPTURE then use
+	 * V4L2_CAP_VIDEO_CAPTURE. Otherwise use V4L2_CAP_VIDEO_OUTPUT.
+	 */
+
+	device_caps = V4L2_CAP_STREAMING;
 
 	/* Register the subdev and video node. */
+
 	ret = v4l2_device_register_subdev(vdev, &asd->subdev);
 	if (ret < 0)
 		goto error;
 
-	ret = atomisp_video_register(&asd->video_out_capture, vdev);
+	video_dev = &asd->video_out_capture.vdev;
+	video_dev->v4l2_dev = vdev;
+	video_pipe = atomisp_to_video_pipe(video_dev);
+	if (video_pipe->type == V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		device_caps |= V4L2_CAP_VIDEO_CAPTURE;
+	else
+		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
+	asd->video_out_capture.vdev.device_caps = device_caps;
+	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
 	if (ret < 0)
 		goto error;
 
-	ret = atomisp_video_register(&asd->video_out_vf, vdev);
+	video_dev = &asd->video_out_vf.vdev;
+	video_dev->v4l2_dev = vdev;
+	video_pipe = atomisp_to_video_pipe(video_dev);
+	if (video_pipe->type == V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		device_caps |= V4L2_CAP_VIDEO_CAPTURE;
+	else
+		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
+	asd->video_out_vf.vdev.device_caps = device_caps;
+	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
 	if (ret < 0)
 		goto error;
 
-	ret = atomisp_video_register(&asd->video_out_preview, vdev);
+	video_dev = &asd->video_out_preview.vdev;
+	video_dev->v4l2_dev = vdev;
+	video_pipe = atomisp_to_video_pipe(video_dev);
+	if (video_pipe->type == V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		device_caps |= V4L2_CAP_VIDEO_CAPTURE;
+	else
+		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
+	asd->video_out_preview.vdev.device_caps = device_caps;
+	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
 	if (ret < 0)
 		goto error;
 
-	ret = atomisp_video_register(&asd->video_out_video_capture, vdev);
+	video_dev = &asd->video_out_video_capture.vdev;
+	video_dev->v4l2_dev = vdev;
+	video_pipe = atomisp_to_video_pipe(video_dev);
+	if (video_pipe->type == V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		device_caps |= V4L2_CAP_VIDEO_CAPTURE;
+	else
+		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
+	asd->video_out_video_capture.vdev.device_caps = device_caps;
+	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
 	if (ret < 0)
 		goto error;
 
-	ret = atomisp_acc_register(&asd->video_acc, vdev);
+	video_dev = &asd->video_acc.vdev;
+	video_dev->v4l2_dev = vdev;
+	video_pipe = atomisp_to_video_pipe(video_dev);
+	if (video_pipe->type == V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		device_caps |= V4L2_CAP_VIDEO_CAPTURE;
+	else
+		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
+	asd->video_acc.vdev.device_caps = device_caps;
+	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
 	if (ret < 0)
 		goto error;
 
@@ -1645,7 +1700,16 @@ int atomisp_subdev_register_entities(struct atomisp_sub_device *asd,
 	 */
 	if (asd->index)
 		return 0;
-	ret = atomisp_video_register(&asd->video_in, vdev);
+
+	video_dev = &asd->video_in.vdev;
+	video_dev->v4l2_dev = vdev;
+	video_pipe = atomisp_to_video_pipe(video_dev);
+	if (video_pipe->type == V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		device_caps |= V4L2_CAP_VIDEO_CAPTURE;
+	else
+		device_caps |= V4L2_CAP_VIDEO_OUTPUT;
+	asd->video_in.vdev.device_caps = device_caps;
+	ret = video_register_device(video_dev, VFL_TYPE_GRABBER, -1);
 	if (ret < 0)
 		goto error;
 

@@ -45,8 +45,8 @@ static int intel_mid_msgbus_init(void)
 	}
 
 	if (DW_I2C_NEED_QOS) {
-		cpu_latency_qos_update_request(&pm_qos,
-					       PM_QOS_DEFAULT_VALUE);
+		cpu_latency_qos_add_request(&pm_qos,
+					    PM_QOS_DEFAULT_VALUE);
 	}
 	return 0;
 }

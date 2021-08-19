@@ -209,16 +209,9 @@ int hmm_init(void)
 
 void hmm_cleanup(void)
 {
-	/* FIXME: Sometimes "!dummy_ptr" is true although it doesn't seem
-	 * to be NULL (why?). So, call this first. */
-	sysfs_remove_group(&atomisp_dev->kobj, atomisp_attribute_group);
-
-	if (!dummy_ptr) {
-		dev_warn(atomisp_dev,
-				"%s: '!dummy_ptr' is true. skipping further cleanups.\n",
-				__func__);
+	if (!dummy_ptr)
 		return;
-	}
+	sysfs_remove_group(&atomisp_dev->kobj, atomisp_attribute_group);
 
 	/* free dummy memory first */
 	hmm_free(dummy_ptr);

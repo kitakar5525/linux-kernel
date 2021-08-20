@@ -1103,6 +1103,8 @@ ia_css_binary_fill_info(const struct ia_css_binary_xinfo *xinfo,
 	unsigned int i;
 	const struct ia_css_frame_info *bin_out_info = NULL;
 
+	pr_alert("%s() called\n", __func__);
+
 	assert(info);
 	assert(binary);
 
@@ -1114,6 +1116,8 @@ ia_css_binary_fill_info(const struct ia_css_binary_xinfo *xinfo,
 		    &binary->mem_params, &binary->css_params,
 		    &info->mem_initializers);
 		if (err) {
+			pr_alert("%s(): ia_css_isp_param_allocate_isp_parameters() failed: %d\n",
+				 __func__, err);
 			return err;
 		}
 	}
@@ -1222,6 +1226,8 @@ ia_css_binary_fill_info(const struct ia_css_binary_xinfo *xinfo,
 				    &binary->mem_params,
 				    &binary->css_params);
 			}
+			pr_alert("%s(): ia_css_vf_configure() failed: %d\n",
+				 __func__, err);
 			return err;
 		}
 	}
@@ -1236,8 +1242,10 @@ ia_css_binary_fill_info(const struct ia_css_binary_xinfo *xinfo,
 		unsigned int vf_out_vecs, vf_out_width, vf_out_height;
 
 		binary->vf_frame_info.format = vf_info->format;
-		if (!bin_out_info)
+		if (!bin_out_info) {
+			pr_alert("%s(): !bin_out_info, returning -EINVAL\n", __func__);
 			return -EINVAL;
+		}
 		vf_out_vecs = __ISP_VF_OUTPUT_WIDTH_VECS(bin_out_info->padded_width,
 			      vf_log_ds);
 		vf_out_width = _ISP_VF_OUTPUT_WIDTH(vf_out_vecs);
@@ -1402,6 +1410,8 @@ static int __ia_css_binary_find(struct ia_css_binary_descr *descr,
 	unsigned int isp_pipe_version;
 	struct ia_css_resolution dvs_env, internal_res;
 	unsigned int i;
+
+	pr_alert("%s() called\n", __func__);
 
 	assert(descr);
 	/* MW: used after an error check, may accept NULL, but doubtfull */

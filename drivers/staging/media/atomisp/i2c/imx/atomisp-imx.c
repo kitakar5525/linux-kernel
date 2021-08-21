@@ -2134,31 +2134,6 @@ imx_set_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_state *sd_state,
 	return 0;
 }
 
-static int
-imx_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param)
-{
-	struct imx_device *dev = to_imx_sensor(sd);
-
-	mutex_lock(&dev->input_lock);
-	dev->run_mode = param->parm.capture.capturemode;
-
-	switch (dev->run_mode) {
-	case CI_MODE_VIDEO:
-		dev->curr_res_table = dev->mode_tables->res_video;
-		dev->entries_curr_table = dev->mode_tables->n_res_video;
-		break;
-	case CI_MODE_STILL_CAPTURE:
-		dev->curr_res_table = dev->mode_tables->res_still;
-		dev->entries_curr_table = dev->mode_tables->n_res_still;
-		break;
-	default:
-		dev->curr_res_table = dev->mode_tables->res_preview;
-		dev->entries_curr_table = dev->mode_tables->n_res_preview;
-	}
-	mutex_unlock(&dev->input_lock);
-	return 0;
-}
-
 int
 imx_g_frame_interval(struct v4l2_subdev *sd,
 				struct v4l2_subdev_frame_interval *interval)
@@ -2337,7 +2312,6 @@ static const struct v4l2_subdev_video_ops imx_video_ops = {
 	.try_mbus_fmt = imx_try_mbus_fmt,
 	.g_mbus_fmt = imx_g_mbus_fmt,
 	.s_mbus_fmt = imx_s_mbus_fmt,
-	.s_parm = imx_s_parm,
 	.g_frame_interval = imx_g_frame_interval,
 	.s_frame_interval = imx_s_frame_interval,
 };

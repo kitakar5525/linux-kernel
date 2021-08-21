@@ -1279,35 +1279,9 @@ static int ov7251_g_parm(struct v4l2_subdev *sd,
 	if (dev->fmt_idx >= 0 && dev->fmt_idx < N_RES) {
 		param->parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
 		param->parm.capture.timeperframe.numerator = 1;
-		param->parm.capture.capturemode = dev->run_mode;
 		param->parm.capture.timeperframe.denominator =
 			ov7251_res[dev->fmt_idx].fps;
 	}
-	return 0;
-}
-
-static int ov7251_s_parm(struct v4l2_subdev *sd,
-			struct v4l2_streamparm *param)
-{
-	struct ov7251_device *dev = to_ov7251_sensor(sd);
-
-	dev->run_mode = param->parm.capture.capturemode;
-
-	mutex_lock(&dev->input_lock);
-	switch (dev->run_mode) {
-	case CI_MODE_VIDEO:
-		ov7251_res = ov7251_res_video;
-		N_RES = N_RES_VIDEO;
-		break;
-	case CI_MODE_STILL_CAPTURE:
-		ov7251_res = ov7251_res_still;
-		N_RES = N_RES_STILL;
-		break;
-	default:
-		ov7251_res = ov7251_res_preview;
-		N_RES = N_RES_PREVIEW;
-	}
-	mutex_unlock(&dev->input_lock);
 	return 0;
 }
 
@@ -1436,7 +1410,6 @@ static const struct v4l2_ctrl_config v4l2_ctrl_link_freq = {
 static const struct v4l2_subdev_video_ops ov7251_video_ops = {
 	.s_stream = ov7251_s_stream,
 	.g_parm = ov7251_g_parm,
-	.s_parm = ov7251_s_parm,
 	.enum_framesizes = ov7251_enum_framesizes,
 	.enum_frameintervals = ov7251_enum_frameintervals,
 	.enum_mbus_fmt = ov7251_enum_mbus_fmt,

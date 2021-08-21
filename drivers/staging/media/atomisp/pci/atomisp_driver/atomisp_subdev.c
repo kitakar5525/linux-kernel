@@ -1148,6 +1148,9 @@ static int __atomisp_update_run_mode(struct atomisp_sub_device *asd)
 	if (c)
 		return v4l2_ctrl_s_ctrl(c, mode);
 
+	dev_warn(isp->dev,
+		 "Your sensor driver for %s does not support v4l2 ctrl V4L2_CID_RUN_MODE\n",
+		 dev_name(isp->inputs[asd->input_curr].camera->dev));
 	return 0;
 }
 

@@ -1259,32 +1259,6 @@ platform_init_failed:
 	return ret;
 }
 
-static int ov7251_g_parm(struct v4l2_subdev *sd,
-			struct v4l2_streamparm *param)
-{
-	struct ov7251_device *dev = to_ov7251_sensor(sd);
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-
-	if (!param)
-		return -EINVAL;
-
-	if (param->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		dev_err(&client->dev,  "unsupported buffer type.\n");
-		return -EINVAL;
-	}
-
-	memset(param, 0, sizeof(*param));
-	param->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-	if (dev->fmt_idx >= 0 && dev->fmt_idx < N_RES) {
-		param->parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
-		param->parm.capture.timeperframe.numerator = 1;
-		param->parm.capture.timeperframe.denominator =
-			ov7251_res[dev->fmt_idx].fps;
-	}
-	return 0;
-}
-
 static int ov7251_g_frame_interval(struct v4l2_subdev *sd,
 				   struct v4l2_subdev_frame_interval *interval)
 {
@@ -1409,7 +1383,6 @@ static const struct v4l2_ctrl_config v4l2_ctrl_link_freq = {
 
 static const struct v4l2_subdev_video_ops ov7251_video_ops = {
 	.s_stream = ov7251_s_stream,
-	.g_parm = ov7251_g_parm,
 	.enum_framesizes = ov7251_enum_framesizes,
 	.enum_frameintervals = ov7251_enum_frameintervals,
 	.enum_mbus_fmt = ov7251_enum_mbus_fmt,

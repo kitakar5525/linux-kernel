@@ -83,7 +83,6 @@ struct media_device_ops {
  * @serial:	Device serial number (optional)
  * @bus_info:	Unique and stable device location identifier
  * @hw_revision: Hardware device revision
- * @driver_version: Device driver version
  * @topology_version: Monotonic counter for storing the version of the graph
  *		topology. Should be incremented each time the topology changes.
  * @id:		Unique ID used on the last registered graph object
@@ -152,7 +151,6 @@ struct media_device {
 	char serial[40];
 	char bus_info[32];
 	u32 hw_revision;
-	u32 driver_version;
 
 	u64 topology_version;
 

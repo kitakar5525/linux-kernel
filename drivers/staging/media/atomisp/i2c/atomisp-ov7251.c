@@ -603,158 +603,124 @@ static int ov7251_s_gain(struct v4l2_subdev *sd, s32 value)
 	return __ov7251_set_exposure_gain(sd, dev->exposure, value);
 }
 
-struct ov7251_control ov7251_controls[] = {
+struct v4l2_ctrl_config ov7251_controls[] = {
 	{
-		.qc = {
-			.id = V4L2_CID_EXPOSURE_ABSOLUTE,
-			.type = V4L2_CTRL_TYPE_U16,
-			.name = "exposure",
-			.minimum = 0x0,
-			.maximum = 0xFFFF,
-			.step = 0x01,
-			.default_value = 0x00,
-			.flags = 0,
-		},
-		.query = ov7251_q_exposure,
-		.tweak = ov7251_s_exposure,
+		.ops = &ov7251_ctrl_ops,
+		.id = V4L2_CID_EXPOSURE_ABSOLUTE,
+		.type = V4L2_CTRL_TYPE_U16,
+		.name = "exposure",
+		.min = 0x0,
+		.max = 0xFFFF,
+		.step = 0x01,
+		.def = 0x00,
+		.flags = 0,
 	},
 	{
-		.qc = {
-			.id = V4L2_CID_GAIN,
-			.type = V4L2_CTRL_TYPE_U8,
-			.name = "gain",
-			.minimum = 0x0,
-			.maximum = 0x7F,
-			.step = 0x01,
-			.default_value = 0x00,
-			.flags = 0,
-		},
-		.query = ov7251_q_gain,
-		.tweak = ov7251_s_gain,
+		.ops = &ov7251_ctrl_ops,
+		.id = V4L2_CID_GAIN,
+		.type = V4L2_CTRL_TYPE_U8,
+		.name = "gain",
+		.min = 0x0,
+		.max = 0x7F,
+		.step = 0x01,
+		.def = 0x00,
+		.flags = 0,
 	},
 	{
-		.qc = {
-			.id = V4L2_CID_FOCAL_ABSOLUTE,
-			.type = V4L2_CTRL_TYPE_INTEGER,
-			.name = "focal length",
-			.minimum = OV7251_FOCAL_LENGTH_DEFAULT,
-			.maximum = OV7251_FOCAL_LENGTH_DEFAULT,
-			.step = 0x01,
-			.default_value = OV7251_FOCAL_LENGTH_DEFAULT,
-			.flags = 0,
-		},
-		.query = ov7251_g_focal,
+		.ops = &ov7251_ctrl_ops,
+		.id = V4L2_CID_FOCAL_ABSOLUTE,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "focal length",
+		.min = OV7251_FOCAL_LENGTH_DEFAULT,
+		.max = OV7251_FOCAL_LENGTH_DEFAULT,
+		.step = 0x01,
+		.def = OV7251_FOCAL_LENGTH_DEFAULT,
+		.flags = 0,
 	},
 	{
-		.qc = {
-			.id = V4L2_CID_FNUMBER_ABSOLUTE,
-			.type = V4L2_CTRL_TYPE_INTEGER,
-			.name = "f-number",
-			.minimum = OV7251_F_NUMBER_DEFAULT,
-			.maximum = OV7251_F_NUMBER_DEFAULT,
-			.step = 0x01,
-			.default_value = OV7251_F_NUMBER_DEFAULT,
-			.flags = 0,
-		},
-		.query = ov7251_g_fnumber,
+		.ops = &ov7251_ctrl_ops,
+		.id = V4L2_CID_FNUMBER_ABSOLUTE,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "f-number",
+		.min = OV7251_F_NUMBER_DEFAULT,
+		.max = OV7251_F_NUMBER_DEFAULT,
+		.step = 0x01,
+		.def = OV7251_F_NUMBER_DEFAULT,
+		.flags = 0,
 	},
 	{
-		.qc = {
-			.id = V4L2_CID_FNUMBER_RANGE,
-			.type = V4L2_CTRL_TYPE_INTEGER,
-			.name = "f-number range",
-			.minimum = OV7251_F_NUMBER_RANGE,
-			.maximum =  OV7251_F_NUMBER_RANGE,
-			.step = 0x01,
-			.default_value = OV7251_F_NUMBER_RANGE,
-			.flags = 0,
-		},
-		.query = ov7251_g_fnumber_range,
+		.ops = &ov7251_ctrl_ops,
+		.id = V4L2_CID_FNUMBER_RANGE,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "f-number range",
+		.min = OV7251_F_NUMBER_RANGE,
+		.max =  OV7251_F_NUMBER_RANGE,
+		.step = 0x01,
+		.def = OV7251_F_NUMBER_RANGE,
+		.flags = 0,
 	},
 };
-#define N_CONTROLS (ARRAY_SIZE(ov7251_controls))
 
 static int ov7251_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 {
-	struct ov7251_device *dev = container_of(ctrl->handler, struct ov7251_device,
-			ctrl_handler);
+	struct ov7251_device *dev =
+	    container_of(ctrl->handler, struct ov7251_device, ctrl_handler);
 	unsigned int val;
+	int ret = 0;
 
 	switch (ctrl->id) {
 	case V4L2_CID_LINK_FREQ:
 		val = ov7251_res[dev->fmt_idx].mipi_freq;
-		if (val == 0)
-			return -EINVAL;
+		if (val == 0) {
+			ret = -EINVAL;
+			break;
+		}
 
 		ctrl->val = val * 1000;			/* To Hz */
 		break;
+	case V4L2_CID_EXPOSURE_ABSOLUTE:
+		ret = ov7251_q_exposure(&dev->sd, &ctrl->val);
+		break;
+	case V4L2_CID_GAIN:
+		ret = ov7251_q_gain(&dev->sd, &ctrl->val);
+		break;
+	case V4L2_CID_FOCAL_ABSOLUTE:
+		ret = ov7251_g_focal(&dev->sd, &ctrl->val);
+		break;
+	case V4L2_CID_FNUMBER_ABSOLUTE:
+		ret = ov7251_g_fnumber(&dev->sd, &ctrl->val);
+		break;
+	case V4L2_CID_FNUMBER_RANGE:
+		ret = ov7251_g_fnumber_range(&dev->sd, &ctrl->val);
+		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
 	}
-
-	return 0;
-}
-
-
-static struct ov7251_control *ov7251_find_control(u32 id)
-{
-	int i;
-
-	for (i = 0; i < N_CONTROLS; i++)
-		if (ov7251_controls[i].qc.id == id)
-			return &ov7251_controls[i];
-	return NULL;
-}
-
-static int ov7251_queryctrl(struct v4l2_subdev *sd, struct v4l2_queryctrl *qc)
-{
-	struct ov7251_control *ctrl = ov7251_find_control(qc->id);
-	struct ov7251_device *dev = to_ov7251_sensor(sd);
-
-	if (ctrl == NULL)
-		return -EINVAL;
-
-	mutex_lock(&dev->input_lock);
-	*qc = ctrl->qc;
-	mutex_unlock(&dev->input_lock);
-
-	return 0;
-}
-
-/* imx control set/get */
-static int ov7251_g_ctrl(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
-{
-	struct ov7251_control *s_ctrl;
-	struct ov7251_device *dev = to_ov7251_sensor(sd);
-	int ret;
-
-	if (!ctrl)
-		return -EINVAL;
-
-	s_ctrl = ov7251_find_control(ctrl->id);
-	if ((s_ctrl == NULL) || (s_ctrl->query == NULL))
-		return -EINVAL;
-
-	mutex_lock(&dev->input_lock);
-	ret = s_ctrl->query(sd, &ctrl->value);
-	mutex_unlock(&dev->input_lock);
 
 	return ret;
 }
 
-static int ov7251_s_ctrl(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
+static int ov7251_s_ctrl(struct v4l2_ctrl *ctrl)
 {
-	struct ov7251_control *octrl = ov7251_find_control(ctrl->id);
-	struct ov7251_device *dev = to_ov7251_sensor(sd);
-	int ret;
+	struct ov7251_device *dev =
+	    container_of(ctrl->handler, struct ov7251_device, ctrl_handler);
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	int ret = 0;
 
-	if ((octrl == NULL) || (octrl->tweak == NULL))
-		return -EINVAL;
-
-	mutex_lock(&dev->input_lock);
-	ret = octrl->tweak(sd, ctrl->value);
-	mutex_unlock(&dev->input_lock);
-
+	switch (ctrl->id) {
+	case V4L2_CID_EXPOSURE_ABSOLUTE:
+		dev_dbg(&client->dev, "%s: V4L2_CID_EXPOSURE_ABSOLUTE: %d\n",
+			__func__, ctrl->val);
+		ret = ov7251_s_exposure(&dev->sd, ctrl->val);
+		break;
+	case V4L2_CID_GAIN:
+		dev_dbg(&client->dev, "%s: V4L2_CID_GAIN: %d\n",
+			__func__, ctrl->val);
+		ret = ov7251_s_gain(&dev->sd, ctrl->val);
+		break;
+	default:
+		ret = -EINVAL;
+	}
 	return ret;
 }
 
@@ -1367,6 +1333,7 @@ static const struct v4l2_subdev_sensor_ops ov7251_sensor_ops = {
 
 static struct v4l2_ctrl_ops ov7251_ctrl_ops = {
 	.g_volatile_ctrl = ov7251_g_volatile_ctrl,
+	.s_ctrl = ov7251_s_ctrl,
 };
 
 static const struct v4l2_ctrl_config v4l2_ctrl_link_freq = {
@@ -1394,9 +1361,6 @@ static const struct v4l2_subdev_video_ops ov7251_video_ops = {
 
 static const struct v4l2_subdev_core_ops ov7251_core_ops = {
 	.s_power = ov7251_s_power,
-	.queryctrl = ov7251_queryctrl,
-	.g_ctrl = ov7251_g_ctrl,
-	.s_ctrl = ov7251_s_ctrl,
 	.ioctl = ov7251_ioctl,
 };
 
@@ -1436,14 +1400,20 @@ static int ov7251_remove(struct i2c_client *client)
 static int __ov7251_init_ctrl_handler(struct ov7251_device *dev)
 {
 	struct v4l2_ctrl_handler *hdl;
+	unsigned int i;
 
 	hdl = &dev->ctrl_handler;
 
-	v4l2_ctrl_handler_init(&dev->ctrl_handler, 3);
+	v4l2_ctrl_handler_init(&dev->ctrl_handler,
+			       3 + ARRAY_SIZE(ov7251_controls));
 
 	dev->link_freq = v4l2_ctrl_new_custom(&dev->ctrl_handler,
 					      &v4l2_ctrl_link_freq,
 					      NULL);
+
+	for (i = 0; i < ARRAY_SIZE(ov7251_controls); i++)
+		v4l2_ctrl_new_custom(&dev->ctrl_handler, &ov7251_controls[i],
+				     NULL);
 
 	if (dev->ctrl_handler.error || dev->link_freq == NULL) {
 		return dev->ctrl_handler.error;

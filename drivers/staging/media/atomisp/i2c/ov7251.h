@@ -189,12 +189,6 @@ struct ov7251_resolution {
 	int mipi_freq;
 };
 
-struct ov7251_control {
-	struct v4l2_queryctrl qc;
-	int (*query)(struct v4l2_subdev *sd, s32 *value);
-	int (*tweak)(struct v4l2_subdev *sd, s32 value);
-};
-
 /*
  * ov7251 device structure.
  */

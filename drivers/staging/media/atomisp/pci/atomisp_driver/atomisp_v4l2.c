@@ -1127,7 +1127,7 @@ atomisp_load_firmware(struct atomisp_device *isp)
 #if defined(ATOMISP_FWNAME)
 	fw_path = ATOMISP_FWNAME;
 #else
-	if (isp->driver_version == ATOMISP_CSS_VERSION_21) {
+	if (isp->css_version == ATOMISP_CSS_VERSION_21) {
 		if (isp->media_dev.hw_revision ==
 		    ((ATOMISP_HW_REVISION_ISP2401 << ATOMISP_HW_REVISION_SHIFT)
 		     | ATOMISP_HW_STEPPING_A0))
@@ -1147,8 +1147,8 @@ atomisp_load_firmware(struct atomisp_device *isp)
 
 	if (!fw_path) {
 		dev_err(isp->dev,
-			"Unsupported driver_version 0x%x, hw_revision 0x%x\n",
-			isp->driver_version,
+			"Unsupported css_version 0x%x, hw_revision 0x%x\n",
+			isp->css_version,
 			isp->media_dev.hw_revision);
 		return NULL;
 	}
@@ -1287,7 +1287,7 @@ static int atomisp_pci_probe(struct pci_dev *dev,
 	/* This is not a true PCI device on SoC, so the delay is not needed. */
 	isp->pdev->d3hot_delay = 0;
 
-	isp->driver_version = ATOMISP_CSS_VERSION_21;
+	isp->css_version = ATOMISP_CSS_VERSION_21;
 	switch (id->device & ATOMISP_PCI_DEVICE_SOC_MASK) {
 	case ATOMISP_PCI_DEVICE_SOC_MRFLD:
 		isp->media_dev.hw_revision =

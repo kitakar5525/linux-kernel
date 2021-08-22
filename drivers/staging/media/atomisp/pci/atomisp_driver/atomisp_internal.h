@@ -310,7 +310,7 @@ struct atomisp_device {
 
 	bool css_initialized;
 
-	u32 driver_version;
+	u32 css_version;
 };
 
 #define v4l2_dev_to_atomisp_device(dev) \

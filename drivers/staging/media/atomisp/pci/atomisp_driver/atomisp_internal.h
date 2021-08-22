@@ -309,6 +309,8 @@ struct atomisp_device {
 	unsigned int hpll_freq;
 
 	bool css_initialized;
+
+	u32 driver_version;
 };
 
 #define v4l2_dev_to_atomisp_device(dev) \

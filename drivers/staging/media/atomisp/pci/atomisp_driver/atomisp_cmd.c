@@ -4764,7 +4764,8 @@ static inline int atomisp_set_sensor_mipi_to_isp(
 	unsigned int input_format, bayer_order;
 
 	ctrl.id = V4L2_CID_LINK_FREQ;
-	if (v4l2_subdev_g_ctrl(isp->inputs[asd->input_curr].camera, &ctrl) == 0)
+	if (v4l2_g_ctrl
+	    (isp->inputs[asd->input_curr].camera->ctrl_handler, &ctrl) == 0)
 		mipi_freq = ctrl.value;
 
 	if (asd->stream_env[stream_id].isys_configs == 1) {

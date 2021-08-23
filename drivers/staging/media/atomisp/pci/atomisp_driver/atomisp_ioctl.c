@@ -2282,8 +2282,8 @@ static int atomisp_g_ctrl(struct file *file, void *fh,
 	case V4L2_CID_TEST_PATTERN_COLOR_GB:
 	case V4L2_CID_TEST_PATTERN_COLOR_B:
 		rt_mutex_unlock(&isp->mutex);
-		return v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-				       core, g_ctrl, control);
+		return v4l2_g_ctrl(isp->inputs[asd->input_curr].camera->
+				   ctrl_handler, control);
 	case V4L2_CID_COLORFX:
 		ret = atomisp_color_effect(asd, 0, &control->value);
 		break;
@@ -2363,8 +2363,9 @@ static int atomisp_s_ctrl(struct file *file, void *fh,
 	case V4L2_CID_TEST_PATTERN_COLOR_GB:
 	case V4L2_CID_TEST_PATTERN_COLOR_B:
 		rt_mutex_unlock(&isp->mutex);
-		return v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-				       core, s_ctrl, control);
+		return v4l2_s_ctrl(NULL,
+				   isp->inputs[asd->input_curr].camera->
+				   ctrl_handler, control);
 	case V4L2_CID_COLORFX:
 		ret = atomisp_color_effect(asd, 1, &control->value);
 		break;
@@ -2410,12 +2411,12 @@ static int atomisp_queryctl(struct file *file, void *fh,
 	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
 	struct atomisp_device *isp = video_get_drvdata(vdev);
 
-    switch (qc->id) {
-    case V4L2_CID_FOCUS_ABSOLUTE:
-    case V4L2_CID_FOCUS_RELATIVE:
-    case V4L2_CID_FOCUS_STATUS:
-        return v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-            core, queryctrl, qc);
+	switch (qc->id) {
+	case V4L2_CID_FOCUS_ABSOLUTE:
+	case V4L2_CID_FOCUS_RELATIVE:
+	case V4L2_CID_FOCUS_STATUS:
+		return v4l2_queryctrl(isp->inputs[asd->input_curr].
+				      camera->ctrl_handler, qc);
 	}
 
 	if (qc->id & V4L2_CTRL_FLAG_NEXT_CTRL)
@@ -2466,22 +2467,22 @@ static int atomisp_camera_g_ext_ctrls(struct file *file, void *fh,
 			 * Exposure related control will be handled by sensor
 			 * driver
 			 */
-			ret = v4l2_subdev_call(isp->inputs
-					       [asd->input_curr].camera,
-					       core, g_ctrl, &ctrl);
+			ret =
+			    v4l2_g_ctrl(isp->inputs[asd->input_curr].camera->
+					ctrl_handler, &ctrl);
 			break;
 		case V4L2_CID_FOCUS_ABSOLUTE:
 		case V4L2_CID_FOCUS_RELATIVE:
 		case V4L2_CID_FOCUS_STATUS:
 		case V4L2_CID_FOCUS_AUTO:
 			if (isp->inputs[asd->input_curr].motor)
-				ret = v4l2_subdev_call(
-					isp->inputs[asd->input_curr].motor,
-					core, g_ctrl, &ctrl);
+				ret =
+				    v4l2_g_ctrl(isp->inputs[asd->input_curr].
+						motor->ctrl_handler, &ctrl);
 			else
-				ret = v4l2_subdev_call(
-					isp->inputs[asd->input_curr].camera,
-					core, g_ctrl, &ctrl);
+				ret =
+				    v4l2_g_ctrl(isp->inputs[asd->input_curr].
+						camera->ctrl_handler, &ctrl);
 			break;
 		case V4L2_CID_FLASH_STATUS:
 		case V4L2_CID_FLASH_INTENSITY:
@@ -2492,8 +2493,9 @@ static int atomisp_camera_g_ext_ctrls(struct file *file, void *fh,
 		case V4L2_CID_FLASH_MODE:
 		case V4L2_CID_FLASH_STATUS_REGISTER:
 			if (isp->flash)
-				ret = v4l2_subdev_call(
-					isp->flash, core, g_ctrl, &ctrl);
+				ret =
+				    v4l2_g_ctrl(isp->flash->ctrl_handler,
+						&ctrl);
 			break;
 		case V4L2_CID_ZOOM_ABSOLUTE:
 			rt_mutex_lock(&isp->mutex);
@@ -2573,22 +2575,22 @@ static int atomisp_camera_s_ext_ctrls(struct file *file, void *fh,
 		case V4L2_CID_TEST_PATTERN_COLOR_GR:
 		case V4L2_CID_TEST_PATTERN_COLOR_GB:
 		case V4L2_CID_TEST_PATTERN_COLOR_B:
-			ret = v4l2_subdev_call(
-				isp->inputs[asd->input_curr].camera,
-				core, s_ctrl, &ctrl);
+			ret = v4l2_s_ctrl(NULL,
+					  isp->inputs[asd->input_curr].camera->
+					  ctrl_handler, &ctrl);
 			break;
 		case V4L2_CID_FOCUS_ABSOLUTE:
 		case V4L2_CID_FOCUS_RELATIVE:
 		case V4L2_CID_FOCUS_STATUS:
 		case V4L2_CID_FOCUS_AUTO:
 			if (isp->inputs[asd->input_curr].motor)
-				ret = v4l2_subdev_call(
-					isp->inputs[asd->input_curr].motor,
-					core, s_ctrl, &ctrl);
+				ret = v4l2_s_ctrl(NULL,
+						  isp->inputs[asd->input_curr].
+						  motor->ctrl_handler, &ctrl);
 			else
-				ret = v4l2_subdev_call(
-					isp->inputs[asd->input_curr].camera,
-					core, s_ctrl, &ctrl);
+				ret = v4l2_s_ctrl(NULL,
+						  isp->inputs[asd->input_curr].
+						  camera->ctrl_handler, &ctrl);
 			break;
 		case V4L2_CID_FLASH_STATUS:
 		case V4L2_CID_FLASH_INTENSITY:
@@ -2600,8 +2602,9 @@ static int atomisp_camera_s_ext_ctrls(struct file *file, void *fh,
 		case V4L2_CID_FLASH_STATUS_REGISTER:
 			rt_mutex_lock(&isp->mutex);
 			if (isp->flash) {
-				ret = v4l2_subdev_call(isp->flash,
-					core, s_ctrl, &ctrl);
+				ret =
+				    v4l2_s_ctrl(NULL, isp->flash->ctrl_handler,
+						&ctrl);
 				/* When flash mode is changed we need to reset
 				 * flash state */
 				if (ctrl.id == V4L2_CID_FLASH_MODE) {

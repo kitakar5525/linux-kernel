@@ -831,11 +831,8 @@ static int atomisp_enum_fmt_cap(struct file *file, void *fh,
 	rt_mutex_lock(&isp->mutex);
 	rval = v4l2_subdev_call(isp->inputs[asd->input_curr].camera, pad,
 				enum_mbus_code, NULL, &code);
-	if (rval == -ENOIOCTLCMD) {
+	if (rval == -ENOIOCTLCMD)
 		dev_warn(isp->dev, "enum_mbus_code pad op not supported. Please fix your sensor driver!\n");
-		rval = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-					video, enum_mbus_fmt, 0, &code.code);
-	}
 	rt_mutex_unlock(&isp->mutex);
 
 	if (rval)

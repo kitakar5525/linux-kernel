@@ -1542,40 +1542,6 @@ out:
 	return ret;
 }
 
-static int ov8858_enum_frameintervals(struct v4l2_subdev *sd,
-				      struct v4l2_frmivalenum *fival)
-{
-	unsigned int index = fival->index;
-	int i;
-	struct ov8858_device *dev = to_ov8858_sensor(sd);
-
-	mutex_lock(&dev->input_lock);
-	/* since the isp will donwscale the resolution to the right size,
-	  * find the nearest one that will allow the isp to do so
-	  * important to ensure that the resolution requested is padded
-	  * correctly by the requester, which is the atomisp driver in
-	  * this case.
-	  */
-	i = nearest_resolution_index(sd, fival->width, fival->height);
-
-	if (i == -1)
-		i = dev->entries_curr_table - 1;
-
-	/* Check if this index is supported */
-	if (index >
-	    __ov8858_get_max_fps_index(dev->curr_res_table[i].fps_options))
-		goto out;
-	fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
-	fival->discrete.numerator = 1;
-	fival->discrete.denominator =
-			dev->curr_res_table[i].fps_options[index].fps;
-	mutex_unlock(&dev->input_lock);
-	return 0;
-out:
-	mutex_unlock(&dev->input_lock);
-	return -EINVAL;
-}
-
 static int ov8858_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
 				u32 *code)
 {
@@ -1968,7 +1934,6 @@ static const struct v4l2_ctrl_ops ctrl_ops = {
 
 static const struct v4l2_subdev_video_ops ov8858_video_ops = {
 	.s_stream = ov8858_s_stream,
-	.enum_frameintervals = ov8858_enum_frameintervals,
 	.enum_mbus_fmt = ov8858_enum_mbus_fmt,
 	.try_mbus_fmt = ov8858_try_mbus_fmt,
 	.g_mbus_fmt = ov8858_g_mbus_fmt,

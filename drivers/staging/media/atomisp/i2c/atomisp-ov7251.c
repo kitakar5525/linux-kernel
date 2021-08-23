@@ -1052,23 +1052,6 @@ static int ov7251_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
-static int ov7251_enum_frameintervals(struct v4l2_subdev *sd,
-				      struct v4l2_frmivalenum *fival)
-{
-	unsigned int index = fival->index;
-
-	if (index >= N_RES)
-		return -EINVAL;
-
-	fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
-	fival->width = ov7251_res[index].width;
-	fival->height = ov7251_res[index].height;
-	fival->discrete.numerator = 1;
-	fival->discrete.denominator = ov7251_res[index].fps;
-
-	return 0;
-}
-
 static int ov7251_enum_mbus_fmt(struct v4l2_subdev *sd,
     unsigned int index,
     u32 *code)
@@ -1333,7 +1316,6 @@ struct v4l2_ctrl_config ov7251_controls[] = {
 
 static const struct v4l2_subdev_video_ops ov7251_video_ops = {
 	.s_stream = ov7251_s_stream,
-	.enum_frameintervals = ov7251_enum_frameintervals,
 	.enum_mbus_fmt = ov7251_enum_mbus_fmt,
 	.try_mbus_fmt = ov7251_try_mbus_fmt,
 	.g_mbus_fmt = ov7251_g_mbus_fmt,

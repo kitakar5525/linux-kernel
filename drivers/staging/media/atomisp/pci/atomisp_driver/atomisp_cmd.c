@@ -1148,16 +1148,20 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
 				ATOMISP_FRAME_STATUS_FLASH_EXPOSED)
 				asd->params.flash_state =
 					ATOMISP_FLASH_DONE;
-		} else if (v4l2_g_ctrl(isp->flash->ctrl_handler, &ctrl) ==
-			0 && ctrl.value == ATOMISP_FLASH_MODE_TORCH) {
-			ctrl.id = V4L2_CID_FLASH_TORCH_INTENSITY;
+		} else if (isp->flash) {
 			if (v4l2_g_ctrl(isp->flash->ctrl_handler, &ctrl) ==
-				0 && ctrl.value > 0) {
-				asd->frame_status[vb->i] =
-					ATOMISP_FRAME_STATUS_FLASH_EXPOSED;
+				0 && ctrl.value == ATOMISP_FLASH_MODE_TORCH) {
+				ctrl.id = V4L2_CID_FLASH_TORCH_INTENSITY;
+				if (v4l2_g_ctrl(isp->flash->ctrl_handler, &ctrl) ==
+					0 && ctrl.value > 0) {
+					asd->frame_status[vb->i] =
+						ATOMISP_FRAME_STATUS_FLASH_EXPOSED;
+				} else {
+					asd->frame_status[vb->i] =
+						ATOMISP_FRAME_STATUS_OK;
+				}
 			} else {
-				asd->frame_status[vb->i] =
-					ATOMISP_FRAME_STATUS_OK;
+				asd->frame_status[vb->i] = ATOMISP_FRAME_STATUS_OK;
 			}
 		} else {
 			asd->frame_status[vb->i] = ATOMISP_FRAME_STATUS_OK;

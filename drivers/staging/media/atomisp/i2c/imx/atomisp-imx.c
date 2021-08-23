@@ -1552,8 +1552,8 @@ retry:
 	return idx;
 }
 
-static int imx_try_mbus_fmt(struct v4l2_subdev *sd,
-				struct v4l2_mbus_framefmt *fmt)
+static int __imx_try_mbus_fmt(struct v4l2_subdev *sd,
+			      struct v4l2_mbus_framefmt *fmt)
 {
 	struct imx_device *dev = to_imx_sensor(sd);
 	int idx = 0;
@@ -1622,8 +1622,8 @@ static int __adjust_hvblank(struct v4l2_subdev *sd)
 	return 0;
 }
 
-static int imx_s_mbus_fmt(struct v4l2_subdev *sd,
-			      struct v4l2_mbus_framefmt *fmt)
+static int __imx_s_mbus_fmt(struct v4l2_subdev *sd,
+			    struct v4l2_mbus_framefmt *fmt)
 {
 	struct imx_device *dev = to_imx_sensor(sd);
 	struct camera_mipi_info *imx_info = NULL;
@@ -1636,7 +1636,7 @@ static int imx_s_mbus_fmt(struct v4l2_subdev *sd,
 	imx_info = v4l2_get_subdev_hostdata(sd);
 	if (imx_info == NULL)
 		return -EINVAL;
-	ret = imx_try_mbus_fmt(sd, fmt);
+	ret = __imx_try_mbus_fmt(sd, fmt);
 	if (ret)
 		return ret;
 
@@ -2022,16 +2022,20 @@ imx_get_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_state *sd_state,
 	return 0;
 }
 
-static int
-imx_set_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_state *sd_state,
-		   struct v4l2_subdev_format *fmt)
+static int imx_set_pad_format(struct v4l2_subdev *sd,
+			      struct v4l2_subdev_state *sd_state,
+			      struct v4l2_subdev_format *fmt)
 {
 	struct imx_device *dev = to_imx_sensor(sd);
+
+	if (fmt->pad)
+		return -EINVAL;
 
 	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE)
 		dev->format = fmt->format;
 
-	return 0;
+	/* This calls __imx_try_mbus_fmt() internally */
+	return __imx_s_mbus_fmt(sd, &fmt->format);
 }
 
 int
@@ -2206,8 +2210,6 @@ static const struct v4l2_subdev_sensor_ops imx_sensor_ops = {
 
 static const struct v4l2_subdev_video_ops imx_video_ops = {
 	.s_stream = imx_s_stream,
-	.try_mbus_fmt = imx_try_mbus_fmt,
-	.s_mbus_fmt = imx_s_mbus_fmt,
 	.g_frame_interval = imx_g_frame_interval,
 	.s_frame_interval = imx_s_frame_interval,
 };

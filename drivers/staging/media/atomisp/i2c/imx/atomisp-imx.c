@@ -2317,9 +2317,6 @@ static const struct v4l2_subdev_video_ops imx_video_ops = {
 };
 
 static const struct v4l2_subdev_core_ops imx_core_ops = {
-	.queryctrl = v4l2_subdev_queryctrl,
-	.g_ctrl = v4l2_subdev_g_ctrl,
-	.s_ctrl = v4l2_subdev_s_ctrl,
 	.s_power = imx_s_power,
 	.ioctl = imx_ioctl,
 	.init = imx_init,

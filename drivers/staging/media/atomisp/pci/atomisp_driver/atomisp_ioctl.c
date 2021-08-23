@@ -975,44 +975,6 @@ static int is_resolution_supported(u32 width, u32 height)
 }
 
 /*
- * This ioctl allows applications to enumerate all frame intervals that the
- * device supports for the given pixel format and frame size.
- *
- * framerate =  1 / frameintervals
- */
-static int atomisp_enum_frameintervals(struct file *file, void *fh,
-	struct v4l2_frmivalenum *arg)
-{
-	struct video_device *vdev = video_devdata(file);
-	struct atomisp_device *isp = video_get_drvdata(vdev);
-	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
-	int ret;
-
-	if (arg->index != 0)
-		return -EINVAL;
-
-	if (!atomisp_get_format_bridge(arg->pixel_format))
-		return -EINVAL;
-
-	if (!is_resolution_supported(arg->width, arg->height))
-		return -EINVAL;
-
-	rt_mutex_lock(&isp->mutex);
-	ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-		video, enum_frameintervals, arg);
-
-	if (ret) {
-		/* set the FPS to default 15*/
-		arg->type = V4L2_FRMIVAL_TYPE_DISCRETE;
-		arg->discrete.numerator = 1;
-		arg->discrete.denominator = 15;
-	}
-	rt_mutex_unlock(&isp->mutex);
-
-	return 0;
-}
-
-/*
  * Free videobuffer buffer priv data
  */
 void atomisp_videobuf_free_buf(struct videobuf_buffer *vb)
@@ -3120,7 +3082,6 @@ const struct v4l2_ioctl_ops atomisp_ioctl_ops = {
 	.vidioc_streamon = atomisp_streamon,
 	.vidioc_streamoff = atomisp_streamoff,
 	.vidioc_default = atomisp_vidioc_default,
-	.vidioc_enum_frameintervals = atomisp_enum_frameintervals,
 	.vidioc_s_parm = atomisp_s_parm,
 	.vidioc_g_parm = atomisp_g_parm,
 };

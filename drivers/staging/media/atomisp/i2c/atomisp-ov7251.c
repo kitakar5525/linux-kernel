@@ -1052,15 +1052,6 @@ static int ov7251_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
-static int ov7251_enum_mbus_fmt(struct v4l2_subdev *sd,
-    unsigned int index,
-    u32 *code)
-{
-	*code = MEDIA_BUS_FMT_SBGGR10_1X10;
-
-	return 0;
-}
-
 static int ov7251_s_config(struct v4l2_subdev *sd,
     int irq, void *platform_data)
 {
@@ -1316,7 +1307,6 @@ struct v4l2_ctrl_config ov7251_controls[] = {
 
 static const struct v4l2_subdev_video_ops ov7251_video_ops = {
 	.s_stream = ov7251_s_stream,
-	.enum_mbus_fmt = ov7251_enum_mbus_fmt,
 	.try_mbus_fmt = ov7251_try_mbus_fmt,
 	.g_mbus_fmt = ov7251_g_mbus_fmt,
 	.s_mbus_fmt = ov7251_s_mbus_fmt,

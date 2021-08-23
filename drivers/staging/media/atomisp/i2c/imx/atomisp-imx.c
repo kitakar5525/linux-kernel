@@ -1882,19 +1882,6 @@ static int imx_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
-static int imx_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
-			     u32 *code)
-{
-	struct imx_device *dev = to_imx_sensor(sd);
-	if (index >= MAX_FMTS)
-		return -EINVAL;
-
-	mutex_lock(&dev->input_lock);
-	*code = dev->format.code;
-	mutex_unlock(&dev->input_lock);
-	return 0;
-}
-
 static int __update_imx_device_settings(struct imx_device *dev, u16 sensor_id)
 {
 	/* IMX on other platform is not supported yet */
@@ -2235,7 +2222,6 @@ static const struct v4l2_subdev_sensor_ops imx_sensor_ops = {
 
 static const struct v4l2_subdev_video_ops imx_video_ops = {
 	.s_stream = imx_s_stream,
-	.enum_mbus_fmt = imx_enum_mbus_fmt,
 	.try_mbus_fmt = imx_try_mbus_fmt,
 	.g_mbus_fmt = imx_g_mbus_fmt,
 	.s_mbus_fmt = imx_s_mbus_fmt,

@@ -1529,13 +1529,6 @@ out:
 	return ret;
 }
 
-static int ov8858_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
-				u32 *code)
-{
-	*code = MEDIA_BUS_FMT_SBGGR10_1X10;
-	return 0;
-}
-
 static int __update_ov8858_device_settings(struct ov8858_device *dev,
 					   u16 sensor_id)
 {
@@ -1921,7 +1914,6 @@ static const struct v4l2_ctrl_ops ctrl_ops = {
 
 static const struct v4l2_subdev_video_ops ov8858_video_ops = {
 	.s_stream = ov8858_s_stream,
-	.enum_mbus_fmt = ov8858_enum_mbus_fmt,
 	.try_mbus_fmt = ov8858_try_mbus_fmt,
 	.g_mbus_fmt = ov8858_g_mbus_fmt,
 	.s_mbus_fmt = ov8858_s_mbus_fmt,

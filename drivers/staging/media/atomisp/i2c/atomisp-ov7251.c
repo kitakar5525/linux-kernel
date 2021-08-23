@@ -603,64 +603,6 @@ static int ov7251_s_gain(struct v4l2_subdev *sd, s32 value)
 	return __ov7251_set_exposure_gain(sd, dev->exposure, value);
 }
 
-struct v4l2_ctrl_config ov7251_controls[] = {
-	{
-		.ops = &ov7251_ctrl_ops,
-		.id = V4L2_CID_EXPOSURE_ABSOLUTE,
-		.type = V4L2_CTRL_TYPE_U16,
-		.name = "exposure",
-		.min = 0x0,
-		.max = 0xFFFF,
-		.step = 0x01,
-		.def = 0x00,
-		.flags = 0,
-	},
-	{
-		.ops = &ov7251_ctrl_ops,
-		.id = V4L2_CID_GAIN,
-		.type = V4L2_CTRL_TYPE_U8,
-		.name = "gain",
-		.min = 0x0,
-		.max = 0x7F,
-		.step = 0x01,
-		.def = 0x00,
-		.flags = 0,
-	},
-	{
-		.ops = &ov7251_ctrl_ops,
-		.id = V4L2_CID_FOCAL_ABSOLUTE,
-		.type = V4L2_CTRL_TYPE_INTEGER,
-		.name = "focal length",
-		.min = OV7251_FOCAL_LENGTH_DEFAULT,
-		.max = OV7251_FOCAL_LENGTH_DEFAULT,
-		.step = 0x01,
-		.def = OV7251_FOCAL_LENGTH_DEFAULT,
-		.flags = 0,
-	},
-	{
-		.ops = &ov7251_ctrl_ops,
-		.id = V4L2_CID_FNUMBER_ABSOLUTE,
-		.type = V4L2_CTRL_TYPE_INTEGER,
-		.name = "f-number",
-		.min = OV7251_F_NUMBER_DEFAULT,
-		.max = OV7251_F_NUMBER_DEFAULT,
-		.step = 0x01,
-		.def = OV7251_F_NUMBER_DEFAULT,
-		.flags = 0,
-	},
-	{
-		.ops = &ov7251_ctrl_ops,
-		.id = V4L2_CID_FNUMBER_RANGE,
-		.type = V4L2_CTRL_TYPE_INTEGER,
-		.name = "f-number range",
-		.min = OV7251_F_NUMBER_RANGE,
-		.max =  OV7251_F_NUMBER_RANGE,
-		.step = 0x01,
-		.def = OV7251_F_NUMBER_RANGE,
-		.flags = 0,
-	},
-};
-
 static int ov7251_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct ov7251_device *dev =
@@ -1346,6 +1288,64 @@ static const struct v4l2_ctrl_config v4l2_ctrl_link_freq = {
 	.step = 1,
 	.def = 1,
 	.flags = V4L2_CTRL_FLAG_VOLATILE | V4L2_CTRL_FLAG_READ_ONLY,
+};
+
+struct v4l2_ctrl_config ov7251_controls[] = {
+	{
+		.ops = &ov7251_ctrl_ops,
+		.id = V4L2_CID_EXPOSURE_ABSOLUTE,
+		.type = V4L2_CTRL_TYPE_U16,
+		.name = "exposure",
+		.min = 0x0,
+		.max = 0xFFFF,
+		.step = 0x01,
+		.def = 0x00,
+		.flags = 0,
+	},
+	{
+		.ops = &ov7251_ctrl_ops,
+		.id = V4L2_CID_GAIN,
+		.type = V4L2_CTRL_TYPE_U8,
+		.name = "gain",
+		.min = 0x0,
+		.max = 0x7F,
+		.step = 0x01,
+		.def = 0x00,
+		.flags = 0,
+	},
+	{
+		.ops = &ov7251_ctrl_ops,
+		.id = V4L2_CID_FOCAL_ABSOLUTE,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "focal length",
+		.min = OV7251_FOCAL_LENGTH_DEFAULT,
+		.max = OV7251_FOCAL_LENGTH_DEFAULT,
+		.step = 0x01,
+		.def = OV7251_FOCAL_LENGTH_DEFAULT,
+		.flags = 0,
+	},
+	{
+		.ops = &ov7251_ctrl_ops,
+		.id = V4L2_CID_FNUMBER_ABSOLUTE,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "f-number",
+		.min = OV7251_F_NUMBER_DEFAULT,
+		.max = OV7251_F_NUMBER_DEFAULT,
+		.step = 0x01,
+		.def = OV7251_F_NUMBER_DEFAULT,
+		.flags = 0,
+	},
+	{
+		.ops = &ov7251_ctrl_ops,
+		.id = V4L2_CID_FNUMBER_RANGE,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "f-number range",
+		.min = OV7251_F_NUMBER_RANGE,
+		.max =  OV7251_F_NUMBER_RANGE,
+		.step = 0x01,
+		.def = OV7251_F_NUMBER_RANGE,
+		.flags = 0,
+	},
 };
 
 static const struct v4l2_subdev_video_ops ov7251_video_ops = {

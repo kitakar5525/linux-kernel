@@ -1148,10 +1148,10 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
 				ATOMISP_FRAME_STATUS_FLASH_EXPOSED)
 				asd->params.flash_state =
 					ATOMISP_FLASH_DONE;
-		} else if (v4l2_subdev_call(isp->flash, core, g_ctrl, &ctrl) ==
+		} else if (v4l2_g_ctrl(isp->flash->ctrl_handler, &ctrl) ==
 			0 && ctrl.value == ATOMISP_FLASH_MODE_TORCH) {
 			ctrl.id = V4L2_CID_FLASH_TORCH_INTENSITY;
-			if (v4l2_subdev_call(isp->flash, core, g_ctrl, &ctrl) ==
+			if (v4l2_g_ctrl(isp->flash->ctrl_handler, &ctrl) ==
 				0 && ctrl.value > 0) {
 				asd->frame_status[vb->i] =
 					ATOMISP_FRAME_STATUS_FLASH_EXPOSED;
@@ -1772,7 +1772,7 @@ void atomisp_setup_flash(struct atomisp_sub_device *asd)
 		ctrl.id = V4L2_CID_FLASH_TIMEOUT;
 		ctrl.value = FLASH_TIMEOUT;
 
-		if (v4l2_subdev_call(isp->flash, core, s_ctrl, &ctrl)) {
+		if (v4l2_s_ctrl(NULL, isp->flash->ctrl_handler, &ctrl)) {
 			dev_err(isp->dev, "flash timeout configure failed\n");
 			return;
 		}
@@ -4182,8 +4182,9 @@ int atomisp_color_effect(struct atomisp_sub_device *asd, int flag,
 
 	control.id = V4L2_CID_COLORFX;
 	control.value = *effect;
-	ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-				core, s_ctrl, &control);
+	ret =
+	    v4l2_s_ctrl(NULL, isp->inputs[asd->input_curr].camera->ctrl_handler,
+			&control);
 	/*
 	 * if set color effect to sensor successfully, return
 	 * 0 directly.
@@ -5940,8 +5941,8 @@ int atomisp_exif_makernote(struct atomisp_sub_device *asd,
 	struct atomisp_device *isp = asd->isp;
 
 	ctrl.id = V4L2_CID_FOCAL_ABSOLUTE;
-	if (v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-				 core, g_ctrl, &ctrl)) {
+	if (v4l2_g_ctrl
+	    (isp->inputs[asd->input_curr].camera->ctrl_handler, &ctrl)) {
 		dev_warn(isp->dev, "failed to g_ctrl for focal length\n");
 		return -EINVAL;
 	} else {
@@ -5949,8 +5950,8 @@ int atomisp_exif_makernote(struct atomisp_sub_device *asd,
 	}
 
 	ctrl.id = V4L2_CID_FNUMBER_ABSOLUTE;
-	if (v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-				core, g_ctrl, &ctrl)) {
+	if (v4l2_g_ctrl
+	    (isp->inputs[asd->input_curr].camera->ctrl_handler, &ctrl)) {
 		dev_warn(isp->dev, "failed to g_ctrl for f-number\n");
 		return -EINVAL;
 	} else {
@@ -5958,8 +5959,8 @@ int atomisp_exif_makernote(struct atomisp_sub_device *asd,
 	}
 
 	ctrl.id = V4L2_CID_FNUMBER_RANGE;
-	if (v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-				core, g_ctrl, &ctrl)) {
+	if (v4l2_g_ctrl
+	    (isp->inputs[asd->input_curr].camera->ctrl_handler, &ctrl)) {
 		dev_warn(isp->dev, "failed to g_ctrl for f number range\n");
 		return -EINVAL;
 	} else {

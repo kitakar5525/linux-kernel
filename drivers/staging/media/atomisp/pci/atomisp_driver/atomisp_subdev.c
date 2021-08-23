@@ -788,12 +788,14 @@ static int atomisp_get_sensor_bin_factor(struct atomisp_sub_device *asd)
 		return 0;
 
 	ctrl.id = V4L2_CID_BIN_FACTOR_HORZ;
-	ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera, core,
-			       g_ctrl, &ctrl);
+	ret =
+	    v4l2_g_ctrl(isp->inputs[asd->input_curr].camera->ctrl_handler,
+			&ctrl);
 	hbin = ctrl.value;
 	ctrl.id = V4L2_CID_BIN_FACTOR_VERT;
-	ret |= v4l2_subdev_call(isp->inputs[asd->input_curr].camera, core,
-				g_ctrl, &ctrl);
+	ret |=
+	    v4l2_g_ctrl(isp->inputs[asd->input_curr].camera->ctrl_handler,
+			&ctrl);
 	vbin = ctrl.value;
 
 	/*

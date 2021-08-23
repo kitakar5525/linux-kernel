@@ -1324,21 +1324,8 @@ static int __ov8858_try_mbus_fmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int ov8858_try_mbus_fmt(struct v4l2_subdev *sd,
+static int __ov8858_s_mbus_fmt(struct v4l2_subdev *sd,
 			       struct v4l2_mbus_framefmt *fmt)
-{
-	struct ov8858_device *dev = to_ov8858_sensor(sd);
-	int r;
-
-	mutex_lock(&dev->input_lock);
-	r = __ov8858_try_mbus_fmt(sd, fmt);
-	mutex_unlock(&dev->input_lock);
-
-	return r;
-}
-
-static int ov8858_s_mbus_fmt(struct v4l2_subdev *sd,
-			     struct v4l2_mbus_framefmt *fmt)
 {
 	struct ov8858_device *dev = to_ov8858_sensor(sd);
 	struct camera_mipi_info *ov8858_info = NULL;
@@ -1661,9 +1648,14 @@ ov8858_set_pad_format(struct v4l2_subdev *sd,
 			__ov8858_get_pad_format(dev, sd, sd_state, fmt->pad,
 						fmt->which);
 
-	*format = fmt->format;
+	if (fmt->pad)
+		return -EINVAL;
 
-	return 0;
+	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE)
+		*format = fmt->format;
+
+	/* This calls __ov8858_try_mbus_fmt() internally */
+	return __ov8858_s_mbus_fmt(sd, &fmt->format);
 }
 
 static int ov8858_s_ctrl(struct v4l2_ctrl *ctrl)
@@ -1897,8 +1889,6 @@ static const struct v4l2_ctrl_ops ctrl_ops = {
 
 static const struct v4l2_subdev_video_ops ov8858_video_ops = {
 	.s_stream = ov8858_s_stream,
-	.try_mbus_fmt = ov8858_try_mbus_fmt,
-	.s_mbus_fmt = ov8858_s_mbus_fmt,
 	.g_frame_interval = ov8858_g_frame_interval,
 	.s_frame_interval = ov8858_s_frame_interval,
 };

@@ -1756,22 +1756,6 @@ out:
 }
 
 
-static int imx_g_mbus_fmt(struct v4l2_subdev *sd,
-			      struct v4l2_mbus_framefmt *fmt)
-{
-	struct imx_device *dev = to_imx_sensor(sd);
-
-	if (!fmt)
-		return -EINVAL;
-
-	mutex_lock(&dev->input_lock);
-	fmt->width = dev->curr_res_table[dev->fmt_idx].width;
-	fmt->height = dev->curr_res_table[dev->fmt_idx].height;
-	fmt->code = dev->format.code;
-	mutex_unlock(&dev->input_lock);
-	return 0;
-}
-
 static int imx_detect(struct i2c_client *client, u16 *id, u8 *revision)
 {
 	struct i2c_adapter *adapter = client->adapter;
@@ -2223,7 +2207,6 @@ static const struct v4l2_subdev_sensor_ops imx_sensor_ops = {
 static const struct v4l2_subdev_video_ops imx_video_ops = {
 	.s_stream = imx_s_stream,
 	.try_mbus_fmt = imx_try_mbus_fmt,
-	.g_mbus_fmt = imx_g_mbus_fmt,
 	.s_mbus_fmt = imx_s_mbus_fmt,
 	.g_frame_interval = imx_g_frame_interval,
 	.s_frame_interval = imx_s_frame_interval,

@@ -317,19 +317,6 @@ static int __ov8858_nearest_fps_index(int fps,
 	return fps_index;
 }
 
-static int __ov8858_get_max_fps_index(
-				const struct ov8858_fps_setting *fps_settings)
-{
-	int i;
-
-	for (i = 0; i < MAX_FPS_OPTIONS_SUPPORTED; i++) {
-		if (fps_settings[i].fps == 0)
-			break;
-	}
-
-	return i - 1;
-}
-
 static int __ov8858_update_frame_timing(struct v4l2_subdev *sd,
 					u16 *hts, u16 *vts)
 {

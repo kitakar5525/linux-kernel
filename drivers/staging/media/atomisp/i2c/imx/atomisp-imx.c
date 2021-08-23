@@ -344,19 +344,6 @@ static int __imx_above_nearest_fps_index(int fps,
 	return fps_index;
 }
 
-static int __imx_get_max_fps_index(
-				const struct imx_fps_setting *fps_settings)
-{
-	int i;
-
-	for (i = 0; i < MAX_FPS_OPTIONS_SUPPORTED; i++) {
-		if (fps_settings[i].fps == 0)
-			break;
-	}
-
-	return i - 1;
-}
-
 static int imx_get_lanes(struct v4l2_subdev *sd)
 {
 	struct camera_mipi_info *imx_info = v4l2_get_subdev_hostdata(sd);

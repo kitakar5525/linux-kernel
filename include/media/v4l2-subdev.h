@@ -456,10 +456,6 @@ struct v4l2_subdev_video_ops {
 			struct v4l2_dv_timings *timings);
 	int (*query_dv_timings)(struct v4l2_subdev *sd,
 			struct v4l2_dv_timings *timings);
-	int (*try_mbus_fmt)(struct v4l2_subdev *sd,
-			    struct v4l2_mbus_framefmt *fmt);
-	int (*s_mbus_fmt)(struct v4l2_subdev *sd,
-			  struct v4l2_mbus_framefmt *fmt);
 	int (*s_rx_buffer)(struct v4l2_subdev *sd, void *buf,
 			   unsigned int *size);
 	int (*pre_streamon)(struct v4l2_subdev *sd, u32 flags);

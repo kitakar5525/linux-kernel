@@ -81,14 +81,19 @@ static int file_input_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
-static int file_input_g_mbus_fmt(struct v4l2_subdev *sd,
-			     struct v4l2_mbus_framefmt *fmt)
+static int file_input_get_fmt(struct v4l2_subdev *sd,
+			      struct v4l2_subdev_state *sd_state,
+			      struct v4l2_subdev_format *format)
 {
+	struct v4l2_mbus_framefmt *fmt = &format->format;
 	struct atomisp_file_device *file_dev = v4l2_get_subdevdata(sd);
 	struct atomisp_device *isp = file_dev->isp;
 	/* only support file injection on subdev0 */
 	struct atomisp_sub_device *asd = &isp->asd[0];
 	struct v4l2_mbus_framefmt *isp_sink_fmt;
+
+	if (format->pad)
+		return -EINVAL;
 
 	isp_sink_fmt = atomisp_subdev_get_ffmt(&asd->subdev, NULL,
 					       V4L2_SUBDEV_FORMAT_ACTIVE,
@@ -101,12 +106,22 @@ static int file_input_g_mbus_fmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int file_input_s_mbus_fmt(struct v4l2_subdev *sd,
-			     struct v4l2_mbus_framefmt *fmt)
+static int file_input_set_fmt(struct v4l2_subdev *sd,
+			      struct v4l2_subdev_state *sd_state,
+			      struct v4l2_subdev_format *format)
 {
-	file_input_g_mbus_fmt(sd, fmt);
+	struct v4l2_mbus_framefmt *fmt = &format->format;
+
+	if (format->pad)
+		return -EINVAL;
+
+	file_input_get_fmt(sd, sd_state, format);
+	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
+		sd_state->pads->try_fmt = *fmt;
+
 	return 0;
 }
+
 #ifndef CONFIG_INTEL_MID_ISP
 static int file_input_g_chip_ident(struct v4l2_subdev *sd,
 			       struct v4l2_dbg_chip_ident *chip)
@@ -167,9 +182,6 @@ static int file_input_enum_frame_ival(struct v4l2_subdev *sd,
 
 static const struct v4l2_subdev_video_ops file_input_video_ops = {
 	.s_stream = file_input_s_stream,
-	.try_mbus_fmt = file_input_g_mbus_fmt,
-	.g_mbus_fmt = file_input_g_mbus_fmt,
-	.s_mbus_fmt = file_input_s_mbus_fmt,
 };
 
 static const struct v4l2_ctrl_ops file_input_ctrl_ops = {
@@ -189,6 +201,8 @@ static const struct v4l2_subdev_pad_ops file_input_pad_ops = {
 	.enum_mbus_code = file_input_enum_mbus_code,
 	.enum_frame_size = file_input_enum_frame_size,
 	.enum_frame_interval = file_input_enum_frame_ival,
+	.get_fmt = file_input_get_fmt,
+	.set_fmt = file_input_set_fmt,
 };
 
 static const struct v4l2_subdev_ops file_input_ops = {

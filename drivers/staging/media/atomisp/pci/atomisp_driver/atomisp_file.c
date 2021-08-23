@@ -81,13 +81,6 @@ static int file_input_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
-static int file_input_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
-				u32 *code)
-{
-	/*to fake*/
-	return 0;
-}
-
 static int file_input_g_mbus_fmt(struct v4l2_subdev *sd,
 			     struct v4l2_mbus_framefmt *fmt)
 {
@@ -174,7 +167,6 @@ static int file_input_enum_frame_ival(struct v4l2_subdev *sd,
 
 static const struct v4l2_subdev_video_ops file_input_video_ops = {
 	.s_stream = file_input_s_stream,
-	.enum_mbus_fmt = file_input_enum_mbus_fmt,
 	.try_mbus_fmt = file_input_g_mbus_fmt,
 	.g_mbus_fmt = file_input_g_mbus_fmt,
 	.s_mbus_fmt = file_input_s_mbus_fmt,

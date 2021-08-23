@@ -31,13 +31,6 @@ static int tpg_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
-static int tpg_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
-				u32 *code)
-{
-	/*to fake*/
-	return 0;
-}
-
 static int tpg_try_mbus_fmt(struct v4l2_subdev *sd,
 			       struct v4l2_mbus_framefmt *fmt)
 {
@@ -119,7 +112,6 @@ static int tpg_enum_frame_ival(struct v4l2_subdev *sd,
 
 static const struct v4l2_subdev_video_ops tpg_video_ops = {
 	.s_stream = tpg_s_stream,
-	.enum_mbus_fmt = tpg_enum_mbus_fmt,
 	.try_mbus_fmt = tpg_try_mbus_fmt,
 	.g_mbus_fmt = tpg_g_mbus_fmt,
 	.s_mbus_fmt = tpg_s_mbus_fmt,

@@ -1542,29 +1542,6 @@ out:
 	return ret;
 }
 
-/*
- * ov8858 enum frame size, frame intervals
- */
-static int ov8858_enum_framesizes(struct v4l2_subdev *sd,
-				  struct v4l2_frmsizeenum *fsize)
-{
-	unsigned int index = fsize->index;
-	struct ov8858_device *dev = to_ov8858_sensor(sd);
-
-	mutex_lock(&dev->input_lock);
-	if (index >= dev->entries_curr_table) {
-		mutex_unlock(&dev->input_lock);
-		return -EINVAL;
-	}
-
-	fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
-	fsize->discrete.width = dev->curr_res_table[index].width;
-	fsize->discrete.height = dev->curr_res_table[index].height;
-	fsize->reserved[0] = dev->curr_res_table[index].used;
-	mutex_unlock(&dev->input_lock);
-	return 0;
-}
-
 static int ov8858_enum_frameintervals(struct v4l2_subdev *sd,
 				      struct v4l2_frmivalenum *fival)
 {
@@ -1991,7 +1968,6 @@ static const struct v4l2_ctrl_ops ctrl_ops = {
 
 static const struct v4l2_subdev_video_ops ov8858_video_ops = {
 	.s_stream = ov8858_s_stream,
-	.enum_framesizes = ov8858_enum_framesizes,
 	.enum_frameintervals = ov8858_enum_frameintervals,
 	.enum_mbus_fmt = ov8858_enum_mbus_fmt,
 	.try_mbus_fmt = ov8858_try_mbus_fmt,

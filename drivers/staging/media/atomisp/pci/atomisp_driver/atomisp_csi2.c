@@ -152,13 +152,6 @@ static int csi2_set_stream(struct v4l2_subdev *sd, int enable)
 
 /* subdev core operations */
 static const struct v4l2_subdev_core_ops csi2_core_ops = {
-	.queryctrl = v4l2_subdev_queryctrl,
-	.querymenu = v4l2_subdev_querymenu,
-	.g_ctrl = v4l2_subdev_g_ctrl,
-	.s_ctrl = v4l2_subdev_s_ctrl,
-	.g_ext_ctrls = v4l2_subdev_g_ext_ctrls,
-	.try_ext_ctrls = v4l2_subdev_try_ext_ctrls,
-	.s_ext_ctrls = v4l2_subdev_s_ext_ctrls,
 };
 
 /* subdev video operations */

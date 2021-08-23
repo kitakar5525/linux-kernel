@@ -2002,9 +2002,6 @@ static const struct v4l2_subdev_video_ops ov8858_video_ops = {
 };
 
 static const struct v4l2_subdev_core_ops ov8858_core_ops = {
-	.queryctrl = v4l2_subdev_queryctrl,
-	.g_ctrl = v4l2_subdev_g_ctrl,
-	.s_ctrl = v4l2_subdev_s_ctrl,
 	.s_power = ov8858_s_power,
 	.ioctl = ov8858_ioctl,
 	.init = ov8858_init,

@@ -956,25 +956,6 @@ static int atomisp_s_fmt_file(struct file *file, void *fh,
 }
 
 /*
- * is_resolution_supported - Check whether resolution is supported
- * @width: check resolution width
- * @height: check resolution height
- *
- * Return 1 on supported or 0 otherwise.
-*/
-static int is_resolution_supported(u32 width, u32 height)
-{
-	if ((width > ATOM_ISP_MIN_WIDTH) && (width <= ATOM_ISP_MAX_WIDTH) &&
-	    (height > ATOM_ISP_MIN_HEIGHT) && (height <= ATOM_ISP_MAX_HEIGHT)) {
-		if (!(width % ATOM_ISP_STEP_WIDTH) &&
-		    !(height % ATOM_ISP_STEP_HEIGHT))
-			return 1;
-	}
-
-	return 0;
-}
-
-/*
  * Free videobuffer buffer priv data
  */
 void atomisp_videobuf_free_buf(struct videobuf_buffer *vb)

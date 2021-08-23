@@ -144,20 +144,13 @@ static int file_input_log_status(struct v4l2_subdev *sd)
 	return 0;
 }
 
-static int file_input_queryctrl(struct v4l2_subdev *sd,
-		struct v4l2_queryctrl *qc)
+static int file_input_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 {
 	/*to fake*/
 	return -EINVAL;
 }
 
-static int file_input_g_ctrl(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
-{
-	/*to fake*/
-	return -EINVAL;
-}
-
-static int file_input_s_ctrl(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
+static int file_input_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	/*to fake*/
 	return 0;
@@ -203,14 +196,16 @@ static const struct v4l2_subdev_video_ops file_input_video_ops = {
 	.s_mbus_fmt = file_input_s_mbus_fmt,
 };
 
+static const struct v4l2_ctrl_ops file_input_ctrl_ops = {
+	.g_volatile_ctrl = file_input_g_volatile_ctrl,
+	.s_ctrl = file_input_s_ctrl,
+};
+
 static const struct v4l2_subdev_core_ops file_input_core_ops = {
 #ifndef CONFIG_INTEL_MID_ISP
 	.g_chip_ident = file_input_g_chip_ident,
 #endif
 	.log_status = file_input_log_status,
-	.queryctrl = file_input_queryctrl,
-	.g_ctrl = file_input_g_ctrl,
-	.s_ctrl = file_input_s_ctrl,
 	.s_power = file_input_s_power,
 };
 

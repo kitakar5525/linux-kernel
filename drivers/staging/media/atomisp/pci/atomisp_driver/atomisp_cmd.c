@@ -4620,49 +4620,60 @@ static void __atomisp_init_stream_info(uint16_t stream_index,
 
 /* This function looks up the closest available resolution. */
 int atomisp_try_fmt(struct video_device *vdev, struct v4l2_format *f,
-						bool *res_overflow)
+		    bool *res_overflow)
 {
 	struct atomisp_device *isp = video_get_drvdata(vdev);
 	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
-	struct v4l2_mbus_framefmt snr_mbus_fmt;
+	struct v4l2_subdev_pad_config pad_cfg;
+	struct v4l2_subdev_state pad_state = {
+		.pads = &pad_cfg
+		};
+	struct v4l2_subdev_format format = {
+		.which = V4L2_SUBDEV_FORMAT_TRY,
+	};
+
+	struct v4l2_mbus_framefmt *snr_mbus_fmt = &format.format;
 	const struct atomisp_format_bridge *fmt;
 	struct atomisp_input_stream_info *stream_info =
-		(struct atomisp_input_stream_info *)snr_mbus_fmt.reserved;
-	uint16_t stream_index;
+	    (struct atomisp_input_stream_info *)snr_mbus_fmt->reserved;
+	u16 stream_index;
 	int source_pad = atomisp_subdev_source_pad(vdev);
 	int ret;
 
-	if (isp->inputs[asd->input_curr].camera == NULL)
+	if (!isp->inputs[asd->input_curr].camera)
 		return -EINVAL;
 
 	stream_index = atomisp_source_pad_to_stream_id(asd, source_pad);
 	fmt = atomisp_get_format_bridge(f->fmt.pix.pixelformat);
-	if (fmt == NULL) {
+	if (!fmt) {
 		dev_err(isp->dev, "unsupported pixelformat!\n");
 		fmt = atomisp_output_fmts;
 	}
 
-	snr_mbus_fmt.code = fmt->mbus_code;
-	snr_mbus_fmt.width = f->fmt.pix.width;
-	snr_mbus_fmt.height = f->fmt.pix.height;
+	if (f->fmt.pix.width <= 0 || f->fmt.pix.height <= 0)
+		return -EINVAL;
+
+	snr_mbus_fmt->code = fmt->mbus_code;
+	snr_mbus_fmt->width = f->fmt.pix.width;
+	snr_mbus_fmt->height = f->fmt.pix.height;
 
 	__atomisp_init_stream_info(stream_index, stream_info);
 
 	dev_dbg(isp->dev, "try_mbus_fmt: asking for %ux%u\n",
-		snr_mbus_fmt.width, snr_mbus_fmt.height);
+		snr_mbus_fmt->width, snr_mbus_fmt->height);
 
 	ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-			video, try_mbus_fmt, &snr_mbus_fmt);
+			       pad, set_fmt, &pad_state, &format);
 	if (ret)
 		return ret;
 
 	dev_dbg(isp->dev, "try_mbus_fmt: got %ux%u\n",
-		snr_mbus_fmt.width, snr_mbus_fmt.height);
+		snr_mbus_fmt->width, snr_mbus_fmt->height);
 
-	fmt = atomisp_get_format_bridge_from_mbus(snr_mbus_fmt.code);
-	if (fmt == NULL) {
+	fmt = atomisp_get_format_bridge_from_mbus(snr_mbus_fmt->code);
+	if (!fmt) {
 		dev_err(isp->dev, "unknown sensor format 0x%8.8x\n",
-			snr_mbus_fmt.code);
+			snr_mbus_fmt->code);
 		return -EINVAL;
 	}
 
@@ -4676,29 +4687,29 @@ int atomisp_try_fmt(struct video_device *vdev, struct v4l2_format *f,
 	 */
 	if (f->fmt.pix.pixelformat == V4L2_PIX_FMT_JPEG ||
 	    f->fmt.pix.pixelformat == V4L2_PIX_FMT_CUSTOM_M10MO_RAW) {
-		f->fmt.pix.width = snr_mbus_fmt.width;
-		f->fmt.pix.height = snr_mbus_fmt.height;
+		f->fmt.pix.width = snr_mbus_fmt->width;
+		f->fmt.pix.height = snr_mbus_fmt->height;
 		return 0;
 	}
 
-	if (snr_mbus_fmt.width < f->fmt.pix.width
-	    && snr_mbus_fmt.height < f->fmt.pix.height) {
-		f->fmt.pix.width = snr_mbus_fmt.width;
-		f->fmt.pix.height = snr_mbus_fmt.height;
+	if (snr_mbus_fmt->width < f->fmt.pix.width
+	    && snr_mbus_fmt->height < f->fmt.pix.height) {
+		f->fmt.pix.width = snr_mbus_fmt->width;
+		f->fmt.pix.height = snr_mbus_fmt->height;
 		/* Set the flag when resolution requested is
 		 * beyond the max value supported by sensor
 		 */
-		if (res_overflow != NULL)
+		if (res_overflow)
 			*res_overflow = true;
 	}
 
 	/* app vs isp */
 	f->fmt.pix.width = rounddown(
-		clamp_t(u32, f->fmt.pix.width, ATOM_ISP_MIN_WIDTH,
-			ATOM_ISP_MAX_WIDTH), ATOM_ISP_STEP_WIDTH);
+			       clamp_t(u32, f->fmt.pix.width, ATOM_ISP_MIN_WIDTH,
+				       ATOM_ISP_MAX_WIDTH), ATOM_ISP_STEP_WIDTH);
 	f->fmt.pix.height = rounddown(
-		clamp_t(u32, f->fmt.pix.height, ATOM_ISP_MIN_HEIGHT,
-			ATOM_ISP_MAX_HEIGHT), ATOM_ISP_STEP_HEIGHT);
+				clamp_t(u32, f->fmt.pix.height, ATOM_ISP_MIN_HEIGHT,
+					ATOM_ISP_MAX_HEIGHT), ATOM_ISP_STEP_HEIGHT);
 
 	return 0;
 }
@@ -5275,17 +5286,25 @@ static void atomisp_check_copy_mode(struct atomisp_sub_device *asd,
 }
 
 static int atomisp_set_fmt_to_snr(struct video_device *vdev,
-		struct v4l2_format *f, unsigned int pixelformat,
-		unsigned int padding_w, unsigned int padding_h,
-		unsigned int dvs_env_w, unsigned int dvs_env_h)
+				  struct v4l2_format *f, unsigned int pixelformat,
+				  unsigned int padding_w, unsigned int padding_h,
+				  unsigned int dvs_env_w, unsigned int dvs_env_h)
 {
 	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
 	const struct atomisp_format_bridge *format;
-	struct v4l2_mbus_framefmt ffmt, req_ffmt;
+	struct v4l2_subdev_pad_config pad_cfg;
+	struct v4l2_subdev_state pad_state = {
+		.pads = &pad_cfg
+		};
+	struct v4l2_subdev_format vformat = {
+		.which = V4L2_SUBDEV_FORMAT_TRY,
+	};
+	struct v4l2_mbus_framefmt *ffmt = &vformat.format;
+	struct v4l2_mbus_framefmt *req_ffmt;
 	struct atomisp_device *isp = asd->isp;
 	struct atomisp_input_stream_info *stream_info =
-		(struct atomisp_input_stream_info *)ffmt.reserved;
-	uint16_t stream_index = ATOMISP_INPUT_STREAM_GENERAL;
+	    (struct atomisp_input_stream_info *)ffmt->reserved;
+	u16 stream_index = ATOMISP_INPUT_STREAM_GENERAL;
 	int source_pad = atomisp_subdev_source_pad(vdev);
 	struct v4l2_subdev_fh fh;
 	int ret;
@@ -5295,15 +5314,15 @@ static int atomisp_set_fmt_to_snr(struct video_device *vdev,
 	stream_index = atomisp_source_pad_to_stream_id(asd, source_pad);
 
 	format = atomisp_get_format_bridge(pixelformat);
-	if (format == NULL)
+	if (!format)
 		return -EINVAL;
 
-	v4l2_fill_mbus_format(&ffmt, &f->fmt.pix, format->mbus_code);
-	ffmt.height += padding_h + dvs_env_h;
-	ffmt.width += padding_w + dvs_env_w;
+	v4l2_fill_mbus_format(ffmt, &f->fmt.pix, format->mbus_code);
+	ffmt->height += padding_h + dvs_env_h;
+	ffmt->width += padding_w + dvs_env_w;
 
 	dev_dbg(isp->dev, "s_mbus_fmt: ask %ux%u (padding %ux%u, dvs %ux%u)\n",
-		ffmt.width, ffmt.height, padding_w, padding_h,
+		ffmt->width, ffmt->height, padding_w, padding_h,
 		dvs_env_w, dvs_env_h);
 
 	__atomisp_init_stream_info(stream_index, stream_info);
@@ -5313,50 +5332,51 @@ static int atomisp_set_fmt_to_snr(struct video_device *vdev,
 	/* Disable dvs if resolution can't be supported by sensor */
 	if (asd->params.video_dis_en &&
 	    source_pad == ATOMISP_SUBDEV_PAD_SOURCE_VIDEO) {
+		vformat.which = V4L2_SUBDEV_FORMAT_TRY;
 		ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-			video, try_mbus_fmt, &ffmt);
+				       pad, set_fmt, &pad_state, &vformat);
 		if (ret)
 			return ret;
-		if (ffmt.width < req_ffmt.width ||
-				ffmt.height < req_ffmt.height) {
-			req_ffmt.height -= dvs_env_h;
-			req_ffmt.width -= dvs_env_w;
+		if (ffmt->width < req_ffmt->width ||
+		    ffmt->height < req_ffmt->height) {
+			req_ffmt->height -= dvs_env_h;
+			req_ffmt->width -= dvs_env_w;
 			ffmt = req_ffmt;
 			dev_warn(isp->dev,
-			  "can not enable video dis due to sensor limitation.");
-			asd->params.video_dis_en = 0;
+				 "can not enable video dis due to sensor limitation.");
+			asd->params.video_dis_en = false;
 		}
 	}
 	dev_dbg(isp->dev, "sensor width: %d, height: %d\n",
-		ffmt.width, ffmt.height);
-
-	ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera, video,
-			       s_mbus_fmt, &ffmt);
+		ffmt->width, ffmt->height);
+	vformat.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+	ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera, pad,
+			       set_fmt, NULL, &vformat);
 	if (ret)
 		return ret;
 
 	__atomisp_update_stream_env(asd, stream_index, stream_info);
 
 	dev_dbg(isp->dev, "sensor width: %d, height: %d\n",
-		ffmt.width, ffmt.height);
+		ffmt->width, ffmt->height);
 
-	if (ffmt.width < ATOM_ISP_STEP_WIDTH ||
-	    ffmt.height < ATOM_ISP_STEP_HEIGHT)
-			return -EINVAL;
+	if (ffmt->width < ATOM_ISP_STEP_WIDTH ||
+	    ffmt->height < ATOM_ISP_STEP_HEIGHT)
+		return -EINVAL;
 
 	if (asd->params.video_dis_en &&
 	    source_pad == ATOMISP_SUBDEV_PAD_SOURCE_VIDEO &&
-	    (ffmt.width < req_ffmt.width || ffmt.height < req_ffmt.height)) {
+	    (ffmt->width < req_ffmt->width || ffmt->height < req_ffmt->height)) {
 		dev_warn(isp->dev,
 			 "can not enable video dis due to sensor limitation.");
-		asd->params.video_dis_en = 0;
+		asd->params.video_dis_en = false;
 	}
 
 	atomisp_subdev_set_ffmt(&asd->subdev, &fh,
 				V4L2_SUBDEV_FORMAT_ACTIVE,
-				ATOMISP_SUBDEV_PAD_SINK, &ffmt);
+				ATOMISP_SUBDEV_PAD_SINK, ffmt);
 
-	return css_input_resolution_changed(asd, &ffmt);
+	return css_input_resolution_changed(asd, ffmt);
 }
 
 int atomisp_set_fmt(struct video_device *vdev, struct v4l2_format *f)

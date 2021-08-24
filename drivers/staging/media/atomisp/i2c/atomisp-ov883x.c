@@ -293,65 +293,6 @@ static int ov8830_write_reg_array(struct i2c_client *client,
 	return __ov8830_flush_reg_array(client, &ctrl);
 }
 
-static int drv201_write8(struct v4l2_subdev *sd, int reg, int val)
-{
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct drv201_device *dev = to_drv201_device(sd);
-	struct i2c_msg msg;
-
-	memset(&msg, 0 , sizeof(msg));
-	msg.addr = DRV201_I2C_ADDR;
-	msg.len = 2;
-	msg.buf = dev->buffer;
-	msg.buf[0] = reg;
-	msg.buf[1] = val;
-
-	return i2c_transfer(client->adapter, &msg, 1);
-}
-
-static int drv201_write16(struct v4l2_subdev *sd, int reg, int val)
-{
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct drv201_device *dev = to_drv201_device(sd);
-	struct i2c_msg msg;
-
-	memset(&msg, 0 , sizeof(msg));
-	msg.addr = DRV201_I2C_ADDR;
-	msg.len = 3;
-	msg.buf = dev->buffer;
-	msg.buf[0] = reg;
-	msg.buf[1] = val >> 8;
-	msg.buf[2] = val & 0xFF;
-
-	return i2c_transfer(client->adapter, &msg, 1);
-}
-
-static int drv201_read8(struct v4l2_subdev *sd, int reg)
-{
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct drv201_device *dev = to_drv201_device(sd);
-	struct i2c_msg msg[2];
-	int r;
-
-	memset(msg, 0 , sizeof(msg));
-	msg[0].addr = DRV201_I2C_ADDR;
-	msg[0].flags = 0;
-	msg[0].len = 1;
-	msg[0].buf = dev->buffer;
-	msg[0].buf[0] = reg;
-
-	msg[1].addr = DRV201_I2C_ADDR;
-	msg[1].flags = I2C_M_RD;
-	msg[1].len = 1;
-	msg[1].buf = dev->buffer;
-
-	r = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
-	if (r != ARRAY_SIZE(msg))
-		return -EIO;
-
-	return dev->buffer[0];
-}
-
 static int power_ctrl(struct v4l2_subdev *sd, bool flag)
 {
 	int ret = 0;
@@ -395,86 +336,6 @@ static int gpio_ctrl(struct v4l2_subdev *sd, bool flag)
 		ret = dev->platform_data->gpio0_ctrl(sd, 0);
 	}
 	return ret;
-}
-
-static int drv201_power_up(struct v4l2_subdev *sd)
-{
-	/* Transition time required from shutdown to standby state */
-	const int WAKEUP_DELAY_US = 100;
-	const int DEFAULT_CONTROL_VAL = 0x02;
-
-	struct drv201_device *dev = to_drv201_device(sd);
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	int r;
-
-	/* Enable power */
-	r = power_ctrl(sd, 1);
-	if (r)
-		return r;
-
-	udelay(1);		/* Wait for VBAT to stabilize */
-
-	/* jiggle SCL pin to wake up device */
-	drv201_write8(sd, DRV201_CONTROL, 1);
-
-	usleep_range(WAKEUP_DELAY_US, WAKEUP_DELAY_US * 10);
-
-	/* Reset device */
-	r = drv201_write8(sd, DRV201_CONTROL, 1);
-	if (r < 0)
-		goto fail_powerdown;
-
-	/* Detect device */
-	r = drv201_read8(sd, DRV201_CONTROL);
-	if (r < 0)
-		goto fail_powerdown;
-	if (r != DEFAULT_CONTROL_VAL) {
-		r = -ENXIO;
-		goto fail_powerdown;
-	}
-
-	/* Use the liner mode to reduce the noise */
-	r = drv201_write8(sd, DRV201_MODE, DRV201_MODE_LINEAR);
-	if (r < 0)
-		goto fail_powerdown;
-
-	/* VCM RESONANCE FREQUENCY REGISTER (VCM_FREQ) */
-	r = drv201_write8(sd, DRV201_VCM_FREQ, DRV201_DEFAULT_VCM_FREQ);
-	if (r < 0)
-		goto fail_powerdown;
-
-	dev->focus = DRV201_MAX_FOCUS_POS;
-	dev->initialized = true;
-
-	v4l2_info(client, "detected drv201\n");
-	return 0;
-
-fail_powerdown:
-	power_ctrl(sd, 0);
-	return r;
-}
-
-static int drv201_power_down(struct v4l2_subdev *sd)
-{
-	return power_ctrl(sd, 0);
-}
-
-static int drv201_t_focus_abs(struct v4l2_subdev *sd, s32 value)
-{
-	struct drv201_device *dev = to_drv201_device(sd);
-	int r;
-
-	if (!dev->initialized)
-		return -ENODEV;
-
-	value = clamp(value, 0, DRV201_MAX_FOCUS_POS);
-	r = drv201_write16(sd, DRV201_VCM_CURRENT, value);
-	if (r < 0)
-		return r;
-
-	ktime_get_real_ts64(&dev->focus_time);
-	dev->focus = value;
-	return 0;
 }
 
 /* Start group hold for the following register writes */
@@ -576,19 +437,6 @@ static int ov8830_g_priv_int_data(struct v4l2_subdev *sd,
 	kfree(b);
 
 	return r;
-}
-
-static int __ov8830_get_max_fps_index(
-				const struct ov8830_fps_setting *fps_settings)
-{
-	int i;
-
-	for (i = 0; i < MAX_FPS_OPTIONS_SUPPORTED; i++) {
-		if (fps_settings[i].fps == 0)
-			break;
-	}
-
-	return i - 1;
 }
 
 static int __ov8830_update_frame_timing(struct v4l2_subdev *sd, int exposure,
@@ -848,24 +696,16 @@ static int power_down(struct v4l2_subdev *sd)
 static int __ov8830_s_power(struct v4l2_subdev *sd, int on)
 {
 	struct ov8830_device *dev = to_ov8830_sensor(sd);
-	int ret, r;
+	int ret;
 
 	if (on == 0) {
 		ov8830_uninit(sd);
 		ret = power_down(sd);
-		// r = drv201_power_down(sd);
-		// if (ret == 0)
-		// 	ret = r;
 		dev->power = 0;
 	} else {
 		ret = power_up(sd);
 		if (ret)
 			return ret;
-		// ret = drv201_power_up(sd);
-		// if (ret) {
-		// 	power_down(sd);
-		// 	return ret;
-		// }
 
 		dev->power = 1;
 
@@ -1161,6 +1001,126 @@ static int nearest_resolution_index(struct v4l2_subdev *sd, int w, int h)
 	return idx;
 }
 
+static int get_resolution_index(struct v4l2_subdev *sd, int w, int h)
+{
+	int i;
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+
+	for (i = 0; i < dev->entries_curr_table; i++) {
+		if (w != dev->curr_res_table[i].width)
+			continue;
+		if (h != dev->curr_res_table[i].height)
+			continue;
+		/* Found it */
+		return i;
+	}
+	return -1;
+}
+
+static int __ov8830_try_mbus_fmt(struct v4l2_subdev *sd,
+				 struct v4l2_mbus_framefmt *fmt)
+{
+	int idx;
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+
+	pr_info("%s() called\n", __func__);
+
+	if (!fmt)
+		return -EINVAL;
+	if (!fmt->width) {
+		pr_err("%s(): !fmt->width\n", __func__);
+		return -EINVAL;
+	}
+	if (!fmt->height) {
+		pr_err("%s(): !fmt->height\n", __func__);
+		return -EINVAL;
+	}
+
+	if ((fmt->width > OV8830_RES_WIDTH_MAX) ||
+	    (fmt->height > OV8830_RES_HEIGHT_MAX)) {
+		fmt->width = OV8830_RES_WIDTH_MAX;
+		fmt->height = OV8830_RES_HEIGHT_MAX;
+	} else {
+		idx = nearest_resolution_index(sd, fmt->width, fmt->height);
+
+		/*
+		 * nearest_resolution_index() doesn't return smaller resolutions.
+		 * If it fails, it means the requested resolution is higher than we
+		 * can support. Fallback to highest possible resolution in this case.
+		 */
+		if (idx == -1)
+			idx = dev->entries_curr_table - 1;
+
+		fmt->width = dev->curr_res_table[idx].width;
+		fmt->height = dev->curr_res_table[idx].height;
+	}
+
+	fmt->code = MEDIA_BUS_FMT_SBGGR10_1X10;
+	return 0;
+}
+
+static int __ov8830_s_mbus_fmt(struct v4l2_subdev *sd,
+			       struct v4l2_mbus_framefmt *fmt)
+{
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+	struct camera_mipi_info *ov8830_info = NULL;
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	u16 hts, vts;
+	int ret;
+	const struct ov8830_resolution *res;
+
+	pr_info("%s() called\n", __func__);
+
+	ov8830_info = v4l2_get_subdev_hostdata(sd);
+	if (ov8830_info == NULL)
+		return -EINVAL;
+
+	mutex_lock(&dev->input_lock);
+
+	ret = __ov8830_try_mbus_fmt(sd, fmt);
+	if (ret)
+		goto out;
+
+	dev->fmt_idx = get_resolution_index(sd, fmt->width, fmt->height);
+	/* Sanity check */
+	if (unlikely(dev->fmt_idx == -1)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* Sets the default FPS */
+	dev->fps_index = 0;
+
+	/* Get the current resolution setting */
+	res = &dev->curr_res_table[dev->fmt_idx];
+
+	/* Write the selected resolution table values to the registers */
+	ret = ov8830_write_reg_array(client, res->regs);
+	if (ret)
+		goto out;
+
+	/* Frame timing registers are updates as part of exposure */
+	hts = res->fps_options[dev->fps_index].pixels_per_line;
+	vts = res->fps_options[dev->fps_index].lines_per_frame;
+
+	/*
+	 * update hts, vts, exposure and gain as one block. Note that the vts
+	 * will be changed according to the exposure used. But the maximum vts
+	 * dev->curr_res_table[dev->fmt_idx] should not be changed at all.
+	 */
+	ret = __ov8830_set_exposure(sd, dev->exposure, dev->gain,
+					dev->digital_gain, &hts, &vts);
+	if (ret)
+		goto out;
+
+	ret = ov8830_get_intg_factor(sd, ov8830_info, dev->basic_settings_list);
+
+out:
+	mutex_unlock(&dev->input_lock);
+
+	return ret;
+}
+
 static int ov8830_detect(struct i2c_client *client, u16 *id, u8 *revision)
 {
 	struct i2c_adapter *adapter = client->adapter;
@@ -1309,11 +1269,11 @@ fail_power_off:
 }
 
 static int
-ov8830_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_state *sd_state,
+ov8830_enum_mbus_code(struct v4l2_subdev *sd,
+		       struct v4l2_subdev_state *sd_state,
 		       struct v4l2_subdev_mbus_code_enum *code)
 {
 	pr_info("%s() called\n", __func__);
-
 	if (code->index)
 		return -EINVAL;
 	code->code = MEDIA_BUS_FMT_SBGGR10_1X10;
@@ -1321,11 +1281,9 @@ ov8830_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_state *sd_state
 	return 0;
 }
 
-/*
- * ov8830 enum frame size
- */
 static int
-ov8830_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_state *sd_state,
+ov8830_enum_frame_size(struct v4l2_subdev *sd,
+			struct v4l2_subdev_state *sd_state,
 			struct v4l2_subdev_frame_size_enum *fse)
 {
 	int index = fse->index;
@@ -1352,40 +1310,10 @@ ov8830_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_state *sd_stat
  * ov8830 frame intervals
  */
 static int ov8830_enum_frame_interval(struct v4l2_subdev *sd,
-				        struct v4l2_subdev_state *sd_state,
-						struct v4l2_subdev_frame_interval_enum *fie)
+				      struct v4l2_subdev_state *sd_state,
+				      struct v4l2_subdev_frame_interval_enum *fie)
 {
-	unsigned int index = fie->index;
-	int fmt_index;
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
-	const struct ov8830_resolution *res;
-
 	pr_info("%s() called\n", __func__);
-
-	mutex_lock(&dev->input_lock);
-
-	/*
-	 * since the isp will donwscale the resolution to the right size,
-	 * find the nearest one that will allow the isp to do so important to
-	 * ensure that the resolution requested is padded correctly by the
-	 * requester, which is the atomisp driver in this case.
-	 */
-	fmt_index = nearest_resolution_index(sd, fie->width, fie->height);
-	if (-1 == fmt_index)
-		fmt_index = dev->entries_curr_table - 1;
-
-	res = &dev->curr_res_table[fmt_index];
-
-	/* Check if this index is supported */
-	if (index > __ov8830_get_max_fps_index(res->fps_options)) {
-		mutex_unlock(&dev->input_lock);
-		return -EINVAL;
-	}
-
-	fie->interval.numerator = 1;
-	fie->interval.denominator = res->fps_options[index].fps;
-
-	mutex_unlock(&dev->input_lock);
 
 	return 0;
 }
@@ -1404,154 +1332,42 @@ __ov8830_get_pad_format(struct ov8830_device *sensor,
 }
 
 static int
-ov8830_get_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_state *sd_state,
+ov8830_get_pad_format(struct v4l2_subdev *sd,
+		       struct v4l2_subdev_state *sd_state,
 		       struct v4l2_subdev_format *fmt)
 {
 	struct ov8830_device *dev = to_ov8830_sensor(sd);
 
 	pr_info("%s() called\n", __func__);
 
-	fmt->format = *__ov8830_get_pad_format(dev, sd_state, fmt->pad, fmt->which);
+	fmt->format = *__ov8830_get_pad_format(dev, sd_state, fmt->pad,
+					       fmt->which);
 
 	return 0;
 }
 
-static int get_resolution_index(struct v4l2_subdev *sd, int w, int h)
+static int ov8830_set_pad_format(struct v4l2_subdev *sd,
+				 struct v4l2_subdev_state *sd_state,
+				 struct v4l2_subdev_format *fmt)
 {
-	int i;
 	struct ov8830_device *dev = to_ov8830_sensor(sd);
-
-	for (i = 0; i < dev->entries_curr_table; i++) {
-		if (w != dev->curr_res_table[i].width)
-			continue;
-		if (h != dev->curr_res_table[i].height)
-			continue;
-		/* Found it */
-		return i;
-	}
-	return -1;
-}
-
-static int __ov8830_try_mbus_fmt(struct v4l2_subdev *sd,
-				 struct v4l2_mbus_framefmt *fmt)
-{
-	int idx;
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
+	struct v4l2_mbus_framefmt *format =
+			__ov8830_get_pad_format(dev, sd_state, fmt->pad,
+						fmt->which);
 
 	pr_info("%s() called\n", __func__);
 
-	if (!fmt)
+	pr_info("%s(): fmt->width: %d\n", __func__, fmt->format.width);
+	pr_info("%s(): fmt->height: %d\n", __func__, fmt->format.height);
+
+	if (fmt->pad)
 		return -EINVAL;
 
-	if ((fmt->width > OV8830_RES_WIDTH_MAX) ||
-	    (fmt->height > OV8830_RES_HEIGHT_MAX)) {
-		fmt->width = OV8830_RES_WIDTH_MAX;
-		fmt->height = OV8830_RES_HEIGHT_MAX;
-	} else {
-		idx = nearest_resolution_index(sd, fmt->width, fmt->height);
+	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE)
+		*format = fmt->format;
 
-		/*
-		 * nearest_resolution_index() doesn't return smaller resolutions.
-		 * If it fails, it means the requested resolution is higher than we
-		 * can support. Fallback to highest possible resolution in this case.
-		 */
-		if (idx == -1)
-			idx = dev->entries_curr_table - 1;
-
-		fmt->width = dev->curr_res_table[idx].width;
-		fmt->height = dev->curr_res_table[idx].height;
-	}
-
-	fmt->code = MEDIA_BUS_FMT_SBGGR10_1X10;
-	return 0;
-}
-
-static int __ov8830_s_mbus_fmt(struct v4l2_subdev *sd,
-			       struct v4l2_mbus_framefmt *fmt)
-{
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
-	struct camera_mipi_info *ov8830_info = NULL;
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	u16 hts, vts;
-	int ret;
-	const struct ov8830_resolution *res;
-
-	pr_info("%s() called\n", __func__);
-
-	ov8830_info = v4l2_get_subdev_hostdata(sd);
-	if (ov8830_info == NULL)
-		return -EINVAL;
-
-	mutex_lock(&dev->input_lock);
-
-	ret = __ov8830_try_mbus_fmt(sd, fmt);
-	if (ret)
-		goto out;
-
-	dev->fmt_idx = get_resolution_index(sd, fmt->width, fmt->height);
-	/* Sanity check */
-	if (unlikely(dev->fmt_idx == -1)) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	/* Sets the default FPS */
-	dev->fps_index = 0;
-
-	/* Get the current resolution setting */
-	res = &dev->curr_res_table[dev->fmt_idx];
-
-	/* Write the selected resolution table values to the registers */
-	ret = ov8830_write_reg_array(client, res->regs);
-	if (ret)
-		goto out;
-
-	/* Frame timing registers are updates as part of exposure */
-	hts = res->fps_options[dev->fps_index].pixels_per_line;
-	vts = res->fps_options[dev->fps_index].lines_per_frame;
-
-	/*
-	 * update hts, vts, exposure and gain as one block. Note that the vts
-	 * will be changed according to the exposure used. But the maximum vts
-	 * dev->curr_res_table[dev->fmt_idx] should not be changed at all.
-	 */
-	ret = __ov8830_set_exposure(sd, dev->exposure, dev->gain,
-					dev->digital_gain, &hts, &vts);
-	if (ret)
-		goto out;
-
-	ret = ov8830_get_intg_factor(sd, ov8830_info, dev->basic_settings_list);
-
-out:
-	mutex_unlock(&dev->input_lock);
-
-	return ret;
-}
-
-static int
-ov8830_set_pad_format(struct v4l2_subdev *sd,
-		      struct v4l2_subdev_state *sd_state,
-		      struct v4l2_subdev_format *format)
-{
-	struct ov8830_device *dev = to_ov8830_sensor(sd);
-	struct v4l2_mbus_framefmt *fmt = &format->format;
-	int r;
-
-	pr_info("%s() called\n", __func__);
-
-	if (format->pad)
-		return -EINVAL;
-
-	mutex_lock(&dev->input_lock);
-	r = __ov8830_try_mbus_fmt(sd, fmt);
-	mutex_unlock(&dev->input_lock);
-
-	if (format->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-		__ov8830_s_mbus_fmt(sd, fmt);
-	else
-		sd_state->pads->try_fmt = *fmt;
-
-	return r;
+	/* This calls __ov8830_try_mbus_fmt() internally */
+	return __ov8830_s_mbus_fmt(sd, &fmt->format);
 }
 
 static int ov8830_s_ctrl(struct v4l2_ctrl *ctrl)
@@ -1559,8 +1375,6 @@ static int ov8830_s_ctrl(struct v4l2_ctrl *ctrl)
 	struct ov8830_device *dev = container_of(
 		ctrl->handler, struct ov8830_device, ctrl_handler);
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-
-	pr_info("%s() called\n", __func__);
 
 	/* input_lock is taken by the control framework, so it
 	 * doesn't need to be taken here.
@@ -1602,8 +1416,6 @@ static int ov8830_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_TEST_PATTERN:
 		return ov8830_write_reg(client, OV8830_16BIT, 0x3070,
 					ctrl->val);
-	// case V4L2_CID_FOCUS_ABSOLUTE:
-	// 	return drv201_t_focus_abs(&dev->sd, ctrl->val);
 	}
 
 	return -EINVAL; /* Should not happen. */
@@ -1615,31 +1427,6 @@ static int ov8830_g_ctrl(struct v4l2_ctrl *ctrl)
 		ctrl->handler, struct ov8830_device, ctrl_handler);
 
 	switch (ctrl->id) {
-	case V4L2_CID_FOCUS_STATUS: {
-#if 0
-		static const struct timespec64 move_time = {
-			/* The time required for focus motor to move the lens */
-			.tv_sec = 0,
-			.tv_nsec = 60000000,
-		};
-		struct drv201_device *drv201 = to_drv201_device(&dev->sd);
-		struct timespec64 current_time, finish_time, delta_time;
-
-		ktime_get_real_ts64(&current_time);
-		finish_time = timespec64_add(drv201->focus_time, move_time);
-		delta_time = timespec64_sub(current_time, finish_time);
-		if (delta_time.tv_sec >= 0 && delta_time.tv_nsec >= 0) {
-			/* VCM motor is not moving */
-			ctrl->val = ATOMISP_FOCUS_HP_COMPLETE |
-				ATOMISP_FOCUS_STATUS_ACCEPTS_NEW_MOVE;
-		} else {
-			/* VCM motor is still moving */
-			ctrl->val = ATOMISP_FOCUS_STATUS_MOVING |
-				ATOMISP_FOCUS_HP_IN_PROGRESS;
-		}
-#endif
-		return 0;
-	}
 	case V4L2_CID_BIN_FACTOR_HORZ:
 	case V4L2_CID_BIN_FACTOR_VERT: {
 		uint16_t reg = ctrl->id == V4L2_CID_BIN_FACTOR_VERT ?
@@ -1791,13 +1578,6 @@ static const struct v4l2_ctrl_config ctrls[] = {
 		.step = 1,
 		.max = 0xffff,
 	}, {
-		.ops = &ctrl_ops,
-		.id = V4L2_CID_FOCUS_ABSOLUTE,
-		.name = "Focus absolute",
-		.type = V4L2_CTRL_TYPE_INTEGER,
-		.step = 1,
-		.max = DRV201_MAX_FOCUS_POS,
-	}, {
 		/* This one is junk: see the spec for proper use of this CID. */
 		.ops = &ctrl_ops,
 		.id = V4L2_CID_FOCUS_STATUS,
@@ -1861,7 +1641,8 @@ static const struct v4l2_ctrl_config ctrls[] = {
 	}
 };
 
-static int ov8830_probe(struct i2c_client *client)
+static int ov8830_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	struct ov8830_device *dev;
 	unsigned int i;
@@ -1939,6 +1720,13 @@ out_free:
 	return ret;
 }
 
+static const struct i2c_device_id ov8830_id[] = {
+	{OV8830_NAME, 0},
+	{}
+};
+
+MODULE_DEVICE_TABLE(i2c, ov8830_id);
+
 static const struct acpi_device_id ov8830_acpi_ids[] = {
        {"OVTI8835"},
        {},
@@ -1950,8 +1738,9 @@ static struct i2c_driver ov8830_driver = {
 		.name = OV8830_NAME,
 		.acpi_match_table = ACPI_PTR(ov8830_acpi_ids),
 	},
-	.probe_new = ov8830_probe,
+	.probe = ov8830_probe,
 	.remove = ov8830_remove,
+	.id_table = ov8830_id,
 };
 module_i2c_driver(ov8830_driver);
 

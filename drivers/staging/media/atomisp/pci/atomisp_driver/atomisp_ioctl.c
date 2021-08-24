@@ -2661,6 +2661,10 @@ static int atomisp_s_parm(struct file *file, void *fh,
 	int rval;
 	int fps;
 
+	pr_info("%s() called\n", __func__);
+	pr_info("%s(): parm->parm.capture.capturemode: 0x%x\n", __func__, parm->parm.capture.capturemode);
+	pr_info("%s(): asd->run_mode->val: 0x%x\n", __func__, asd->run_mode->val);
+
 	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		dev_err(isp->dev, "unsupport v4l2 buf type\n");
 		return -EINVAL;
@@ -2672,6 +2676,8 @@ static int atomisp_s_parm(struct file *file, void *fh,
 	switch (parm->parm.capture.capturemode) {
 	case CI_MODE_NONE: {
 		struct v4l2_subdev_frame_interval fi = {0};
+
+		pr_info("%s(): CI_MODE_NONE\n", __func__);
 
 		fi.interval = parm->parm.capture.timeperframe;
 

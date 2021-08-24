@@ -1796,6 +1796,7 @@ irqreturn_t atomisp_isr_thread(int irq, void *isp_ptr)
 	bool css_pipe_done[MAX_STREAM_NUM] = {0};
 	unsigned int i;
 	struct atomisp_sub_device *asd = &isp->asd[0];
+	int ret;
 
 	dev_dbg(isp->dev, ">%s\n", __func__);
 
@@ -1850,9 +1851,13 @@ out:
 		asd = &isp->asd[i];
 		if (asd->streaming == ATOMISP_DEVICE_STREAMING_ENABLED
 		    && css_pipe_done[asd->index]
-		    && isp->sw_contex.file_input)
-			v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-					 video, s_stream, 1);
+		    && isp->sw_contex.file_input) {
+			ret = v4l2_subdev_call(isp->inputs[asd->input_curr].
+					       camera, video, s_stream, 1);
+			if (ret)
+				dev_warn(isp->dev,
+					 "can't start streaming on sensor!\n");
+		}
 		/* FIXME! FIX ACC implementation */
 		if (asd->acc.pipeline && css_pipe_done[asd->index])
 			atomisp_css_acc_done(asd);
@@ -4664,8 +4669,10 @@ int atomisp_try_fmt(struct video_device *vdev, struct v4l2_format *f,
 
 	ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
 			       pad, set_fmt, &pad_state, &format);
-	if (ret)
+	if (ret) {
+		dev_err(isp->dev, "%s(): set_fmt failed\n", __func__);
 		return ret;
+	}
 
 	dev_dbg(isp->dev, "try_mbus_fmt: got %ux%u\n",
 		snr_mbus_fmt->width, snr_mbus_fmt->height);
@@ -5335,8 +5342,11 @@ static int atomisp_set_fmt_to_snr(struct video_device *vdev,
 		vformat.which = V4L2_SUBDEV_FORMAT_TRY;
 		ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
 				       pad, set_fmt, &pad_state, &vformat);
-		if (ret)
+		if (ret) {
+			dev_err(isp->dev, "%s(): line %d: set_fmt failed\n",
+				__func__, __LINE__);
 			return ret;
+		}
 		if (ffmt->width < req_ffmt->width ||
 		    ffmt->height < req_ffmt->height) {
 			req_ffmt->height -= dvs_env_h;
@@ -5352,8 +5362,11 @@ static int atomisp_set_fmt_to_snr(struct video_device *vdev,
 	vformat.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera, pad,
 			       set_fmt, NULL, &vformat);
-	if (ret)
+	if (ret) {
+		dev_err(isp->dev, "%s(): line %d: set_fmt failed\n",
+			__func__, __LINE__);
 		return ret;
+	}
 
 	__atomisp_update_stream_env(asd, stream_index, stream_info);
 

@@ -791,9 +791,12 @@ static int atomisp_s_input(struct file *file, void *fh, unsigned int input)
 		goto error;
 	}
 
-	if (!isp->sw_contex.file_input && isp->inputs[input].motor)
+	if (!isp->sw_contex.file_input && isp->inputs[input].motor) {
 		ret = v4l2_subdev_call(isp->inputs[input].motor, core,
 				       init, 1);
+		if (ret)
+			dev_err(isp->dev, "subdev call for init failed\n");
+	}
 
 	asd->input_curr = input;
 	/* mark this camera is used by the current stream */
@@ -1607,7 +1610,10 @@ int atomisp_stream_on_master_slave_sensor(struct atomisp_device *isp, bool isp_t
 	if (ret) {
 		dev_err(isp->dev, "depth mode slave sensor %s stream-on failed.\n",
 			isp->inputs[slave].camera->name);
-		v4l2_subdev_call(isp->inputs[master].camera, video, s_stream, 0);
+		ret = v4l2_subdev_call(isp->inputs[master].camera, video, s_stream, 0);
+		if (ret)
+			dev_err(isp->dev, "depth mode slave sensor %s stream-off failed.\n",
+				isp->inputs[slave].camera->name);
 
 		return -EINVAL;
 	}
@@ -1888,6 +1894,7 @@ start_sensor:
 	ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
 			       video, s_stream, 1);
 	if (ret) {
+		dev_err(isp->dev, "stream on the sensor failed\n");
 		asd->streaming = ATOMISP_DEVICE_STREAMING_DISABLED;
 		ret = -EINVAL;
 		goto out;
@@ -1960,8 +1967,11 @@ int __atomisp_streamoff(struct file *file, void *fh, enum v4l2_buf_type type)
 		ATOMISP_SUBDEV_PAD_SOURCE_VIDEO) {
 
 		if (isp->inputs[asd->input_curr].camera_caps->multi_stream_ctrl) {
-			v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-				video, s_stream, 0);
+			ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
+					       video, s_stream, 0);
+			if (ret)
+				dev_warn(isp->dev, "%s(): failed to stream off\n",
+					 __func__);
 		} else if (atomisp_subdev_source_pad(vdev)
 		    == ATOMISP_SUBDEV_PAD_SOURCE_CAPTURE) {
 			/* stop continuous still capture if needed */
@@ -2016,9 +2026,13 @@ int __atomisp_streamoff(struct file *file, void *fh, enum v4l2_buf_type type)
 		 * must stop sending pixels into GP_FIFO before stop
 		 * the pipeline.
 		 */
-		if (isp->sw_contex.file_input)
-			v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-					video, s_stream, 0);
+		if (isp->sw_contex.file_input) {
+			ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
+					       video, s_stream, 0);
+			if (ret)
+				dev_warn(isp->dev, "%s(): failed to stream off\n",
+					 __func__);
+		}
 
 		rt_mutex_lock(&isp->mutex);
 		atomisp_acc_unload_extensions(asd);
@@ -2093,9 +2107,13 @@ stopsensor:
 	    != atomisp_sensor_start_stream(asd))
 		return 0;
 
-	if (!isp->sw_contex.file_input)
+	if (!isp->sw_contex.file_input) {
 		ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
 				       video, s_stream, 0);
+		if (ret)
+			dev_warn(isp->dev, "%s(): failed to stream off\n",
+				 __func__);
+	}
 
 	if (isp->flash) {
 		asd->params.num_flash_frames = 0;
@@ -2446,6 +2464,7 @@ static int atomisp_camera_g_ext_ctrls(struct file *file, void *fh,
 			ret = v4l2_subdev_call(
 				isp->inputs[asd->input_curr].camera,
 				sensor, g_skip_frames, (u32 *)&ctrl.value);
+			dev_warn(isp->dev, "%s(): g_skip_frames failed\n", __func__);
 			break;
 		default:
 			ret = -EINVAL;
@@ -2658,7 +2677,9 @@ static int atomisp_s_parm(struct file *file, void *fh,
 
 		rval = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
 					video, s_frame_interval, &fi);
-		if (!rval)
+		if (rval)
+			dev_warn(isp->dev, "%s(): s_frame_interval failed\n", __func__);
+		else
 			parm->parm.capture.timeperframe = fi.interval;
 
 		if (fi.interval.numerator != 0) {
@@ -2905,6 +2926,10 @@ static long atomisp_vidioc_default(struct file *file, void *fh,
 			err = v4l2_subdev_call(
 					isp->inputs[asd->input_curr].camera,
 					core, ioctl, cmd, arg);
+		if (err)
+			dev_warn(isp->dev,
+				 "%s(): ioctl for cmd 0x%x failed\n",
+				 __func__, cmd);
 		break;
 
 	case ATOMISP_IOC_S_EXPOSURE:
@@ -2916,6 +2941,10 @@ static long atomisp_vidioc_default(struct file *file, void *fh,
 	case ATOMISP_IOC_S_SENSOR_AE_BRACKETING_LUT:
 		err = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
 					core, ioctl, cmd, arg);
+		if (err)
+			dev_warn(isp->dev,
+				 "%s(): ioctl for cmd 0x%x failed\n",
+				 __func__, cmd);
 		break;
 
 	case ATOMISP_IOC_ACC_LOAD:
@@ -2978,6 +3007,10 @@ static long atomisp_vidioc_default(struct file *file, void *fh,
 	case ATOMISP_IOC_EXT_ISP_CTRL:
 		err = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
 					core, ioctl, cmd, arg);
+		if (err)
+			dev_warn(isp->dev,
+				 "%s(): ioctl for cmd 0x%x failed\n",
+				 __func__, cmd);
 		break;
 	case ATOMISP_IOC_EXP_ID_UNLOCK:
 		err = atomisp_exp_id_unlock(asd, arg);

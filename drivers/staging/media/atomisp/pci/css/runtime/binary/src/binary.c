@@ -1073,8 +1073,7 @@ ia_css_binary_find(struct ia_css_binary_descr *descr,
 		struct ia_css_binary_info *candidate = &xcandidate->sp;
 		/* printf("sh_css_binary_find: evaluating candidate:
 		 * %d\n",candidate->id); */
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-			"ia_css_binary_find() candidate = %p, mode = %d ID = %d\n",
+		pr_info("ia_css_binary_find() candidate = %p, mode = %d ID = %d\n",
 			candidate, candidate->pipeline.mode, candidate->id);
 
 		/*
@@ -1161,18 +1160,21 @@ ia_css_binary_find(struct ia_css_binary_descr *descr,
 			candidate->enable.ds && need_ds)
 			need_dz = false;
 
+		pr_info("%s(): req_vf_info: %p\n", __func__, req_vf_info);
+		pr_info("%s(): candidate->enable.vf_veceven: %d\n", __func__, candidate->enable.vf_veceven);
+		pr_info("%s(): candidate->vf_dec.is_variable: %d\n", __func__, candidate->vf_dec.is_variable);
+		pr_info("%s(): xcandidate->num_output_pins: %d\n", __func__, xcandidate->num_output_pins);
 		/* when we require vf output, we need to have vf_veceven */
 		if ((req_vf_info != NULL) && !(candidate->enable.vf_veceven ||
 				/* or variable vf vec even */
 				candidate->vf_dec.is_variable ||
 				/* or more than one output pin. */
 				xcandidate->num_output_pins > 1)) {
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-				"ia_css_binary_find() [%d] continue: (%p != NULL) && !(%d || %d || (%d >%d))\n",
-				__LINE__, req_vf_info,
-				candidate->enable.vf_veceven,
-				candidate->vf_dec.is_variable,
-				xcandidate->num_output_pins, 1);
+			pr_err("ia_css_binary_find() [%d] continue: (%p != NULL) && !(%d || %d || (%d >%d))\n",
+			       __LINE__, req_vf_info,
+			       candidate->enable.vf_veceven,
+			       candidate->vf_dec.is_variable,
+			       xcandidate->num_output_pins, 1);
 			continue;
 		}
 		if (!candidate->enable.dvs_envelope && need_dvs) {

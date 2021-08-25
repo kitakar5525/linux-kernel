@@ -110,14 +110,6 @@ struct atomisp_video_pipe {
 	 */
 	unsigned int frame_request_config_id[VIDEO_MAX_FRAME];
 	struct atomisp_css_params_with_list *frame_params[VIDEO_MAX_FRAME];
-
-	/*
-	* move wdt from asd struct to create wdt for each pipe
-	*/
-	struct timer_list wdt;
-	unsigned int wdt_duration;	/* in jiffies */
-	unsigned long wdt_expires;
-	atomic_t wdt_count;
 };
 
 struct atomisp_acc_pipe {
@@ -389,16 +381,21 @@ struct atomisp_sub_device {
 	unsigned int mipi_frame_size;
 
 	bool copy_mode; /* CSI2+ use copy mode */
+	bool copy_mode_format_conv; /* CSI2+ copy with format conversion */
 	bool yuvpp_mode;	/* CSI2+ yuvpp pipe */
 
 	int raw_buffer_bitmap[ATOMISP_MAX_EXP_ID/32 + 1]; /* Record each Raw Buffer lock status */
 	int raw_buffer_locked_count;
 	spinlock_t raw_buffer_bitmap_lock;
 
+	struct timer_list wdt;
+	unsigned int wdt_duration;	/* in jiffies */
+	unsigned long wdt_expires;
+
 	struct atomisp_resolution sensor_array_res;
 	bool high_speed_mode; /* Indicate whether now is a high speed mode */
 	int pending_capture_request; /* Indicates the number of pending capture requests. */
-	bool re_trigger_capture;
+
 	unsigned int preview_exp_id;
 	unsigned int postview_exp_id;
 };
@@ -417,6 +414,8 @@ const struct atomisp_in_fmt_conv *atomisp_find_in_fmt_conv_compressed(
 bool atomisp_subdev_format_conversion(struct atomisp_sub_device *asd,
 				      unsigned int source_pad);
 uint16_t atomisp_subdev_source_pad(struct video_device *vdev);
+bool atomisp_subdev_copy_format_conversion(struct atomisp_sub_device *asd,
+					   unsigned int source_pad);
 
 /* Get pointer to appropriate format */
 struct v4l2_mbus_framefmt

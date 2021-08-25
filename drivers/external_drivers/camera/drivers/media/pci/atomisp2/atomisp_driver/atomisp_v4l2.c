@@ -47,7 +47,6 @@
 #include "atomisp_dfs_tables.h"
 #include "atomisp_drvfs.h"
 #include "hmm/hmm.h"
-#include "atomisp_trace_event.h"
 
 #include "hrt/hive_isp_css_mm_hrt.h"
 
@@ -458,10 +457,8 @@ int atomisp_mrfld_power_down(struct atomisp_device *isp)
 				reg_value);
 		/* wait until ISPSSPM0 bit[25:24] shows 0x3 */
 		if ((reg_value >> MRFLD_ISPSSPM0_ISPSSS_OFFSET) ==
-			MRFLD_ISPSSPM0_IUNIT_POWER_OFF) {
-			trace_ipu_cstate(0);
+			MRFLD_ISPSSPM0_IUNIT_POWER_OFF)
 			return 0;
-		}
 
 		if (time_after(jiffies, timeout)) {
 			dev_err(isp->dev, "power-off iunit timeout.\n");
@@ -504,10 +501,8 @@ int atomisp_mrfld_power_up(struct atomisp_device *isp)
 				reg_value);
 		/* wait until ISPSSPM0 bit[25:24] shows 0x0 */
 		if ((reg_value >> MRFLD_ISPSSPM0_ISPSSS_OFFSET) ==
-			MRFLD_ISPSSPM0_IUNIT_POWER_ON) {
-			trace_ipu_cstate(1);
+			MRFLD_ISPSSPM0_IUNIT_POWER_ON)
 			return 0;
-		}
 
 		if (time_after(jiffies, timeout)) {
 			dev_err(isp->dev, "power-on iunit timeout.\n");
@@ -1239,15 +1234,7 @@ static int init_atomisp_wdts(struct atomisp_device *isp)
 	for (i = 0; i < isp->num_of_streams; i++) {
 		struct atomisp_sub_device *asd = &isp->asd[i];
 		asd = &isp->asd[i];
-		setup_timer(&asd->video_out_capture.wdt,
-			atomisp_wdt, (unsigned long)&asd->video_out_capture);
-		setup_timer(&asd->video_out_preview.wdt,
-			atomisp_wdt, (unsigned long)&asd->video_out_preview);
-		setup_timer(&asd->video_out_vf.wdt,
-			atomisp_wdt, (unsigned long)&asd->video_out_vf);
-		setup_timer(&asd->video_out_video_capture.wdt,
-			atomisp_wdt,
-			(unsigned long)&asd->video_out_video_capture);
+		setup_timer(&asd->wdt, atomisp_wdt, (unsigned long)isp);
 	}
 	return 0;
 alloc_fail:

@@ -42,10 +42,9 @@ struct sh_css {
 	struct ia_css_pipe            *all_pipes[IA_CSS_PIPELINE_NUM_MAX];
 	void * (*malloc)(size_t bytes, bool zero_mem);
 	void (*free)(void *ptr);
-	void * (*malloc_ex)(size_t bytes, bool zero_mem, const char *caller_func, int caller_line);
-	void (*free_ex)(void *ptr, const char *caller_func, int caller_line);
 	void (*flush)(struct ia_css_acc_fw *fw);
 	bool                           check_system_idle;
+	bool stop_copy_preview;
 	unsigned int                   num_cont_raw_frames;
 #if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 	unsigned int                   num_mipi_frames[N_CSI_PORTS];

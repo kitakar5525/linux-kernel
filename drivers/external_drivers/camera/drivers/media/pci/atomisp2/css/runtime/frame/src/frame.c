@@ -130,19 +130,15 @@ enum ia_css_err ia_css_frame_allocate(struct ia_css_frame **frame,
 		return IA_CSS_ERR_INVALID_ARGUMENTS;
 
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-	  "ia_css_frame_allocate() enter: width=%d, height=%d, format=%d, padded_width=%d, raw_bit_depth=%d\n",
-	  width, height, format, padded_width, raw_bit_depth);
+	  "ia_css_frame_allocate() enter: width=%d, height=%d, format=%d\n",
+	  width, height, format);
 
 	err = frame_allocate_with_data(frame, width, height, format,
 				       padded_width, raw_bit_depth, false);
 
-	if ((*frame != NULL) && err == IA_CSS_SUCCESS)
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-		      "ia_css_frame_allocate() leave: frame=%p, data(DDR address)=0x%x\n", *frame, (*frame)->data);
-	else
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-		      "ia_css_frame_allocate() leave: frame=%p, data(DDR address)=0x%x\n",
-		      (void *)-1, (unsigned int)-1);
+	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
+		      "ia_css_frame_allocate() leave: frame=%p\n",
+		      frame ? *frame : (void *)-1);
 
 	return err;
 }
@@ -174,7 +170,7 @@ enum ia_css_err ia_css_frame_map(struct ia_css_frame **frame,
 
 	if (err != IA_CSS_SUCCESS) {
 		sh_css_free(me);
-		me = NULL;
+		return err;
 	}
 
 	*frame = me;
@@ -212,12 +208,10 @@ enum ia_css_err ia_css_frame_create_from_info(struct ia_css_frame **frame,
 
 	err = ia_css_frame_init_planes(me);
 
-	if (err != IA_CSS_SUCCESS) {
+	if (err == IA_CSS_SUCCESS)
+		*frame = me;
+	else
 		sh_css_free(me);
-		me = NULL;
-	}
-
-	*frame = me;
 
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "ia_css_frame_create_from_info() leave:\n");
 
@@ -265,8 +259,8 @@ enum ia_css_err ia_css_frame_allocate_contiguous(struct ia_css_frame **frame,
 
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
 		"ia_css_frame_allocate_contiguous() "
-		"enter: width=%d, height=%d, format=%d, padded_width=%d, raw_bit_depth=%d\n",
-		width, height, format, padded_width, raw_bit_depth);
+		"enter: width=%d, height=%d, format=%d\n",
+		width, height, format);
 
 	err = frame_allocate_with_data(frame, width, height, format,
 			padded_width, raw_bit_depth, true);
@@ -533,7 +527,7 @@ enum ia_css_err ia_css_frame_allocate_with_buffer_size(
 
 	if (err != IA_CSS_SUCCESS) {
 		sh_css_free(me);
-		me = NULL;
+		return err;
 	}
 
 	*frame = me;
@@ -777,7 +771,6 @@ static void frame_init_qplane6_planes(struct ia_css_frame *frame)
 
 static enum ia_css_err frame_allocate_buffer_data(struct ia_css_frame *frame)
 {
-	IA_CSS_ENTER_LEAVE_PRIVATE("frame->data_bytes=%d\n", frame->data_bytes);
 	frame->data = mmgr_alloc_attr(frame->data_bytes,
 				      frame->contiguous ?
 				      MMGR_ATTRIBUTE_CONTIGUOUS :
@@ -815,7 +808,7 @@ static enum ia_css_err frame_allocate_with_data(struct ia_css_frame **frame,
 
 	if (err != IA_CSS_SUCCESS) {
 		sh_css_free(me);
-		me = NULL;
+		return err;
 	}
 
 	*frame = me;
@@ -903,69 +896,4 @@ void ia_css_resolution_to_sp_resolution(
 {
 	to->width  = (uint16_t)from->width;
 	to->height = (uint16_t)from->height;
-}
-
-enum ia_css_err
-ia_css_frame_find_crop_resolution(const struct ia_css_resolution *in_res,
-	const struct ia_css_resolution *out_res,
-	struct ia_css_resolution *crop_res)
-{
-	uint32_t wd_even_ceil, ht_even_ceil;
-	uint32_t in_ratio, out_ratio;
-
-	if ((in_res == NULL) || (out_res == NULL) || (crop_res == NULL))
-		return IA_CSS_ERR_INVALID_ARGUMENTS;
-
-	IA_CSS_ENTER_PRIVATE("in(%ux%u) -> out(%ux%u)", in_res->width,
-		in_res->height, out_res->width, out_res->height);
-
-	if ((in_res->width == 0)
-		|| (in_res->height == 0)
-		|| (out_res->width == 0)
-		|| (out_res->height == 0))
-			return IA_CSS_ERR_INVALID_ARGUMENTS;
-
-	if ((out_res->width > in_res->width) ||
-		 (out_res->height > in_res->height))
-			return IA_CSS_ERR_INVALID_ARGUMENTS;
-
-	/* If aspect ratio (width/height) of out_res is higher than the aspect
-	 * ratio of the in_res, then we crop vertically, otherwise we crop
-	 * horizontally.
-	 */
-	in_ratio = in_res->width * out_res->height;
-	out_ratio = out_res->width * in_res->height;
-
-	if (in_ratio == out_ratio) {
-		crop_res->width = in_res->width;
-		crop_res->height = in_res->height;
-	} else if (out_ratio > in_ratio) {
-		crop_res->width = in_res->width;
-		crop_res->height = ROUND_DIV(out_res->height * crop_res->width,
-			out_res->width);
-	} else {
-		crop_res->height = in_res->height;
-		crop_res->width = ROUND_DIV(out_res->width * crop_res->height,
-			out_res->height);
-	}
-
-	/* Round new (cropped) width and height to an even number.
-	 * binarydesc_calculate_bds_factor is such that we should consider as
-	 * much of the input as possible. This is different only when we end up
-	 * with an odd number in the last step. So, we take the next even number
-	 * if it falls within the input, otherwise take the previous even no.
-	 */
-	wd_even_ceil = EVEN_CEIL(crop_res->width);
-	ht_even_ceil = EVEN_CEIL(crop_res->height);
-	if ((wd_even_ceil > in_res->width) || (ht_even_ceil > in_res->height)) {
-		crop_res->width = EVEN_FLOOR(crop_res->width);
-		crop_res->height = EVEN_FLOOR(crop_res->height);
-	} else {
-		crop_res->width = wd_even_ceil;
-		crop_res->height = ht_even_ceil;
-	}
-
-	IA_CSS_LEAVE_PRIVATE("in(%ux%u) -> out(%ux%u)", crop_res->width,
-		crop_res->height, out_res->width, out_res->height);
-	return IA_CSS_SUCCESS;
 }

@@ -16,6 +16,23 @@
 #define __IA_CSS_BAYER_LS_PARAM_H
 
 #include "type_support.h"
-#include "../../io_ls/common/ia_css_common_io_types.h"
+
+#define NUM_BAYER_LS 2
+#define BAYER_IDX_GR 0
+#define BAYER_IDX_R 1
+#define BAYER_IDX_B 2
+#define BAYER_IDX_GB 3
+#define BAYER_QUAD_WIDTH 2
+#define BAYER_QUAD_HEIGHT 2
+#define NOF_BAYER_VECTORS 4
+
+/** bayer load/store */
+struct sh_css_isp_bayer_ls_isp_config {
+	uint32_t base_address[NUM_BAYER_LS];
+	uint32_t width[NUM_BAYER_LS];
+	uint32_t height[NUM_BAYER_LS];
+	uint32_t stride[NUM_BAYER_LS];
+};
+
 
 #endif /* __IA_CSS_BAYER_LS_PARAM_H */

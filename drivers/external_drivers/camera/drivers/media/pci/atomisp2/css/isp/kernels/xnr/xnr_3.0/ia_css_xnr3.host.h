@@ -27,12 +27,6 @@ ia_css_xnr3_encode(
 	unsigned size);
 
 void
-ia_css_xnr3_vmem_encode(
-	struct sh_css_isp_xnr3_vmem_params *to,
-	const struct ia_css_xnr3_config *from,
-	unsigned size);
-
-void
 ia_css_xnr3_debug_dtrace(
 	const struct ia_css_xnr3_config *config,
 	unsigned level);

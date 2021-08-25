@@ -12,28 +12,11 @@
  * more details.
  */
 
-#ifndef __MEMORY_REALLOC_H_INCLUDED__
-#define __MEMORY_REALLOC_H_INCLUDED__
+#ifndef _sp_hrt_h_
+#define _sp_hrt_h_
 
-/*!
- * \brief
- * Define the internal reallocation of private css memory
- *
- */
+#define hrt_sp_dmem(cell) HRT_PROC_TYPE_PROP(cell, _dmem)
 
-#include <type_support.h>
-/*
- * User provided file that defines the (sub)system address types:
- *	- hrt_vaddress	a type that can hold the (sub)system virtual address range
- */
-#include "system_types.h"
-#include "ia_css_err.h"
+#define hrt_sp_dmem_master_port_address(cell) hrt_mem_master_port_address(cell, hrt_sp_dmem(cell))
 
-bool reallocate_buffer(
-	hrt_vaddress *curr_buf,
-	size_t *curr_size,
-	size_t needed_size,
-	bool force,
-	enum ia_css_err *err);
-
-#endif /*__MEMORY_REALLOC_H_INCLUDED__*/
+#endif /* _sp_hrt_h_ */

@@ -12,18 +12,24 @@
  * more details.
  */
 
-#ifndef __YUV444_IO_HOST_H
-#define __YUV444_IO_HOST_H
+#ifndef __IA_CSS_PDAF_HOST_H
+#define __IA_CSS_PDAF_HOST_H
 
-#include "ia_css_yuv444_io_param.h"
-#include "ia_css_yuv444_io_types.h"
-#include "ia_css_binary.h"
-#include "sh_css_internal.h"
+#include "ia_css_pdaf_types.h"
+#include "ia_css_pdaf_param.h"
 
+extern const struct ia_css_pdaf_config default_pdaf_config;
 
 void
-ia_css_yuv444_io_config(
-	const struct ia_css_binary     *binary,
-	const struct sh_css_binary_args *args);
+ia_css_pdaf_dmem_encode(
+		struct isp_pdaf_dmem_params *to,
+		const struct ia_css_pdaf_config *from,
+		unsigned size);
 
-#endif /*__YUV44_IO_HOST_H */
+void
+ia_css_pdaf_vmem_encode(
+		struct isp_pdaf_vmem_params *to,
+		const struct ia_css_pdaf_config *from,
+		unsigned size);
+
+#endif /* __IA_CSS_PDAF_HOST_H */

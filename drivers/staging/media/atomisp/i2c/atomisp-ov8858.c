@@ -21,7 +21,6 @@
 
 #include <linux/delay.h>
 #include <linux/module.h>
-#include <asm/spid.h>
 #include <media/v4l2-device.h>
 #include <linux/acpi.h>
 #include "ov8858.h"

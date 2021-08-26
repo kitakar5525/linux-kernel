@@ -139,9 +139,6 @@ struct intel_v4l2_subdev_table {
 
 struct atomisp_platform_data {
 	struct intel_v4l2_subdev_table *subdevs;
-#ifndef CONFIG_INTEL_MID_ISP
-	const struct soft_platform_id *spid;
-#endif
 };
 
 /* Describe the capacities of one single sensor. */

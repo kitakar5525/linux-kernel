@@ -2039,10 +2039,17 @@ int atomisp_set_sensor_runmode(struct atomisp_sub_device *asd,
 {
 	struct atomisp_device *isp = asd->isp;
 	struct v4l2_ctrl *c;
+	char *modes_str[] = { "CI_MODE_NONE",
+			      "CI_MODE_VIDEO",
+			      "CI_MODE_STILL_CAPTURE",
+			      "CI_MODE_CONTINUOUS",
+			      "CI_MODE_PREVIEW" };
 	int ret = 0;
 
 	if (!(runmode && (runmode->mode & RUNMODE_MASK)))
 		return -EINVAL;
+
+	dev_info(isp->dev, "%s(): runmode->mode: %s\n", __func__, modes_str[runmode->mode]);
 
 	mutex_lock(asd->ctrl_handler.lock);
 	c = v4l2_ctrl_find(isp->inputs[asd->input_curr].camera->ctrl_handler,

@@ -297,11 +297,6 @@ struct i2c_driver {
 };
 #define to_i2c_driver(d) container_of(d, struct i2c_driver, driver)
 
-struct i2c_comp_address {
-	unsigned short addr;
-	unsigned short flags;
-};
-
 /**
  * struct i2c_client - represent an I2C slave device
  * @flags: see I2C_CLIENT_* for possible flags
@@ -343,9 +338,6 @@ struct i2c_client {
 	int init_irq;			/* irq set at initialization	*/
 	int irq;			/* irq issued by device		*/
 	struct list_head detected;
-        int comp_addr_count;
-	struct i2c_comp_address *comp_addrs;
-	unsigned long irq_flags;
 #if IS_ENABLED(CONFIG_I2C_SLAVE)
 	i2c_slave_cb_t slave_cb;	/* callback for slave mode	*/
 #endif
@@ -434,9 +426,6 @@ struct i2c_board_info {
 	const struct resource *resources;
 	unsigned int	num_resources;
 	int		irq;
-        int		comp_addr_count;
-	struct	i2c_comp_address *comp_addrs;
-	unsigned long irq_flags;
 };
 
 /**

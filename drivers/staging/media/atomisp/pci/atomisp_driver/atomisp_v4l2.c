@@ -30,7 +30,6 @@
 #ifdef CONFIG_INTEL_MID_ISP
 #include <linux/intel_mid_pm.h>
 #endif
-#include <asm/intel_mid_pcihelpers.h>
 
 #include <asm/intel-mid.h>
 #include <asm/iosf_mbi.h>

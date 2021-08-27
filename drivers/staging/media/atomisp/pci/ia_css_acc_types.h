@@ -223,7 +223,6 @@ struct ia_css_binary_info {
 	/* MW: Packing (related) bools in an integer ?? */
 	struct {
 		/* ISP2401 */
-		u8	luma_only;
 		u8	input_yuv;
 		u8	input_raw;
 

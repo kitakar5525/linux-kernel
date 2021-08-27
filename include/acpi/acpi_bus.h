@@ -87,6 +87,9 @@ acpi_evaluate_dsm_typed(acpi_handle handle, const u8 *uuid, int rev, int func,
 	  .package.elements = (eles)			\
 	}
 
+struct acpi_device *
+acpi_dev_get_first_match_dev(const char *hid, const char *uid, s64 hrv);
+
 #ifdef CONFIG_ACPI
 
 #include <linux/proc_fs.h>
@@ -632,6 +635,12 @@ static inline bool acpi_device_can_wakeup(struct acpi_device *adev)
 static inline bool acpi_device_can_poweroff(struct acpi_device *adev)
 {
 	return adev->power.states[ACPI_STATE_D3_COLD].flags.valid;
+}
+
+static inline void acpi_dev_put(struct acpi_device *adev)
+{
+	if (adev)
+		put_device(&adev->dev);
 }
 
 #else	/* CONFIG_ACPI */

@@ -126,6 +126,9 @@ dw_dma_parse_dt(struct platform_device *pdev)
 	if (of_property_read_bool(np, "is_private"))
 		pdata->is_private = true;
 
+	if (of_property_read_bool(np, "no_hclk"))
+		pdata->no_hclk = true;
+
 	if (!of_property_read_u32(np, "chan_allocation_order", &tmp))
 		pdata->chan_allocation_order = (unsigned char)tmp;
 
@@ -194,12 +197,14 @@ static int dw_probe(struct platform_device *pdev)
 
 	chip->dev = dev;
 
-	chip->clk = devm_clk_get(chip->dev, "hclk");
-	if (IS_ERR(chip->clk))
-		return PTR_ERR(chip->clk);
-	err = clk_prepare_enable(chip->clk);
-	if (err)
-		return err;
+	if (!pdata->no_hclk) {
+		chip->clk = devm_clk_get(chip->dev, "hclk");
+		if (IS_ERR(chip->clk))
+			return PTR_ERR(chip->clk);
+		err = clk_prepare_enable(chip->clk);
+		if (err)
+			return err;
+	}
 
 	pm_runtime_enable(&pdev->dev);
 
@@ -245,14 +250,6 @@ static int dw_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static void dw_shutdown(struct platform_device *pdev)
-{
-	struct dw_dma_chip *chip = platform_get_drvdata(pdev);
-
-	dw_dma_disable(chip);
-	clk_disable_unprepare(chip->clk);
-}
-
 #ifdef CONFIG_OF
 static const struct of_device_id dw_dma_of_id_table[] = {
 	{ .compatible = "snps,dma-spear1340" },
@@ -273,6 +270,8 @@ static struct dw_dma_platform_data dw_dma_acpi_pdata = {
 
 static const struct acpi_device_id dw_dma_acpi_id_table[] = {
 	{ "INTL9C60", (kernel_ulong_t)&dw_dma_acpi_pdata },
+	{ "80862286", (kernel_ulong_t)&dw_dma_acpi_pdata},
+	{ "808622C0", (kernel_ulong_t)&dw_dma_acpi_pdata},
 	{ }
 };
 MODULE_DEVICE_TABLE(acpi, dw_dma_acpi_id_table);
@@ -286,7 +285,8 @@ static int dw_suspend_late(struct device *dev)
 	struct dw_dma_chip *chip = platform_get_drvdata(pdev);
 
 	dw_dma_disable(chip);
-	clk_disable_unprepare(chip->clk);
+	if (chip->clk)
+		clk_disable_unprepare(chip->clk);
 
 	return 0;
 }
@@ -296,7 +296,9 @@ static int dw_resume_early(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct dw_dma_chip *chip = platform_get_drvdata(pdev);
 
-	clk_prepare_enable(chip->clk);
+	if (chip->clk)
+		clk_prepare_enable(chip->clk);
+
 	return dw_dma_enable(chip);
 }
 
@@ -309,7 +311,6 @@ static const struct dev_pm_ops dw_dev_pm_ops = {
 static struct platform_driver dw_driver = {
 	.probe		= dw_probe,
 	.remove		= dw_remove,
-	.shutdown       = dw_shutdown,
 	.driver = {
 		.name	= DRV_NAME,
 		.pm	= &dw_dev_pm_ops,

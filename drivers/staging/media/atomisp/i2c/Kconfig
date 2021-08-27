@@ -1,0 +1,63 @@
+config VIDEO_ATOMISP_OV8858
+	tristate "Omnivision ov8858 sensor support"
+	depends on I2C && VIDEO_V4L2
+	depends on MEDIA_CAMERA_SUPPORT
+	help
+	  This is a Video4Linux2 sensor-level driver for the Omnivision
+	  ov8858 RAW sensor.
+
+	  OV8858 is a 8M raw sensor.
+
+	  It currently only works with the atomisp driver.
+
+config VIDEO_ATOMISP_OV7251
+	tristate "OmniVision OV7251 sensor support"
+	depends on I2C && VIDEO_V4L2
+	depends on MEDIA_CAMERA_SUPPORT
+	help
+	  This is a Video4Linux2 sensor-level driver for the OmniVision
+	  OV7251 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ov7251.
+
+	  It currently only works with atopmisp driver.
+
+config VIDEO_ATOMISP_AR0330
+	tristate "Aptina AR0330 sensor support"
+	depends on I2C && VIDEO_V4L2
+	depends on MEDIA_CAMERA_SUPPORT
+	help
+	  This is a Video4Linux2 sensor-level driver for the Aptina
+	  AR0330 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called AR0330.
+
+	  It currently only works with atopmisp driver.
+
+config VIDEO_ATOMISP_OV883X
+	tristate "OmniVision OV8830/OV8835 sensor support"
+	depends on I2C && VIDEO_V4L2
+	depends on MEDIA_CAMERA_SUPPORT
+	help
+	  This is a Video4Linux2 sensor-level driver for the OmniVision
+	  OV8830/OV8835 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called OV8830/OV8835.
+
+	  It currently only works with atopmisp driver.
+
+config VIDEO_ATOMISP_MSRLIST_HELPER
+	tristate "Helper library to load, parse and apply large register lists."
+	depends on I2C
+	help
+	  This is a helper library to be used from a sensor driver to load, parse
+	  and apply large register lists.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called libmsrlisthelper.
+
+source "drivers/staging/media/atomisp/i2c/micam/Kconfig"
+source "drivers/staging/media/atomisp/i2c/imx/Kconfig"

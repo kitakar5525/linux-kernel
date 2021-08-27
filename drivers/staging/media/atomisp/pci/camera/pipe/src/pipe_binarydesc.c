@@ -223,6 +223,8 @@ int ia_css_pipe_get_preview_binarydesc(
 	assert(vf_info);
 	IA_CSS_ENTER_PRIVATE("");
 
+	pr_alert("%s() called\n", __func__);
+
 	/*
 	 * Set up the info of the input frame with
 	 * the ISP required resolution

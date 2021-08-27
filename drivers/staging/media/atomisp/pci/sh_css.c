@@ -2763,6 +2763,8 @@ load_preview_binaries(struct ia_css_pipe *pipe)
 	assert(pipe->stream);
 	assert(pipe->mode == IA_CSS_PIPE_ID_PREVIEW);
 
+	pr_alert("%s() called\n", __func__);
+
 	online = pipe->stream->config.online;
 #ifdef ISP2401
 	sensor = pipe->stream->config.mode == IA_CSS_INPUT_MODE_SENSOR;
@@ -7241,6 +7243,7 @@ sh_css_pipe_load_binaries(struct ia_css_pipe *pipe)
 
 	assert(pipe);
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE, "sh_css_pipe_load_binaries() enter:\n");
+	pr_alert("%s() called\n", __func__);
 
 	/* PIPE_MODE_COPY has no binaries, but has output frames to outside*/
 	if (pipe->config.mode == IA_CSS_PIPE_MODE_COPY)
@@ -9066,6 +9069,7 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 
 	IA_CSS_ENTER("num_pipes=%d", num_pipes);
 	ia_css_debug_dump_stream_config(stream_config, num_pipes);
+	pr_alert("%s() called\n", __func__);
 
 	/* some checks */
 	if (num_pipes == 0 ||

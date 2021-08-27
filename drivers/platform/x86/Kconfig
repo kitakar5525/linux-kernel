@@ -767,6 +767,15 @@ config INTEL_MID_POWER_BUTTON
 
 	  If unsure, say N.
 
+config INTEL_MID_KEYBOARD_GPIO
+	tristate "keyboard button driver for Intel MID platforms"
+	depends on INTEL_SCU_IPC && INPUT && KEYBOARD_GPIO
+	help
+	  This driver handles the SOC Array buttons on the Intel MID platforms
+	  using SFI.
+
+	  If unsure, say N.
+
 config INTEL_MFLD_THERMAL
        tristate "Thermal driver for Intel Medfield platform"
        depends on MFD_INTEL_MSIC && THERMAL
@@ -944,8 +953,13 @@ config INTEL_PMC_IPC
 	with other entities in the CPU.
 
 config SURFACE_PRO3_BUTTON
-	tristate "Power/home/volume buttons driver for Microsoft Surface Pro 3 tablet"
+	tristate "Power/home/volume buttons driver for Microsoft Surface Pro 3/4 tablet"
 	depends on ACPI && INPUT
 	---help---
-	  This driver handles the power/home/volume buttons on the Microsoft Surface Pro 3 tablet.
+	  This driver handles the power/home/volume buttons on the Microsoft Surface Pro 3/4 tablet.
 endif # X86_PLATFORM_DEVICES
+
+config PMC_ATOM
+       def_bool y
+       depends on PCI
+       select COMMON_CLK

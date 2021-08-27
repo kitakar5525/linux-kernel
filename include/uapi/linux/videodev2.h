@@ -576,6 +576,9 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_SGRBG12 v4l2_fourcc('B', 'A', '1', '2') /* 12  GRGR.. BGBG.. */
 #define V4L2_PIX_FMT_SRGGB12 v4l2_fourcc('R', 'G', '1', '2') /* 12  RGRG.. GBGB.. */
 #define V4L2_PIX_FMT_SBGGR16 v4l2_fourcc('B', 'Y', 'R', '2') /* 16  BGBG.. GRGR.. */
+#define V4L2_PIX_FMT_SGBRG16 v4l2_fourcc('G', 'B', '1', '6') /* 16  GBGB.. RGRG.. */
+#define V4L2_PIX_FMT_SGRBG16 v4l2_fourcc('G', 'R', '1', '6') /* 16  GRGR.. BGBG.. */
+#define V4L2_PIX_FMT_SRGGB16 v4l2_fourcc('R', 'G', '1', '6') /* 16  RGRG.. GBGB.. */
 
 /* compressed formats */
 #define V4L2_PIX_FMT_MJPEG    v4l2_fourcc('M', 'J', 'P', 'G') /* Motion-JPEG   */
@@ -593,6 +596,17 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_VC1_ANNEX_G v4l2_fourcc('V', 'C', '1', 'G') /* SMPTE 421M Annex G compliant stream */
 #define V4L2_PIX_FMT_VC1_ANNEX_L v4l2_fourcc('V', 'C', '1', 'L') /* SMPTE 421M Annex L compliant stream */
 #define V4L2_PIX_FMT_VP8      v4l2_fourcc('V', 'P', '8', '0') /* VP8 */
+
+/* Intel RealSense-specific non-upstream formats */
+#define V4L2_PIX_FMT_Y8   v4l2_fourcc('Y', '8', ' ', ' ') /* Greyscale 8-bit */
+#define V4L2_PIX_FMT_RAW8 v4l2_fourcc('R', 'A', 'W', '8') /* Raw data 8-bit */
+#define V4L2_PIX_FMT_RW10 v4l2_fourcc('R', 'W', '1', '0') /* Raw data 10-bit */
+#define V4L2_PIX_FMT_RW16 v4l2_fourcc('R', 'W', '1', '6') /* Raw data 16-bit */
+#define V4L2_PIX_FMT_INVZ v4l2_fourcc('I',  'N',  'V',  'Z') /* 16 Depth */
+#define V4L2_PIX_FMT_INVR v4l2_fourcc('I',  'N',  'V',  'R') /* 16 Depth */
+#define V4L2_PIX_FMT_INRI v4l2_fourcc('I',  'N',  'R',  'I') /* 24 Depth/IR 16:8 */
+#define V4L2_PIX_FMT_INVI v4l2_fourcc('I',  'N',  'V',  'I') /* 8 IR */
+#define V4L2_PIX_FMT_RELI v4l2_fourcc('R',  'E',  'L',  'I') /* 8 IR alternating on off illumination */
 
 /*  Vendor-specific formats   */
 #define V4L2_PIX_FMT_CPIA1    v4l2_fourcc('C', 'P', 'I', 'A') /* cpia1 YUV */
@@ -624,6 +638,7 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_Y8I      v4l2_fourcc('Y', '8', 'I', ' ') /* Greyscale 8-bit L/R interleaved */
 #define V4L2_PIX_FMT_Y12I     v4l2_fourcc('Y', '1', '2', 'I') /* Greyscale 12-bit L/R interleaved */
 #define V4L2_PIX_FMT_Z16      v4l2_fourcc('Z', '1', '6', ' ') /* Depth data 16-bit */
+#define V4L2_PIX_FMT_INZI     v4l2_fourcc('I', 'N', 'Z', 'I') /* Intel Planar Greyscale 10-bit and Depth 16-bit */
 
 /* SDR formats - used only for Software Defined Radio devices */
 #define V4L2_SDR_FMT_CU8          v4l2_fourcc('C', 'U', '0', '8') /* IQ u8 */
@@ -2035,8 +2050,9 @@ struct v4l2_streamparm {
 #define V4L2_EVENT_EOS				2
 #define V4L2_EVENT_CTRL				3
 #define V4L2_EVENT_FRAME_SYNC			4
-#define V4L2_EVENT_SOURCE_CHANGE		5
-#define V4L2_EVENT_MOTION_DET			6
+#define V4L2_EVENT_FRAME_END		        5
+#define V4L2_EVENT_SOURCE_CHANGE		6
+#define V4L2_EVENT_MOTION_DET			7
 #define V4L2_EVENT_PRIVATE_START		0x08000000
 
 /* Payload for V4L2_EVENT_VSYNC */

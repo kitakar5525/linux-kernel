@@ -42,6 +42,4 @@ more details.
 
 #define HIVE_GPIO_STROBE_TRIGGER_PIN						2
 
-#define GPIO_FLASH_PIN_MASK (1 << HIVE_GPIO_STROBE_TRIGGER_PIN)
-
 #endif /* __GPIO_GLOBAL_H_INCLUDED__ */

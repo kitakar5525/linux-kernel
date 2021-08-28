@@ -1323,8 +1323,14 @@ done:
 		} else {
 			atomisp_qbuffers_to_css(asd);
 
-			if (!atomisp_is_wdt_running(asd) && atomisp_buffers_queued(asd))
-			    atomisp_wdt_start(asd);
+			if (!IS_ISP2401) {
+				if (!atomisp_is_wdt_running(asd) && atomisp_buffers_queued(asd))
+					atomisp_wdt_start(asd);
+			} else {
+				if (!atomisp_is_wdt_running(pipe) &&
+				    atomisp_buffers_queued_pipe(pipe))
+					atomisp_wdt_start_pipe(pipe);
+			}
 		}
 	}
 
@@ -1343,8 +1349,25 @@ done:
 	    pipe->capq.streaming &&
 	    !asd->enable_raw_buffer_lock->val &&
 	    asd->params.offline_parm.num_captures == 1) {
-		asd->pending_capture_request++;
-		dev_dbg(isp->dev, "Add one pending capture request.\n");
+		if (!IS_ISP2401) {
+			asd->pending_capture_request++;
+			dev_dbg(isp->dev, "Add one pending capture request.\n");
+		} else {
+			if (asd->re_trigger_capture) {
+				ret = atomisp_css_offline_capture_configure(asd,
+					asd->params.offline_parm.num_captures,
+					asd->params.offline_parm.skip_frames,
+					asd->params.offline_parm.offset);
+				asd->re_trigger_capture = false;
+				dev_dbg(isp->dev, "%s Trigger capture again ret=%d\n",
+					__func__, ret);
+
+			} else {
+				asd->pending_capture_request++;
+				asd->re_trigger_capture = false;
+				dev_dbg(isp->dev, "Add one pending capture request.\n");
+			}
+		}
 	}
 	rt_mutex_unlock(&isp->mutex);
 
@@ -1599,7 +1622,7 @@ int atomisp_stream_on_master_slave_sensor(struct atomisp_device *isp,
 	return 0;
 }
 
-/* FIXME! */
+/* FIXME! ISP2400 */
 static void __wdt_on_master_slave_sensor(struct atomisp_device *isp,
 					 unsigned int wdt_duration)
 {
@@ -1607,6 +1630,23 @@ static void __wdt_on_master_slave_sensor(struct atomisp_device *isp,
 		atomisp_wdt_refresh(&isp->asd[0], wdt_duration);
 	if (atomisp_buffers_queued(&isp->asd[1]))
 		atomisp_wdt_refresh(&isp->asd[1], wdt_duration);
+}
+
+/* FIXME! ISP2401 */
+static void __wdt_on_master_slave_sensor_pipe(struct atomisp_video_pipe *pipe,
+					      unsigned int wdt_duration,
+					      bool enable)
+{
+	static struct atomisp_video_pipe *pipe0;
+
+	if (enable) {
+		if (atomisp_buffers_queued_pipe(pipe0))
+			atomisp_wdt_refresh_pipe(pipe0, wdt_duration);
+		if (atomisp_buffers_queued_pipe(pipe))
+			atomisp_wdt_refresh_pipe(pipe, wdt_duration);
+	} else {
+		pipe0 = pipe;
+	}
 }
 
 static void atomisp_pause_buffer_event(struct atomisp_device *isp)
@@ -1708,6 +1748,8 @@ static int atomisp_streamon(struct file *file, void *fh,
 
 	/* Reset pending capture request count. */
 	asd->pending_capture_request = 0;
+	if (IS_ISP2401)
+		asd->re_trigger_capture = false;
 
 	if ((atomisp_subdev_streaming_count(asd) > sensor_start_stream) &&
 	    (!isp->inputs[asd->input_curr].camera_caps->multi_stream_ctrl)) {
@@ -1847,10 +1889,15 @@ start_sensor:
 			dev_err(isp->dev, "master slave sensor stream on failed!\n");
 			goto out;
 		}
-		__wdt_on_master_slave_sensor(isp, wdt_duration);
+		if (!IS_ISP2401)
+			__wdt_on_master_slave_sensor(isp, wdt_duration);
+		else
+			__wdt_on_master_slave_sensor_pipe(pipe, wdt_duration, true);
 		goto start_delay_wq;
 	} else if (asd->depth_mode->val && (atomisp_streaming_count(isp) <
 					    ATOMISP_DEPTH_SENSOR_STREAMON_COUNT)) {
+		if (IS_ISP2401)
+			__wdt_on_master_slave_sensor_pipe(pipe, wdt_duration, false);
 		goto start_delay_wq;
 	}
 
@@ -1870,8 +1917,13 @@ start_sensor:
 		goto out;
 	}
 
-	if (atomisp_buffers_queued(asd))
-		atomisp_wdt_refresh(asd, wdt_duration);
+	if (!IS_ISP2401) {
+		if (atomisp_buffers_queued(asd))
+			atomisp_wdt_refresh(asd, wdt_duration);
+	} else {
+		if (atomisp_buffers_queued_pipe(pipe))
+			atomisp_wdt_refresh_pipe(pipe, wdt_duration);
+	}
 
 start_delay_wq:
 	if (asd->continuous_mode->val) {

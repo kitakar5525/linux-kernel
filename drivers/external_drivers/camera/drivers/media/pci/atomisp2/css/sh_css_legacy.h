@@ -1,6 +1,6 @@
 /*
  * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2015, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -11,7 +11,6 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  */
-
 
 #ifndef _SH_CSS_LEGACY_H_
 #define _SH_CSS_LEGACY_H_
@@ -32,9 +31,9 @@ enum ia_css_pipe_id {
 	IA_CSS_PIPE_ID_VIDEO,
 	IA_CSS_PIPE_ID_CAPTURE,
 	IA_CSS_PIPE_ID_YUVPP,
-	IA_CSS_PIPE_ID_ACC
+	IA_CSS_PIPE_ID_ACC,
+	IA_CSS_PIPE_ID_NUM
 };
-#define IA_CSS_PIPE_ID_NUM (IA_CSS_PIPE_ID_ACC+1)
 
 struct ia_css_pipe_extra_config {
 	bool enable_raw_binning;
@@ -73,5 +72,8 @@ ia_css_temp_pipe_to_pipe_id(const struct ia_css_pipe *pipe,
 enum ia_css_err
 sh_css_set_black_frame(struct ia_css_stream *stream,
 			const struct ia_css_frame *raw_black_frame);
+
+void
+sh_css_enable_cont_capt(bool enable, bool stop_copy_preview);
 
 #endif /* _SH_CSS_LEGACY_H_ */

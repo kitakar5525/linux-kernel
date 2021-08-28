@@ -272,10 +272,7 @@ struct atomisp_device {
 	bool isp_fatal_error;
 	struct workqueue_struct *wdt_work_queue;
 	struct work_struct wdt_work;
-
-	/* ISP2400 */
 	atomic_t wdt_count;
-
 	atomic_t wdt_work_queued;
 
 	spinlock_t lock; /* Just for streaming below */
@@ -295,19 +292,8 @@ struct atomisp_device {
 extern struct device *atomisp_dev;
 
 #define atomisp_is_wdt_running(a) timer_pending(&(a)->wdt)
-
-/* ISP2401 */
-void atomisp_wdt_refresh_pipe(struct atomisp_video_pipe *pipe,
-			      unsigned int delay);
 void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay);
-
-/* ISP2400 */
 void atomisp_wdt_start(struct atomisp_sub_device *asd);
-
-/* ISP2401 */
-void atomisp_wdt_start_pipe(struct atomisp_video_pipe *pipe);
-void atomisp_wdt_stop_pipe(struct atomisp_video_pipe *pipe, bool sync);
-
 void atomisp_wdt_stop(struct atomisp_sub_device *asd, bool sync);
 
 #endif /* __ATOMISP_INTERNAL_H__ */

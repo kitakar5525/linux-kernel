@@ -20,6 +20,7 @@ more details.
  * Pixel-generator. ("pixelgen_global.h")
  */
 /*
+ * zhengjie.lu@intel.com:
  * Duplicates "sync_generator_cfg_t" in "input_system_global.h".
  */
 typedef struct sync_generator_cfg_s sync_generator_cfg_t;
@@ -40,6 +41,7 @@ typedef enum {
 } pixelgen_tpg_mode_t;
 
 /*
+ * zhengjie.lu@intel.com:
  * "pixelgen_tpg_cfg_t" duplicates parts of
  * "tpg_cfg_t" in "input_system_global.h".
  */
@@ -74,6 +76,7 @@ struct pixelgen_tpg_cfg_s {
 };
 
 /*
+ * zhengjie.lu@intel.com:
  * "pixelgen_prbs_cfg_t" duplicates parts of
  * prbs_cfg_t" in "input_system_global.h".
  */

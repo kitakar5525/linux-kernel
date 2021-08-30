@@ -1,4 +1,4 @@
-/*
+/**
  * INTEL CONFIDENTIAL
  *
  * Copyright (C) 2015 Intel Corporation.

@@ -15,7 +15,7 @@
 #ifndef __IA_CSS_COMMON_IO_TYPES
 #define __IA_CSS_COMMON_IO_TYPES
 
-#define MAX_IO_DMA_CHANNELS 2
+#define MAX_IO_DMA_CHANNELS 3
 
 struct ia_css_common_io_config {
 	unsigned base_address;

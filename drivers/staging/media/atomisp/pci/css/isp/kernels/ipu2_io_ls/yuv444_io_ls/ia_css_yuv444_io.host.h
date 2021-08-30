@@ -12,11 +12,19 @@
  * more details.
  */
 
-#ifndef _sp_hrt_h_
-#define _sp_hrt_h_
 
-#define hrt_sp_dmem(cell) HRT_PROC_TYPE_PROP(cell, _dmem)
+#ifndef __YUV444_IO_HOST_H
+#define __YUV444_IO_HOST_H
 
-#define hrt_sp_dmem_master_port_address(cell) hrt_mem_master_port_address(cell, hrt_sp_dmem(cell))
+#include "ia_css_yuv444_io_param.h"
+#include "ia_css_yuv444_io_types.h"
+#include "ia_css_binary.h"
+#include "sh_css_internal.h"
 
-#endif /* _sp_hrt_h_ */
+
+void
+ia_css_yuv444_io_config(
+	const struct ia_css_binary     *binary,
+	const struct sh_css_binary_args *args);
+
+#endif /*__YUV44_IO_HOST_H */

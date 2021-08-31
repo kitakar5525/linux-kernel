@@ -49,10 +49,6 @@ enum ia_css_configuration_ids {
 	IA_CSS_TNR_CONFIG_ID,
 	IA_CSS_REF_CONFIG_ID,
 	IA_CSS_VF_CONFIG_ID,
-
-	/* ISP 2401 */
-	IA_CSS_SC_CONFIG_ID,
-
 	IA_CSS_NUM_CONFIGURATION_IDS
 };
 

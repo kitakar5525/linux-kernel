@@ -44,12 +44,6 @@ struct sh_css {
 	void *(*malloc)(size_t bytes, bool zero_mem);
 	void (*free)(void *ptr);
 	void (*flush)(struct ia_css_acc_fw *fw);
-
-/* ISP2401 */
-	void *(*malloc_ex)(size_t bytes, bool zero_mem, const char *caller_func,
-			   int caller_line);
-	void (*free_ex)(void *ptr, const char *caller_func, int caller_line);
-
 	bool stop_copy_preview;
 	bool                           check_system_idle;
 	unsigned int                   num_cont_raw_frames;

@@ -283,13 +283,24 @@ struct ia_css_shading_info {
 		struct {
 			u32 enable;	/** Shading correction enabled.
 						     0:disabled, 1:enabled */
-			/** Horizontal ratio of bayer scaling between input width and output width,
-			     for the scaling which should be done before shading correction.
-				output_width = input_width * bayer_scale_hor_ratio_out
-								/ bayer_scale_hor_ratio_in + 0.5 */
+			u32 num_hor_grids;	/** Number of data points per line
+						     per color on shading table. */
+			u32 num_ver_grids;	/** Number of lines of data points
+						     per color on shading table. */
+			u32 bqs_per_grid_cell; /** Grid cell size
+						in BQ(Bayer Quad) unit.
+						(1BQ means {Gr,R,B,Gb}(2x2 pixels).)
+						Valid values are 8,16,32,64. */
+			u32 bayer_scale_hor_ratio_in;
+			u32 bayer_scale_hor_ratio_out;
+			/** Horizontal ratio of bayer scaling
+			between input width and output width, for the scaling
+			which should be done before shading correction.
+			  output_width = input_width * bayer_scale_hor_ratio_out
+						/ bayer_scale_hor_ratio_in */
+
 			u32 bayer_scale_ver_ratio_in;
 			u32 bayer_scale_ver_ratio_out;
-
 			/** Vertical ratio of bayer scaling
 			between input height and output height, for the scaling
 			which should be done before shading correction.

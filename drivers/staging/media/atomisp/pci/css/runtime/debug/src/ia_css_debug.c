@@ -434,12 +434,10 @@ void ia_css_debug_dump_isp_state(void)
 	debug_print_isp_state(&state, "ISP");
 
 	if (state.is_stalling) {
-		if (!IS_ISP2401) {
-			ia_css_debug_dtrace(2, "\t%-32s: %d\n",
-					    "[0] if_prim_a_FIFO stalled", stall.fifo0);
-			ia_css_debug_dtrace(2, "\t%-32s: %d\n",
-					    "[1] if_prim_b_FIFO stalled", stall.fifo1);
-		}
+		ia_css_debug_dtrace(2, "\t%-32s: %d\n",
+				    "[0] if_prim_a_FIFO stalled", stall.fifo0);
+		ia_css_debug_dtrace(2, "\t%-32s: %d\n",
+				    "[1] if_prim_b_FIFO stalled", stall.fifo1);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "[2] dma_FIFO stalled",
 				    stall.fifo2);
 
@@ -488,17 +486,14 @@ void ia_css_debug_dump_sp_state(void)
 				    "str_to_mem_FIFO stalled", stall.fifo2);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "dma_FIFO stalled",
 				    stall.fifo3);
-		if (!IS_ISP2401)
-			ia_css_debug_dtrace(2, "\t%-32s: %d\n",
-					    "if_prim_a_FIFO stalled", stall.fifo4);
-
+		ia_css_debug_dtrace(2, "\t%-32s: %d\n",
+				    "if_prim_a_FIFO stalled", stall.fifo4);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "isp_FIFO stalled",
 				    stall.fifo5);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "gp_FIFO stalled",
 				    stall.fifo6);
-		if (!IS_ISP2401)
-			ia_css_debug_dtrace(2, "\t%-32s: %d\n",
-					    "if_prim_b_FIFO stalled", stall.fifo7);
+		ia_css_debug_dtrace(2, "\t%-32s: %d\n",
+				    "if_prim_b_FIFO stalled", stall.fifo7);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "gdc0_FIFO stalled",
 				    stall.fifo8);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "gdc1_FIFO stalled",
@@ -2123,13 +2118,13 @@ void ia_css_debug_dump_isys_state(void)
 
 void ia_css_debug_dump_debug_info(const char *context)
 {
+	struct irq_controller_state state;
+
 	if (!context)
 		context = "No Context provided";
 
 	ia_css_debug_dtrace(2, "CSS Debug Info dump [Context = %s]\n", context);
-	if (!IS_ISP2401)
-		ia_css_debug_dump_rx_state();
-
+	ia_css_debug_dump_rx_state();
 	ia_css_debug_dump_if_state();
 	ia_css_debug_dump_isp_state();
 	ia_css_debug_dump_isp_sp_fifo_state();
@@ -2146,34 +2141,28 @@ void ia_css_debug_dump_debug_info(const char *context)
 	ia_css_debug_dump_dma_sp_fifo_state();
 	ia_css_debug_dump_dma_state();
 
-	if (!IS_ISP2401) {
-		struct irq_controller_state state;
+	ia_css_debug_dump_isys_state();
 
-		ia_css_debug_dump_isys_state();
+	irq_controller_get_state(IRQ2_ID, &state);
 
-		irq_controller_get_state(IRQ2_ID, &state);
+	ia_css_debug_dtrace(2, "\t%-32s:\n",
+			    "Input System IRQ Controller State");
 
-		ia_css_debug_dtrace(2, "\t%-32s:\n",
-				    "Input System IRQ Controller State");
+	ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
+			    "irq_edge", state.irq_edge);
 
-		ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
-				    "irq_edge", state.irq_edge);
+	ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
+			    "irq_mask", state.irq_mask);
 
-		ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
-				    "irq_mask", state.irq_mask);
+	ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
+			    "irq_status", state.irq_status);
 
-		ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
-				    "irq_status", state.irq_status);
+	ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
+			    "irq_enable", state.irq_enable);
 
-		ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
-				    "irq_enable", state.irq_enable);
-
-		ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
-				    "irq_level_not_pulse",
-				    state.irq_level_not_pulse);
-	} else {
-		ia_css_debug_dump_isys_state();
-	}
+	ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
+			    "irq_level_not_pulse",
+			    state.irq_level_not_pulse);
 
 	ia_css_debug_tagger_state();
 
@@ -2375,9 +2364,6 @@ void ia_css_debug_dump_perf_counters(void)
 	unsigned int HIVE_ADDR_ia_css_isys_sp_error_cnt;
 	/* N_MIPI_PORT_ID + 1: 3 Capture Units and 1 Acquire Unit. */
 	s32 ia_css_sp_input_system_error_cnt[N_MIPI_PORT_ID + 1];
-
-	if (IS_ISP2401)
-		return;
 
 	ia_css_debug_dtrace(IA_CSS_DEBUG_VERBOSE, "Input System Error Counters:\n");
 
@@ -2965,11 +2951,6 @@ ia_css_debug_dump_pipe_config(
 	ia_css_debug_dump_resolution(&config->capt_pp_in_res,
 				     "capt_pp_in_res");
 	ia_css_debug_dump_resolution(&config->vf_pp_in_res, "vf_pp_in_res");
-
-	if (IS_ISP2401) {
-		ia_css_debug_dump_resolution(&config->output_system_in_res,
-					    "output_system_in_res");
-	}
 	ia_css_debug_dump_resolution(&config->dvs_crop_out_res,
 				     "dvs_crop_out_res");
 	for (i = 0; i < IA_CSS_PIPE_MAX_OUTPUT_STAGE; i++) {
@@ -3188,25 +3169,11 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 		return;
 	}
 
-	if (!IS_ISP2401) {
-		tmp = ia_css_device_load_uint32(start_addr);
-		point_num = (tmp >> 16) & 0xFFFF;
+	tmp = ia_css_device_load_uint32(start_addr);
+	point_num = (tmp >> 16) & 0xFFFF;
 
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, " ver %d %d points\n", tmp & 0xFF,
-				    point_num);
-	} else {
-		/* Loading byte-by-byte as using the master routine had issues */
-		header_arr = (uint8_t *)&header;
-		for (i = 0; i < (int)sizeof(struct trace_header_t); i++)
-			header_arr[i] = ia_css_device_load_uint8(start_addr + (i));
-
-		point_num = header.max_tracer_points;
-
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, " ver %d %d points\n", header.version,
-				    point_num);
-
-		tmp = header.version;
-	}
+	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, " ver %d %d points\n", tmp & 0xFF,
+			    point_num);
 	if ((tmp & 0xFF) != TRACER_VER) {
 		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "\t\tUnknown version - exiting\n");
 		return;
@@ -3221,20 +3188,6 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 				    (i * item_size));
 		if ((limit == (-1)) && (trace_read_buf[i] == 0))
 			limit = i;
-	}
-	if (IS_ISP2401) {
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "Status:\n");
-		for (i = 0; i < SH_CSS_MAX_SP_THREADS; i++)
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-					    "\tT%d: %3d (%02x)  %6d (%04x)  %10d (%08x)\n", i,
-					    header.thr_status_byte[i], header.thr_status_byte[i],
-					    header.thr_status_word[i], header.thr_status_word[i],
-					    header.thr_status_dword[i], header.thr_status_dword[i]);
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "Scratch:\n");
-		for (i = 0; i < MAX_SCRATCH_DATA; i++)
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "%10d (%08x)  ",
-					    header.scratch_debug[i], header.scratch_debug[i]);
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "\n");
 	}
 	/* two 0s in the beginning: empty buffer */
 	if ((trace_read_buf[0] == 0) && (trace_read_buf[1] == 0)) {
@@ -3255,20 +3208,7 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 	for (i = 0; i < point_num; i++) {
 		j = (limit + i) % point_num;
 		if (trace_read_buf[j]) {
-			if (!IS_ISP2401) {
-				TRACE_DUMP_FORMAT dump_format = FIELD_FORMAT_UNPACK(trace_read_buf[j]);
-			} else {
-				tid_val = FIELD_TID_UNPACK(trace_read_buf[j]);
-				dump_format = TRACE_DUMP_FORMAT_POINT;
-
-				/*
-				* When tid value is 111b, the data will be interpreted differently:
-				* tid val is ignored, major field contains 2 bits (msb) for format type
-				*/
-				if (tid_val == FIELD_TID_SEL_FORMAT_PAT) {
-					dump_format = FIELD_FORMAT_UNPACK(trace_read_buf[j]);
-				}
-			}
+			TRACE_DUMP_FORMAT dump_format = FIELD_FORMAT_UNPACK(trace_read_buf[j]);
 			switch (dump_format) {
 			case TRACE_DUMP_FORMAT_POINT:
 				ia_css_debug_dtrace(

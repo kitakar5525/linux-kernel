@@ -2802,17 +2802,6 @@ load_preview_binaries(struct ia_css_pipe *pipe)
 	if (err)
 		return err;
 
-	if (IS_ISP2401) {
-		/* The delay latency determines the number of invalid frames after
-		* a stream is started. */
-		pipe->num_invalid_frames = pipe->dvs_frame_delay;
-		pipe->info.num_invalid_frames = pipe->num_invalid_frames;
-
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-				    "load_preview_binaries() num_invalid_frames=%d dvs_frame_delay=%d\n",
-				    pipe->num_invalid_frames, pipe->dvs_frame_delay);
-	}
-
 	/* The vf_pp binary is needed when (further) YUV downscaling is required */
 	need_vf_pp |= mycs->preview_binary.out_frame_info[0].res.width != pipe_out_info->res.width;
 	need_vf_pp |= mycs->preview_binary.out_frame_info[0].res.height != pipe_out_info->res.height;
@@ -2871,11 +2860,15 @@ load_preview_binaries(struct ia_css_pipe *pipe)
 	 * where the driver chooses for memory based input frames. In these cases, a copy binary (which typical
 	 * copies sensor data to DDR) does not have much use.
 	 */
+<<<<<<< HEAD
 	if (!IS_ISP2401)
 		need_isp_copy_binary = !online && !continuous;
 	else
 		need_isp_copy_binary = !online && !continuous && !(pipe->stream->config.mode == IA_CSS_INPUT_MODE_MEMORY);
 #endif
+=======
+	need_isp_copy_binary = !online && !continuous;
+>>>>>>> 766fc2d9d63d (atomisp: pci: css: remove most of IS_ISP2401 if blocks)
 
 	/* Copy */
 	if (need_isp_copy_binary) {
@@ -3847,11 +3840,6 @@ preview_start(struct ia_css_pipe *pipe)
 							 &thread_id);
 			copy_ovrd |= 1 << thread_id;
 		}
-	}
-
-	if (IS_ISP2401) {
-		coord = &pipe->config.internal_frame_origin_bqs_on_sctbl;
-		params = pipe->stream->isp_params_configs;
 	}
 
 	/* Construct and load the copy pipe */
@@ -5467,28 +5455,7 @@ static int load_video_binaries(struct ia_css_pipe *pipe)
 		unsigned int tnr_height;
 
 		tnr_info = mycs->video_binary.out_frame_info[0];
-
-		if (IS_ISP2401) {
-			/* Select resolution for TNR. If
-			* output_system_in_resolution(GDC_out_resolution) is
-			* being used, then select that as it will also be in resolution for
-			* TNR. At present, it only make sense for Skycam */
-			if (pipe->config.output_system_in_res.width &&
-			    pipe->config.output_system_in_res.height) {
-				tnr_width = pipe->config.output_system_in_res.width;
-				tnr_height = pipe->config.output_system_in_res.height;
-			} else {
-				tnr_width = tnr_info.res.width;
-				tnr_height = tnr_info.res.height;
-			}
-
-			/* Make tnr reference buffers output block width(in pix) align */
-			tnr_info.res.width  = CEIL_MUL(tnr_width,
-						       (mycs->video_binary.info->sp.block.block_width * ISP_NWAY));
-			tnr_info.padded_width = tnr_info.res.width;
-		} else {
-			tnr_height = tnr_info.res.height;
-		}
+		tnr_height = tnr_info.res.height;
 
 		/* Make tnr reference buffers output block height align */
 		tnr_info.res.height = CEIL_MUL(tnr_height,
@@ -5584,11 +5551,6 @@ static int video_start(struct ia_css_pipe *pipe)
 							 &thread_id);
 			copy_ovrd |= 1 << thread_id;
 		}
-	}
-
-	if (IS_ISP2401) {
-		coord = &pipe->config.internal_frame_origin_bqs_on_sctbl;
-		params = pipe->stream->isp_params_configs;
 	}
 
 	/* Construct and load the copy pipe */
@@ -5737,12 +5699,6 @@ static bool need_capture_pp(
 	IA_CSS_ENTER_LEAVE_PRIVATE("");
 	assert(pipe);
 	assert(pipe->mode == IA_CSS_PIPE_ID_CAPTURE);
-
-	if (IS_ISP2401) {
-		/* ldc and capture_pp are not supported in the same pipeline */
-		if (need_capt_ldc(pipe))
-			return false;
-	}
 
 	/* determine whether we need to use the capture_pp binary.
 	 * This is needed for:
@@ -5948,7 +5904,7 @@ static int load_primary_binaries(
 
 	/* TODO Do we disable ldc for skycam */
 	need_ldc = need_capt_ldc(pipe);
-	if (IS_ISP2401 && need_ldc) {
+	if (need_ldc) {
 		/* ldc and capt_pp are not supported in the same pipeline */
 		struct ia_css_binary_descr capt_ldc_descr;
 
@@ -5971,10 +5927,7 @@ static int load_primary_binaries(
 	if (need_pp) {
 		struct ia_css_binary_descr capture_pp_descr;
 
-		if (!IS_ISP2401)
-			capt_pp_in_info = need_ldc ? &capt_ldc_out_info : &prim_out_info;
-		else
-			capt_pp_in_info = &prim_out_info;
+		capt_pp_in_info = &prim_out_info;
 
 		ia_css_pipe_get_capturepp_binarydesc(pipe,
 						     &capture_pp_descr,
@@ -9218,17 +9171,6 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 			   effective_res.height);
 	}
 
-	if (IS_ISP2401) {
-		for (i = 0; i < num_pipes; i++) {
-			if (pipes[i]->config.mode != IA_CSS_PIPE_MODE_ACC &&
-			    pipes[i]->config.mode != IA_CSS_PIPE_MODE_COPY) {
-				err = check_pipe_resolutions(pipes[i]);
-				if (err)
-					goto ERR;
-			}
-		}
-	}
-
 	err = ia_css_stream_isp_parameters_init(curr_stream);
 	if (err)
 		goto ERR;
@@ -9324,16 +9266,14 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 		/* set current stream */
 		curr_pipe->stream = curr_stream;
 
-		if (!IS_ISP2401) {
-			/* take over effective info */
+		/* take over effective info */
+		effective_res = curr_pipe->config.input_effective_res;
+		err = ia_css_util_check_res(
+			effective_res.width,
+			effective_res.height);
+		if (err)
+			goto ERR;
 
-			effective_res = curr_pipe->config.input_effective_res;
-			err = ia_css_util_check_res(
-				effective_res.width,
-				effective_res.height);
-			if (err)
-				goto ERR;
-		}
 		/* sensor binning per pipe */
 		if (sensor_binning_changed)
 			sh_css_pipe_free_shading_table(curr_pipe);
@@ -9358,18 +9298,10 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 				goto ERR;
 		}
 
-		if (IS_ISP2401)
-			pipe_info->output_system_in_res_info = curr_pipe->config.output_system_in_res;
-
 		if (!spcopyonly) {
-			if (!IS_ISP2401)
-				err = sh_css_pipe_get_shading_info(curr_pipe,
-								   &pipe_info->shading_info,
-								   NULL);
-			else
-				err = sh_css_pipe_get_shading_info(curr_pipe,
-								   &pipe_info->shading_info,
-								   &curr_pipe->config);
+			err = sh_css_pipe_get_shading_info(curr_pipe,
+							   &pipe_info->shading_info,
+							   NULL);
 
 			if (err)
 				goto ERR;
@@ -9586,12 +9518,6 @@ ia_css_stream_load(struct ia_css_stream *stream)
 {
 	int i, j, err;
 
-	if (IS_ISP2401) {
-		/* TODO remove function - DEPRECATED */
-		(void)stream;
-		return -ENOTSUPP;
-	}
-
 	assert(stream);
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,	"ia_css_stream_load() enter,\n");
 	for (i = 0; i < MAX_ACTIVE_STREAMS; i++) {
@@ -9700,11 +9626,7 @@ ia_css_stream_stop(struct ia_css_stream *stream)
 	}
 #endif
 
-	if (!IS_ISP2401)
-		err = ia_css_pipeline_request_stop(&stream->last_pipe->pipeline);
-	else
-		err = sh_css_pipes_stop(stream);
-
+	err = ia_css_pipeline_request_stop(&stream->last_pipe->pipeline);
 	if (err)
 		return err;
 
@@ -9722,10 +9644,7 @@ ia_css_stream_has_stopped(struct ia_css_stream *stream)
 
 	assert(stream);
 
-	if (!IS_ISP2401)
-		stopped = ia_css_pipeline_has_stopped(&stream->last_pipe->pipeline);
-	else
-		stopped = sh_css_pipes_have_stopped(stream);
+	stopped = ia_css_pipeline_has_stopped(&stream->last_pipe->pipeline);
 
 	return stopped;
 }
@@ -10079,15 +9998,7 @@ ia_css_stop_sp(void)
 	}
 
 	/* For now, stop whole SP */
-	if (!IS_ISP2401) {
-		sh_css_write_host2sp_command(host2sp_cmd_terminate);
-	} else {
-		if (!sh_css_write_host2sp_command(host2sp_cmd_terminate)) {
-			IA_CSS_ERROR("Call to 'sh-css_write_host2sp_command()' failed");
-			ia_css_debug_dump_sp_sw_debug_info();
-			ia_css_debug_dump_debug_info(NULL);
-		}
-	}
+	sh_css_write_host2sp_command(host2sp_cmd_terminate);
 
 	sh_css_sp_set_sp_running(false);
 

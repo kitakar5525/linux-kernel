@@ -58,7 +58,6 @@ static void pipe_binarydesc_get_offline(
 	descr->enable_dz = true;
 	descr->enable_xnr = false;
 	descr->enable_dpc = false;
-	descr->enable_tnr = false;
 	descr->enable_capture_pp_bli = false;
 	descr->enable_fractional_ds = false;
 	descr->dvs_env.width = 0;
@@ -389,8 +388,6 @@ int ia_css_pipe_get_video_binarydesc(
 		    pipe->extra_config.enable_fractional_ds;
 		video_descr->enable_dpc =
 		    pipe->config.enable_dpc;
-		video_descr->enable_tnr =
-		    pipe->config.enable_tnr;
 
 		if (pipe->extra_config.enable_raw_binning) {
 			if (pipe->config.bayer_ds_out_res.width != 0 &&

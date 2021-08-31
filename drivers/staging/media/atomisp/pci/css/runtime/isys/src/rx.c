@@ -20,7 +20,6 @@
 #include "ia_css_irq.h"
 #include "sh_css_internal.h"
 
-#if !defined(ISP2401)
 void ia_css_isys_rx_enable_all_interrupts(enum mipi_port_id port)
 {
 	hrt_data bits = receiver_port_reg_load(RX0_ID,
@@ -209,7 +208,6 @@ void ia_css_isys_rx_clear_irq_info(enum mipi_port_id port,
 
 	return;
 }
-#endif /* #if !defined(ISP2401) */
 
 int ia_css_isys_convert_stream_format_to_mipi_format(
     enum atomisp_input_format input_format,
@@ -311,7 +309,6 @@ int ia_css_isys_convert_stream_format_to_mipi_format(
 	case ATOMISP_INPUT_FORMAT_EMBEDDED:
 		*fmt_type = MIPI_FORMAT_EMBEDDED;
 		break;
-#ifndef ISP2401
 	case ATOMISP_INPUT_FORMAT_RAW_16:
 		/* This is not specified by Arasan, so we use
 		 * 17 for now.
@@ -321,32 +318,6 @@ int ia_css_isys_convert_stream_format_to_mipi_format(
 	case ATOMISP_INPUT_FORMAT_BINARY_8:
 		*fmt_type = MIPI_FORMAT_BINARY_8;
 		break;
-#else
-	case ATOMISP_INPUT_FORMAT_USER_DEF1:
-		*fmt_type = MIPI_FORMAT_CUSTOM0;
-		break;
-	case ATOMISP_INPUT_FORMAT_USER_DEF2:
-		*fmt_type = MIPI_FORMAT_CUSTOM1;
-		break;
-	case ATOMISP_INPUT_FORMAT_USER_DEF3:
-		*fmt_type = MIPI_FORMAT_CUSTOM2;
-		break;
-	case ATOMISP_INPUT_FORMAT_USER_DEF4:
-		*fmt_type = MIPI_FORMAT_CUSTOM3;
-		break;
-	case ATOMISP_INPUT_FORMAT_USER_DEF5:
-		*fmt_type = MIPI_FORMAT_CUSTOM4;
-		break;
-	case ATOMISP_INPUT_FORMAT_USER_DEF6:
-		*fmt_type = MIPI_FORMAT_CUSTOM5;
-		break;
-	case ATOMISP_INPUT_FORMAT_USER_DEF7:
-		*fmt_type = MIPI_FORMAT_CUSTOM6;
-		break;
-	case ATOMISP_INPUT_FORMAT_USER_DEF8:
-		*fmt_type = MIPI_FORMAT_CUSTOM7;
-		break;
-#endif
 
 	case ATOMISP_INPUT_FORMAT_YUV420_16:
 	case ATOMISP_INPUT_FORMAT_YUV422_16:
@@ -356,126 +327,7 @@ int ia_css_isys_convert_stream_format_to_mipi_format(
 	return 0;
 }
 
-#if defined(ISP2401)
-static mipi_predictor_t sh_css_csi2_compression_type_2_mipi_predictor(
-    enum ia_css_csi2_compression_type type)
-{
-	mipi_predictor_t predictor = MIPI_PREDICTOR_NONE;
 
-	switch (type) {
-	case IA_CSS_CSI2_COMPRESSION_TYPE_1:
-		predictor = MIPI_PREDICTOR_TYPE1 - 1;
-		break;
-	case IA_CSS_CSI2_COMPRESSION_TYPE_2:
-		predictor = MIPI_PREDICTOR_TYPE2 - 1;
-		break;
-	default:
-		break;
-	}
-	return predictor;
-}
-
-int ia_css_isys_convert_compressed_format(
-    struct ia_css_csi2_compression *comp,
-    struct isp2401_input_system_cfg_s *cfg)
-{
-	int err = 0;
-
-	assert(comp);
-	assert(cfg);
-
-	if (comp->type != IA_CSS_CSI2_COMPRESSION_TYPE_NONE) {
-		/* compression register bit slicing
-		4 bit for each user defined data type
-			3 bit indicate compression scheme
-				000 No compression
-				001 10-6-10
-				010 10-7-10
-				011 10-8-10
-				100 12-6-12
-				101 12-6-12
-				100 12-7-12
-				110 12-8-12
-			1 bit indicate predictor
-		*/
-		if (comp->uncompressed_bits_per_pixel == UNCOMPRESSED_BITS_PER_PIXEL_10) {
-			switch (comp->compressed_bits_per_pixel) {
-			case COMPRESSED_BITS_PER_PIXEL_6:
-				cfg->csi_port_attr.comp_scheme = MIPI_COMPRESSOR_10_6_10;
-				break;
-			case COMPRESSED_BITS_PER_PIXEL_7:
-				cfg->csi_port_attr.comp_scheme = MIPI_COMPRESSOR_10_7_10;
-				break;
-			case COMPRESSED_BITS_PER_PIXEL_8:
-				cfg->csi_port_attr.comp_scheme = MIPI_COMPRESSOR_10_8_10;
-				break;
-			default:
-				err = -EINVAL;
-			}
-		} else if (comp->uncompressed_bits_per_pixel ==
-			   UNCOMPRESSED_BITS_PER_PIXEL_12) {
-			switch (comp->compressed_bits_per_pixel) {
-			case COMPRESSED_BITS_PER_PIXEL_6:
-				cfg->csi_port_attr.comp_scheme = MIPI_COMPRESSOR_12_6_12;
-				break;
-			case COMPRESSED_BITS_PER_PIXEL_7:
-				cfg->csi_port_attr.comp_scheme = MIPI_COMPRESSOR_12_7_12;
-				break;
-			case COMPRESSED_BITS_PER_PIXEL_8:
-				cfg->csi_port_attr.comp_scheme = MIPI_COMPRESSOR_12_8_12;
-				break;
-			default:
-				err = -EINVAL;
-			}
-		} else
-			err = -EINVAL;
-		cfg->csi_port_attr.comp_predictor =
-		    sh_css_csi2_compression_type_2_mipi_predictor(comp->type);
-		cfg->csi_port_attr.comp_enable = true;
-	} else /* No compression */
-		cfg->csi_port_attr.comp_enable = false;
-	return err;
-}
-
-unsigned int ia_css_csi2_calculate_input_system_alignment(
-    enum atomisp_input_format fmt_type)
-{
-	unsigned int memory_alignment_in_bytes = HIVE_ISP_DDR_WORD_BYTES;
-
-	switch (fmt_type) {
-	case ATOMISP_INPUT_FORMAT_RAW_6:
-	case ATOMISP_INPUT_FORMAT_RAW_7:
-	case ATOMISP_INPUT_FORMAT_RAW_8:
-	case ATOMISP_INPUT_FORMAT_RAW_10:
-	case ATOMISP_INPUT_FORMAT_RAW_12:
-	case ATOMISP_INPUT_FORMAT_RAW_14:
-		memory_alignment_in_bytes = 2 * ISP_VEC_NELEMS;
-		break;
-	case ATOMISP_INPUT_FORMAT_YUV420_8:
-	case ATOMISP_INPUT_FORMAT_YUV422_8:
-	case ATOMISP_INPUT_FORMAT_USER_DEF1:
-	case ATOMISP_INPUT_FORMAT_USER_DEF2:
-	case ATOMISP_INPUT_FORMAT_USER_DEF3:
-	case ATOMISP_INPUT_FORMAT_USER_DEF4:
-	case ATOMISP_INPUT_FORMAT_USER_DEF5:
-	case ATOMISP_INPUT_FORMAT_USER_DEF6:
-	case ATOMISP_INPUT_FORMAT_USER_DEF7:
-	case ATOMISP_INPUT_FORMAT_USER_DEF8:
-		/* Planar YUV formats need to have all planes aligned, this means
-		 * double the alignment for the Y plane if the horizontal decimation is 2. */
-		memory_alignment_in_bytes = 2 * HIVE_ISP_DDR_WORD_BYTES;
-		break;
-	case ATOMISP_INPUT_FORMAT_EMBEDDED:
-	default:
-		memory_alignment_in_bytes = HIVE_ISP_DDR_WORD_BYTES;
-		break;
-	}
-	return memory_alignment_in_bytes;
-}
-
-#endif
-
-#if !defined(ISP2401)
 void ia_css_isys_rx_configure(const rx_cfg_t *config,
 			      const enum ia_css_input_mode input_mode)
 {
@@ -589,4 +441,3 @@ void ia_css_isys_rx_disable(void)
 	}
 	return;
 }
-#endif /* if !defined(ISP2401) */

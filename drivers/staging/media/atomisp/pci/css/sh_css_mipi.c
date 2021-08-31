@@ -107,13 +107,6 @@ ia_css_mipi_frame_calculate_size(const unsigned int width,
 	unsigned int mem_words = 0;
 	unsigned int width_padded = width;
 
-#if defined(ISP2401)
-	/* The changes will be reverted as soon as RAW
-	 * Buffers are deployed by the 2401 Input System
-	 * in the non-continuous use scenario.
-	 */
-	width_padded += (2 * ISP_VEC_NELEMS);
-#endif
 
 	IA_CSS_ENTER("padded_width=%d, height=%d, format=%d, hasSOLandEOL=%d, embedded_data_size_words=%d\n",
 		     width_padded, height, format, hasSOLandEOL, embedded_data_size_words);
@@ -233,7 +226,6 @@ ia_css_mipi_frame_calculate_size(const unsigned int width,
 	return err;
 }
 
-#if !defined(ISP2401)
 int
 ia_css_mipi_frame_enable_check_on_size(const enum mipi_port_id port,
 				       const unsigned int	size_mem_words) {
@@ -257,7 +249,6 @@ ia_css_mipi_frame_enable_check_on_size(const enum mipi_port_id port,
 
 	return err;
 }
-#endif
 
 void
 mipi_init(void)
@@ -272,105 +263,9 @@ int
 calculate_mipi_buff_size(
     struct ia_css_stream_config *stream_cfg,
     unsigned int *size_mem_words) {
-#if !defined(ISP2401)
 	int err = -EINVAL;
 	(void)stream_cfg;
 	(void)size_mem_words;
-#else
-	unsigned int width;
-	unsigned int height;
-	enum atomisp_input_format format;
-	bool pack_raw_pixels;
-
-	unsigned int width_padded;
-	unsigned int bits_per_pixel = 0;
-
-	unsigned int even_line_bytes = 0;
-	unsigned int odd_line_bytes = 0;
-
-	unsigned int words_per_odd_line = 0;
-	unsigned int words_per_even_line = 0;
-
-	unsigned int mem_words_per_even_line = 0;
-	unsigned int mem_words_per_odd_line = 0;
-
-	unsigned int mem_words_per_buff_line = 0;
-	unsigned int mem_words_per_buff = 0;
-	int err = 0;
-
-	/**
-	 * zhengjie.lu@intel.com
-	 *
-	 * NOTE
-	 * - In the struct "ia_css_stream_config", there
-	 *   are two members: "input_config" and "isys_config".
-	 *   Both of them provide the same information, e.g.
-	 *   input_res and format.
-	 *
-	 *   Question here is that: which one shall be used?
-	 */
-	width = stream_cfg->input_config.input_res.width;
-	height = stream_cfg->input_config.input_res.height;
-	format = stream_cfg->input_config.format;
-	pack_raw_pixels = stream_cfg->pack_raw_pixels;
-	/* end of NOTE */
-
-	/**
-	 * zhengjie.lu@intel.com
-	 *
-	 * NOTE
-	 * - The following code is derived from the
-	 *   existing code "ia_css_mipi_frame_calculate_size()".
-	 *
-	 *   Question here is: why adding "2 * ISP_VEC_NELEMS"
-	 *   to "width_padded", but not making "width_padded"
-	 *   aligned with "2 * ISP_VEC_NELEMS"?
-	 */
-	/* The changes will be reverted as soon as RAW
-	 * Buffers are deployed by the 2401 Input System
-	 * in the non-continuous use scenario.
-	 */
-	width_padded = width + (2 * ISP_VEC_NELEMS);
-	/* end of NOTE */
-
-	IA_CSS_ENTER("padded_width=%d, height=%d, format=%d\n",
-		     width_padded, height, format);
-
-	bits_per_pixel = sh_css_stream_format_2_bits_per_subpixel(format);
-	bits_per_pixel =
-	(format == ATOMISP_INPUT_FORMAT_RAW_10 && pack_raw_pixels) ? bits_per_pixel : 16;
-	if (bits_per_pixel == 0)
-		return -EINVAL;
-
-	odd_line_bytes = (width_padded * bits_per_pixel + 7) >> 3; /* ceil ( bits per line / 8) */
-
-	/* Even lines for YUV420 formats are double in bits_per_pixel. */
-	if (format == ATOMISP_INPUT_FORMAT_YUV420_8
-	    || format == ATOMISP_INPUT_FORMAT_YUV420_10)
-	{
-		even_line_bytes = (width_padded * 2 * bits_per_pixel + 7) >>
-			3; /* ceil ( bits per line / 8) */
-	} else
-	{
-		even_line_bytes = odd_line_bytes;
-	}
-
-	words_per_odd_line	 = (odd_line_bytes   + 3) >> 2;
-	/* ceil(odd_line_bytes/4); word = 4 bytes */
-	words_per_even_line  = (even_line_bytes  + 3) >> 2;
-
-	mem_words_per_odd_line	 = (words_per_odd_line + 7) >> 3;
-	/* ceil(words_per_odd_line/8); mem_word = 32 bytes, 8 words */
-	mem_words_per_even_line  = (words_per_even_line + 7) >> 3;
-
-	mem_words_per_buff_line =
-	(mem_words_per_odd_line > mem_words_per_even_line) ? mem_words_per_odd_line : mem_words_per_even_line;
-	mem_words_per_buff = mem_words_per_buff_line * height;
-
-	*size_mem_words = mem_words_per_buff;
-
-	IA_CSS_LEAVE_ERR(err);
-#endif
 	return err;
 }
 
@@ -410,16 +305,6 @@ allocate_mipi_frames(struct ia_css_pipe *pipe,
 		return -EINVAL;
 	}
 
-#ifdef ISP2401
-	if (pipe->stream->config.online)
-	{
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
-				    "allocate_mipi_frames(%p) exit: no buffers needed for 2401 pipe mode.\n",
-				    pipe);
-		return 0;
-	}
-
-#endif
 
 	if (!buffers_needed(pipe)) {
 		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
@@ -442,13 +327,7 @@ allocate_mipi_frames(struct ia_css_pipe *pipe,
 		return -EINVAL;
 	}
 
-#ifdef ISP2401
-	err = calculate_mipi_buff_size(
-	    &pipe->stream->config,
-	    &my_css.mipi_frame_size[port]);
-#endif
 
-#if !defined(ISP2401)
 	if (ref_count_mipi_allocation[port] != 0)
 	{
 		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
@@ -456,21 +335,6 @@ allocate_mipi_frames(struct ia_css_pipe *pipe,
 				    pipe, port);
 		return 0;
 	}
-#else
-	/* 2401 system allows multiple streams to use same physical port. This is not
-	 * true for 2400 system. Currently 2401 uses MIPI buffers as a temporary solution.
-	 * TODO AM: Once that is changed (removed) this code should be removed as well.
-	 * In that case only 2400 related code should remain.
-	 */
-	if (ref_count_mipi_allocation[port] != 0)
-	{
-		ref_count_mipi_allocation[port]++;
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
-				    "allocate_mipi_frames(%p) leave: nothing to do, already allocated for this port (port=%d).\n",
-				    pipe, port);
-		return 0;
-	}
-#endif
 
 	ref_count_mipi_allocation[port]++;
 
@@ -575,7 +439,6 @@ free_mipi_frames(struct ia_css_pipe *pipe) {
 		}
 
 		if (ref_count_mipi_allocation[port] > 0) {
-#if !defined(ISP2401)
 			assert(ref_count_mipi_allocation[port] == 1);
 			if (ref_count_mipi_allocation[port] != 1) {
 				ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
@@ -583,7 +446,6 @@ free_mipi_frames(struct ia_css_pipe *pipe) {
 						    pipe, ref_count_mipi_allocation[port]);
 				return err;
 			}
-#endif
 
 			ref_count_mipi_allocation[port]--;
 
@@ -607,18 +469,6 @@ free_mipi_frames(struct ia_css_pipe *pipe) {
 				ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
 						    "free_mipi_frames(%p) exit (deallocated).\n", pipe);
 			}
-#if defined(ISP2401)
-			else {
-				/* 2401 system allows multiple streams to use same physical port. This is not
-				 * true for 2400 system. Currently 2401 uses MIPI buffers as a temporary solution.
-				 * TODO AM: Once that is changed (removed) this code should be removed as well.
-				 * In that case only 2400 related code should remain.
-				 */
-				ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
-						    "free_mipi_frames(%p) leave: nothing to do, other streams still use this port (port=%d).\n",
-						    pipe, port);
-			}
-#endif
 		}
 	} else   /* pipe ==NULL */
 	{
@@ -648,11 +498,7 @@ int
 send_mipi_frames(struct ia_css_pipe *pipe) {
 	int err = -EINVAL;
 	unsigned int i;
-#ifndef ISP2401
 	unsigned int port;
-#else
-	unsigned int port = 0;
-#endif
 
 	IA_CSS_ENTER_PRIVATE("pipe=%p", pipe);
 

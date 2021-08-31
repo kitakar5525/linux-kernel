@@ -18,12 +18,7 @@
 #include "ia_css_isys.h"
 #include "platform_support.h"
 
-#ifdef ISP2401
-#include "isys_dma_public.h"	/* isys2401_dma_set_max_burst_size() */
-#include "isys_irq.h"
-#endif
 
-#if !defined(ISP2401)
 input_system_err_t ia_css_isys_init(void)
 {
 	backend_channel_cfg_t backend_ch0;
@@ -86,37 +81,8 @@ input_system_err_t ia_css_isys_init(void)
 
 	return error;
 }
-#elif defined(ISP2401)
-input_system_err_t ia_css_isys_init(void)
-{
-	ia_css_isys_csi_rx_lut_rmgr_init();
-	ia_css_isys_ibuf_rmgr_init();
-	ia_css_isys_dma_channel_rmgr_init();
-	ia_css_isys_stream2mmio_sid_rmgr_init();
 
-	isys2401_dma_set_max_burst_size(ISYS2401_DMA0_ID,
-					1 /* Non Burst DMA transactions */);
-
-	/* Enable 2401 input system IRQ status for driver to retrieve */
-	isys_irqc_status_enable(ISYS_IRQ0_ID);
-	isys_irqc_status_enable(ISYS_IRQ1_ID);
-	isys_irqc_status_enable(ISYS_IRQ2_ID);
-
-	return INPUT_SYSTEM_ERR_NO_ERROR;
-}
-#endif
-
-#if !defined(ISP2401)
 void ia_css_isys_uninit(void)
 {
 }
-#elif defined(ISP2401)
-void ia_css_isys_uninit(void)
-{
-	ia_css_isys_csi_rx_lut_rmgr_uninit();
-	ia_css_isys_ibuf_rmgr_uninit();
-	ia_css_isys_dma_channel_rmgr_uninit();
-	ia_css_isys_stream2mmio_sid_rmgr_uninit();
-}
-#endif
 

@@ -572,7 +572,6 @@ void ia_css_debug_dump_str2mem_sp_fifo_state(void)
 	debug_print_fifo_channel_state(&sp_to_s2m, "SP to stream-to-memory");
 }
 
-#ifndef ISP2401
 static void debug_print_if_state(input_formatter_state_t *state, const char *id)
 {
 	unsigned int val;
@@ -873,7 +872,6 @@ static void ia_css_debug_dump_if_state(void)
 	debug_print_if_bin_state(&if_bin_state);
 	ia_css_debug_dump_str2mem_sp_fifo_state();
 }
-#endif
 
 void ia_css_debug_dump_dma_state(void)
 {
@@ -1661,7 +1659,6 @@ void ia_css_debug_print_sp_debug_state(const struct sh_css_sp_debug_state
 }
 #endif
 
-#if !defined(ISP2401)
 static void debug_print_rx_mipi_port_state(mipi_port_state_t *state)
 {
 	int i;
@@ -1856,16 +1853,13 @@ static void debug_print_rx_state(receiver_state_t *state)
 
 	return;
 }
-#endif
 
 void ia_css_debug_dump_rx_state(void)
 {
-#if !defined(ISP2401)
 	receiver_state_t state;
 
 	receiver_get_state(RX0_ID, &state);
 	debug_print_rx_state(&state);
-#endif
 }
 
 void ia_css_debug_dump_sp_sw_debug_info(void)
@@ -1881,7 +1875,6 @@ void ia_css_debug_dump_sp_sw_debug_info(void)
 	return;
 }
 
-#if !defined(ISP2401)
 static void debug_print_isys_capture_unit_state(capture_unit_state_t *state)
 {
 	assert(state);
@@ -2118,7 +2111,6 @@ static void debug_print_isys_state(input_system_state_t *state)
 	}
 	/* end of control unit state */
 }
-#endif
 
 void ia_css_debug_dump_isys_state(void)
 {
@@ -2126,11 +2118,7 @@ void ia_css_debug_dump_isys_state(void)
 
 	input_system_get_state(INPUT_SYSTEM0_ID, &state);
 
-#ifndef ISP2401
 	debug_print_isys_state(&state);
-#else
-	input_system_dump_state(INPUT_SYSTEM0_ID, &state);
-#endif
 }
 
 void ia_css_debug_dump_debug_info(const char *context)
@@ -2142,9 +2130,7 @@ void ia_css_debug_dump_debug_info(const char *context)
 	if (!IS_ISP2401)
 		ia_css_debug_dump_rx_state();
 
-#ifndef ISP2401
 	ia_css_debug_dump_if_state();
-#endif
 	ia_css_debug_dump_isp_state();
 	ia_css_debug_dump_isp_sp_fifo_state();
 	ia_css_debug_dump_isp_gdc_fifo_state();

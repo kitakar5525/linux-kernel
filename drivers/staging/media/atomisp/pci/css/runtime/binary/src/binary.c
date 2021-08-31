@@ -1038,13 +1038,8 @@ binary_in_frame_padded_width(int in_frame_width,
 	int rval;
 	int nr_of_left_paddings;	/* number of paddings pixels on the left of an image line */
 
-#if defined(ISP2401)
-	/* the output image line of Input System 2401 does not have the left paddings  */
-	nr_of_left_paddings = 0;
-#else
 	/* in other cases, the left padding pixels are always 128 */
 	nr_of_left_paddings = 2 * ISP_VEC_NELEMS;
-#endif
 	if (need_scaling) {
 		/* In SDV use-case, we need to match left-padding of
 		 * primary and the video binary. */
@@ -1391,11 +1386,7 @@ static int __ia_css_binary_find(struct ia_css_binary_descr *descr,
 		*req_vf_info;
 
 	struct ia_css_binary_xinfo *xcandidate;
-#ifndef ISP2401
 	bool need_ds, need_dz, need_dvs, need_xnr, need_dpc;
-#else
-	bool need_ds, need_dz, need_dvs, need_xnr, need_dpc, need_tnr;
-#endif
 	bool striped;
 	bool enable_yuv_ds;
 	bool enable_high_speed;
@@ -1433,25 +1424,13 @@ static int __ia_css_binary_find(struct ia_css_binary_descr *descr,
 	}
 	if (!req_bin_out_info)
 		return -EINVAL;
-#ifndef ISP2401
 	req_vf_info = descr->vf_info;
-#else
-
-	if ((descr->vf_info) && (descr->vf_info->res.width == 0))
-		/* width==0 means that there is no vf pin (e.g. in SkyCam preview case) */
-		req_vf_info = NULL;
-	else
-		req_vf_info = descr->vf_info;
-#endif
 
 	need_xnr = descr->enable_xnr;
 	need_ds = descr->enable_fractional_ds;
 	need_dz = false;
 	need_dvs = false;
 	need_dpc = descr->enable_dpc;
-#ifdef ISP2401
-	need_tnr = descr->enable_tnr;
-#endif
 	enable_yuv_ds = descr->enable_yuv_ds;
 	enable_high_speed = descr->enable_high_speed;
 	enable_dvs_6axis  = descr->enable_dvs_6axis;
@@ -1753,16 +1732,6 @@ static int __ia_css_binary_find(struct ia_css_binary_descr *descr,
 			continue;
 		}
 
-#ifdef ISP2401
-		if (!candidate->enable.tnr && need_tnr) {
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-					    "ia_css_binary_find() [%d] continue: !%d && %d\n",
-					    __LINE__, candidate->enable.tnr,
-					    descr->enable_tnr);
-			continue;
-		}
-
-#endif
 		/* reconfigure any variable properties of the binary */
 		err = ia_css_binary_fill_info(xcandidate, online, two_ppc,
 					      stream_format, req_in_info,

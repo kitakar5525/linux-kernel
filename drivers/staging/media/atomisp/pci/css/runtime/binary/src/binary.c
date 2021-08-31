@@ -246,10 +246,10 @@ ia_css_binary_compute_shading_table_bayer_origin(
 
 /* Get the shading information of Shading Correction Type 1. */
 static int
-isp2400_binary_get_shading_info_type_1(const struct ia_css_binary *binary,	/* [in] */
-				       unsigned int required_bds_factor,			/* [in] */
-				       const struct ia_css_stream_config *stream_config,	/* [in] */
-				       struct ia_css_shading_info *info)			/* [out] */
+ia_css_binary_get_shading_info_type_1(const struct ia_css_binary *binary,	/* [in] */
+				      unsigned int required_bds_factor,			/* [in] */
+				      const struct ia_css_stream_config *stream_config,	/* [in] */
+				      struct ia_css_shading_info *info)			/* [out] */
 {
 	int err;
 	struct sh_css_shading_table_bayer_origin_compute_results res;
@@ -313,10 +313,10 @@ ia_css_binary_get_shading_info(const struct ia_css_binary *binary,			/* [in] */
 		return err;
 	}
 
-	err = isp2400_binary_get_shading_info_type_1(binary,
-						     required_bds_factor,
-						     stream_config,
-						     shading_info);
+	err = ia_css_binary_get_shading_info_type_1(binary,
+						    required_bds_factor,
+						    stream_config,
+						    shading_info);
 
 	IA_CSS_LEAVE_ERR_PRIVATE(err);
 	return err;

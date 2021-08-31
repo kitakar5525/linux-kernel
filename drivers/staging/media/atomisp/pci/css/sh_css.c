@@ -5166,7 +5166,6 @@ static int load_video_binaries(struct ia_css_pipe *pipe)
 		return err;
 
 	if (mycs->video_binary.info->sp.enable.block_output) {
-		unsigned int tnr_width;
 		unsigned int tnr_height;
 
 		tnr_info = mycs->video_binary.out_frame_info[0];

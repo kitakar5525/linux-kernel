@@ -86,7 +86,7 @@
 
 #define SH_CSS_ENABLE_METADATA
 
-#if defined(SH_CSS_ENABLE_METADATA) && !defined(ISP2401)
+#if defined(SH_CSS_ENABLE_METADATA)
 #define SH_CSS_ENABLE_METADATA_THREAD
 #endif
 

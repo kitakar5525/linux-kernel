@@ -684,9 +684,6 @@ static void start_pipe(
 
 	assert(me); /* all callers are in this file and call with non null argument */
 
-	coord = &me->config.internal_frame_origin_bqs_on_sctbl;
-	params = me->stream->isp_params_configs;
-
 	sh_css_sp_init_pipeline(&me->pipeline,
 				me->mode,
 				(uint8_t)ia_css_pipe_get_pipe_num(me),

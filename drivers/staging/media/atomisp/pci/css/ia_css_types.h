@@ -51,10 +51,6 @@
 #include "isp/kernels/wb/wb_1.0/ia_css_wb_types.h"
 #include "isp/kernels/xnr/xnr_1.0/ia_css_xnr_types.h"
 #include "isp/kernels/xnr/xnr_3.0/ia_css_xnr3_types.h"
-
-/* ISP2401 */
-#include "isp/kernels/tnr/tnr3/ia_css_tnr3_types.h"
-
 #include "isp/kernels/ynr/ynr_1.0/ia_css_ynr_types.h"
 #include "isp/kernels/ynr/ynr_2/ia_css_ynr2_types.h"
 #include "isp/kernels/output/output_1.0/ia_css_output_types.h"
@@ -285,21 +281,8 @@ struct ia_css_shading_info {
 		 *  ISP2: SC1 is used.
 		 */
 		struct {
-			/* ISP2400 */
 			u32 enable;	/** Shading correction enabled.
 						     0:disabled, 1:enabled */
-
-			/* ISP2401 */
-			u32 num_hor_grids;	/** Number of data points per line per color on shading table. */
-			u32 num_ver_grids;	/** Number of lines of data points per color on shading table. */
-			u32 bqs_per_grid_cell; /** Grid cell size in BQ unit.
-							 NOTE: bqs = size in BQ(Bayer Quad) unit.
-							       1BQ means {Gr,R,B,Gb} (2x2 pixels).
-							       Horizontal 1 bqs corresponds to horizontal 2 pixels.
-							       Vertical 1 bqs corresponds to vertical 2 pixels. */
-			u32 bayer_scale_hor_ratio_in;
-			u32 bayer_scale_hor_ratio_out;
-
 			/** Horizontal ratio of bayer scaling between input width and output width,
 			     for the scaling which should be done before shading correction.
 				output_width = input_width * bayer_scale_hor_ratio_out
@@ -312,44 +295,20 @@ struct ia_css_shading_info {
 			which should be done before shading correction.
 			  output_height = input_height * bayer_scale_ver_ratio_out
 						/ bayer_scale_ver_ratio_in */
-			/* ISP2400 */
+
 			u32 sc_bayer_origin_x_bqs_on_shading_table;
 			/** X coordinate (in bqs) of bayer origin on shading table.
 			This indicates the left-most pixel of bayer
 			(not include margin) inputted to the shading correction.
 			This corresponds to the left-most pixel of bayer
 			inputted to isp from sensor. */
-			/* ISP2400 */
+
 			u32 sc_bayer_origin_y_bqs_on_shading_table;
 			/** Y coordinate (in bqs) of bayer origin on shading table.
 			This indicates the top pixel of bayer
 			(not include margin) inputted to the shading correction.
 			This corresponds to the top pixel of bayer
 			inputted to isp from sensor. */
-
-			/** Vertical ratio of bayer scaling between input height and output height,
-			     for the scaling which should be done before shading correction.
-				output_height = input_height * bayer_scale_ver_ratio_out
-								/ bayer_scale_ver_ratio_in + 0.5 */
-			/* ISP2401 */
-			struct ia_css_resolution isp_input_sensor_data_res_bqs;
-			/** Sensor data size (in bqs) inputted to ISP. This is the size BEFORE bayer scaling.
-			     NOTE: This is NOT the size of the physical sensor size.
-				   CSS requests the driver that ISP inputs sensor data
-				   by the size of isp_input_sensor_data_res_bqs.
-				   The driver sends the sensor data to ISP,
-				   after the adequate cropping/binning/scaling
-				   are applied to the physical sensor data area.
-				   ISP assumes the area of isp_input_sensor_data_res_bqs
-				   is centered on the physical sensor. */
-			/* ISP2401 */
-			struct ia_css_resolution sensor_data_res_bqs;
-			/** Sensor data size (in bqs) at shading correction.
-			     This is the size AFTER bayer scaling. */
-			/* ISP2401 */
-			struct ia_css_coordinate sensor_data_origin_bqs_on_sctbl;
-			/** Origin of sensor data area positioned on shading table at shading correction.
-			     The coordinate x,y should be positive values. */
 		} type_1;
 
 		/** More structures can be added here when more shading correction types will be added

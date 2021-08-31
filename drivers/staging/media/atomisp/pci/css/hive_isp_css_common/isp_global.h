@@ -88,13 +88,4 @@
 #define ISP_VAMEM3_SINK_REG		0x08
 #define ISP_HMEM_SINK_REG		0x08
 
-/* ISP2401 */
-#define BAMEM VMEM
-#define XNR3_DOWN_BAMEM_BASE_ADDRESS    (0x16880)
-#define XNR3_UP_BAMEM_BASE_ADDRESS      (0x12880)
-#define bmem_ldrow(fu, pid, offset, data) bmem_ldrow_s(fu, pid, offset, data)
-#define bmem_strow(fu, pid, offset, data) bmem_strow_s(fu, pid, offset, data)
-#define bmem_ldblk(fu, pid, offset, data) bmem_ldblk_s(fu, pid, offset, data)
-#define bmem_stblk(fu, pid, offset, data) bmem_stblk_s(fu, pid, offset, data)
-
 #endif /* __ISP_GLOBAL_H_INCLUDED__ */

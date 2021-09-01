@@ -24,6 +24,10 @@
 /* force a value to a lower even value */
 #define EVEN_FLOOR(x)        ((x) & ~1)
 
+/* ISP2401 */
+/* If the number is odd, find the next even number */
+#define EVEN_CEIL(x)         ((IS_ODD(x)) ? ((x) + 1) : (x))
+
 /* A => B */
 #define IMPLIES(a, b)        (!(a) || (b))
 

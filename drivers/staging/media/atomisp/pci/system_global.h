@@ -64,7 +64,11 @@
 #define ISP2400_DMA_MAX_BURST_LENGTH	128
 #define ISP2401_DMA_MAX_BURST_LENGTH	2
 
+#ifdef ISP2401
+#  include "isp2401_system_global.h"
+#else
 #  include "isp2400_system_global.h"
+#endif
 
 #include <hive_isp_css_defs.h>
 #include <type_support.h>

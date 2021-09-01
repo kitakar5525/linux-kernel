@@ -1688,12 +1688,10 @@ ia_css_init(struct device *dev, const struct ia_css_env *env,
 
 	mipi_init();
 
-#ifndef ISP2401
 	/* In case this has been programmed already, update internal
 	   data structure ... DEPRECATED */
 	my_css.page_table_base_index = mmu_get_page_table_base_index(MMU0_ID);
 
-#endif
 	my_css.irq_type = irq_type;
 
 	my_css_save.irq_type = irq_type;
@@ -1728,9 +1726,7 @@ ia_css_init(struct device *dev, const struct ia_css_env *env,
 			return err;
 		}
 		fw_explicitly_loaded = false;
-#ifndef ISP2401
 		my_css_save.loaded_fw = (struct ia_css_fw *)fw;
-#endif
 	}
 	if (!sh_css_setup_spctrl_config(&sh_css_sp_fw, SP_PROG_NAME, &spctrl_cfg))
 		return -EINVAL;
@@ -2350,13 +2346,8 @@ ia_css_pipe_destroy(struct ia_css_pipe *pipe)
 						    err);
 			}
 		}
-#ifndef ISP2401
 		ia_css_frame_free_multiple(NUM_TNR_FRAMES,
 					   pipe->pipe_settings.video.tnr_frames);
-#else
-		ia_css_frame_free_multiple(NUM_TNR_FRAMES,
-					   pipe->pipe_settings.video.tnr_frames);
-#endif
 		ia_css_frame_free_multiple(MAX_NUM_VIDEO_DELAY_FRAMES,
 					   pipe->pipe_settings.video.delay_frames);
 		break;
@@ -3305,11 +3296,7 @@ ia_css_get_crop_offsets(
 			     pipe->config.input_effective_res.height);
 
 	input_res = &pipe->stream->config.input_config.input_res;
-#ifndef ISP2401
 	effective_res = &pipe->stream->config.input_config.effective_res;
-#else
-	effective_res = &pipe->config.input_effective_res;
-#endif
 
 	get_pipe_extra_pixel(pipe, &extra_row, &extra_col);
 
@@ -3739,13 +3726,8 @@ create_host_preview_pipeline(struct ia_css_pipe *pipe)
 		if (err)
 			goto ERR;
 		in_frame = me->stages->args.out_frame[0];
-#ifndef ISP2401
 	} else
 	{
-#else
-	} else if (pipe->stream->config.continuous)
-	{
-#endif
 #ifdef USE_INPUT_SYSTEM_VERSION_2401
 		/* When continuous is enabled, configure in_frame with the
 		 * last pipe, which is the copy pipe.
@@ -7791,11 +7773,7 @@ create_host_regular_capture_pipeline(struct ia_css_pipe *pipe)
 				local_in_frame = in_frame;
 			else
 				local_in_frame = NULL;
-#ifndef ISP2401
 			if (!need_pp && (i == num_primary_stage - 1))
-#else
-			if (!need_pp && (i == num_primary_stage - 1) && !need_ldc)
-#endif
 				local_out_frame = out_frame;
 			else
 				local_out_frame = NULL;
@@ -7883,7 +7861,6 @@ create_host_regular_capture_pipeline(struct ia_css_pipe *pipe)
 		}
 	}
 
-#ifndef ISP2401
 	if (need_pp && current_stage) {
 		struct ia_css_frame *local_in_frame = NULL;
 
@@ -7903,20 +7880,6 @@ create_host_regular_capture_pipeline(struct ia_css_pipe *pipe)
 		}
 		err = add_capture_pp_stage(pipe, me, local_in_frame,
 					   need_yuv_pp ? NULL : out_frame,
-#else
-	/* ldc and capture_pp not supported in same pipeline */
-	if (need_ldc && current_stage) {
-		in_frame = current_stage->args.out_frame[0];
-		ia_css_pipe_util_set_output_frames(out_frames, 0, out_frame);
-		ia_css_pipe_get_generic_stage_desc(&stage_desc, capture_ldc_binary,
-						   out_frames, in_frame, NULL);
-		err = ia_css_pipeline_create_and_add_stage(me, &stage_desc,
-							   NULL);
-	} else if (need_pp && current_stage) {
-		in_frame = current_stage->args.out_frame[0];
-		err = add_capture_pp_stage(pipe, me, in_frame,
-					   need_yuv_pp ? NULL : out_frame,
-#endif
 					   capture_pp_binary,
 					   &current_stage);
 		if (err) {
@@ -8454,20 +8417,7 @@ void ia_css_stream_request_flash(struct ia_css_stream *stream)
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
 			    "ia_css_stream_request_flash() enter: void\n");
 
-#ifndef ISP2401
 	sh_css_write_host2sp_command(host2sp_cmd_start_flash);
-#else
-	if (sh_css_sp_is_running()) {
-		if (!sh_css_write_host2sp_command(host2sp_cmd_start_flash)) {
-			IA_CSS_ERROR("Call to 'sh-css_write_host2sp_command()' failed");
-			ia_css_debug_dump_sp_sw_debug_info();
-			ia_css_debug_dump_debug_info(NULL);
-		}
-	} else {
-		IA_CSS_LOG("SP is not running!");
-	}
-
-#endif
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
 			    "ia_css_stream_request_flash() leave: return_void\n");
 }

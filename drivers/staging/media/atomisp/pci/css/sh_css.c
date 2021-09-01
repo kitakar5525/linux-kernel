@@ -957,11 +957,6 @@ static bool sh_css_translate_stream_cfg_to_isys_stream_descr(
 	isys_stream_descr->linked_isys_stream_id = (int8_t)
 		stream_cfg->isys_config[isys_stream_idx].linked_isys_stream_id;
 
-	if (IS_ISP2401) {
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
-				    "sh_css_translate_stream_cfg_to_isys_stream_descr() leave:\n");
-	}
-
 	return rc;
 }
 
@@ -9050,10 +9045,6 @@ ia_css_stream_destroy(struct ia_css_stream *stream)
 			}
 		}
 		free_mpi = stream->config.mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR;
-		if (IS_ISP2401) {
-			free_mpi |= stream->config.mode == IA_CSS_INPUT_MODE_TPG;
-			free_mpi |= stream->config.mode == IA_CSS_INPUT_MODE_PRBS;
-		}
 
 		if (free_mpi) {
 			for (i = 0; i < stream->num_pipes; i++) {

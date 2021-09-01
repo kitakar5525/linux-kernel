@@ -66,17 +66,6 @@ void input_formatter_get_switch_state(
     const input_formatter_ID_t		ID,
     input_formatter_switch_state_t	*state);
 
-/*! Read the control registers of INPUT_FORMATTER[ID]
-
- \param	ID[in]				INPUT_FORMATTER identifier
- \param	state[out]			input formatter state structure
-
- \return none, state = INPUT_FORMATTER[ID].state
- */
-void input_formatter_get_state(
-    const input_formatter_ID_t		ID,
-    input_formatter_state_t			*state);
-
 /*! Read the control registers of bin copy INPUT_FORMATTER[ID]
 
  \param	ID[in]				INPUT_FORMATTER identifier

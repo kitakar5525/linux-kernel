@@ -54,7 +54,7 @@
 #include "assert_support.h"
 #include "math_support.h"
 #include "sw_event_global.h"			/* Event IDs.*/
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_FORMATTER)
 #include "ia_css_ifmtr.h"
 #endif
 #include "input_system.h"
@@ -389,7 +389,7 @@ static int set_config_on_frame_enqueue(struct ia_css_frame_info
 	*info, struct frame_data_wrapper *frame);
 #endif
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 static unsigned int get_crop_lines_for_bayer_order(const struct
 	ia_css_stream_config *config);
 static unsigned int get_crop_columns_for_bayer_order(const struct
@@ -524,7 +524,7 @@ ia_css_stream_input_format_bits_per_pixel(struct ia_css_stream *stream)
 
 #define GP_ISEL_TPG_MODE 0x90058
 
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 static int
 sh_css_config_input_network(struct ia_css_stream *stream)
 {
@@ -582,7 +582,7 @@ sh_css_config_input_network(struct ia_css_stream *stream)
 			    "sh_css_config_input_network() leave:\n");
 	return 0;
 }
-#elif defined(ISP2401)
+#elif defined(USE_INPUT_SYSTEM_VERSION_2401)
 static unsigned int csi2_protocol_calculate_max_subpixels_per_line(
     enum atomisp_input_format	format,
     unsigned int			pixels_per_line)
@@ -878,7 +878,7 @@ static bool sh_css_translate_stream_cfg_to_input_system_input_port_attr(
 		    stream_cfg->source.port.num_lanes;
 		isys_stream_descr->csi_port_attr.fmt_type = fmt_type;
 		isys_stream_descr->csi_port_attr.ch_id = stream_cfg->channel_id;
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 		isys_stream_descr->online = stream_cfg->online;
 #endif
 		err |= ia_css_isys_convert_compressed_format(
@@ -903,7 +903,7 @@ static bool sh_css_translate_stream_cfg_to_input_system_input_port_attr(
 			    stream_cfg->metadata_config.resolution.width;
 			isys_stream_descr->metadata.lines_per_frame =
 			    stream_cfg->metadata_config.resolution.height;
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 			/* For new input system, number of str2mmio requests must be even.
 			 * So we round up number of metadata lines to be even. */
 			if (isys_stream_descr->metadata.lines_per_frame > 0)
@@ -1350,7 +1350,7 @@ start_binary(struct ia_css_pipe *pipe,
 		sh_binary_running = true;
 #endif
 
-#if !defined(ISP2401)
+#if !defined(USE_INPUT_SYSTEM_VERSION_2401)
 	if (pipe->stream->reconfigure_css_rx) {
 		ia_css_isys_rx_configure(&pipe->stream->csi_rx_config,
 					 pipe->stream->config.mode);
@@ -1369,7 +1369,7 @@ start_copy_on_sp(struct ia_css_pipe *pipe,
 	if ((!pipe) || (!pipe->stream))
 		return -EINVAL;
 
-#if !defined(ISP2401)
+#if !defined(USE_INPUT_SYSTEM_VERSION_2401)
 	if (pipe->stream->reconfigure_css_rx)
 		ia_css_isys_rx_disable();
 #endif
@@ -1378,7 +1378,7 @@ start_copy_on_sp(struct ia_css_pipe *pipe,
 		return -EINVAL;
 	sh_css_sp_start_binary_copy(ia_css_pipe_get_pipe_num(pipe), out_frame, pipe->stream->config.pixels_per_clock == 2);
 
-#if !defined(ISP2401)
+#if !defined(USE_INPUT_SYSTEM_VERSION_2401)
 	if (pipe->stream->reconfigure_css_rx) {
 		ia_css_isys_rx_configure(&pipe->stream->csi_rx_config,
 					 pipe->stream->config.mode);
@@ -1472,7 +1472,7 @@ sh_css_invalidate_shading_tables(struct ia_css_stream *stream)
 static void
 enable_interrupts(enum ia_css_irq_type irq_type)
 {
-#ifndef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2
 	enum mipi_port_id port;
 #endif
 	bool enable_pulse = irq_type != IA_CSS_IRQ_TYPE_EDGE;
@@ -1495,7 +1495,7 @@ enable_interrupts(enum ia_css_irq_type irq_type)
 	    (enum virq_id)(IRQ_SW_CHANNEL1_ID + IRQ_SW_CHANNEL_OFFSET),
 	    true);
 
-#ifndef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2
 	for (port = 0; port < N_MIPI_PORT_ID; port++)
 		ia_css_isys_rx_enable_all_interrupts(port);
 #endif
@@ -1760,7 +1760,7 @@ ia_css_init(struct device *dev, const struct ia_css_env *env,
 	sh_css_init_buffer_queues();
 	*/
 
-#if defined(ISP2401)
+#if defined(HAS_INPUT_SYSTEM_VERSION_2401)
 	gp_device_reg_store(GP_DEVICE0_ID, _REG_GP_SWITCH_ISYS2401_ADDR, 1);
 #endif
 
@@ -2006,14 +2006,14 @@ create_host_pipeline(struct ia_css_stream *stream)
 		}
 	}
 
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 	/* old isys: need to allocate_mipi_frames() even in IA_CSS_PIPE_MODE_COPY */
 	if (pipe_id != IA_CSS_PIPE_ID_ACC) {
 		err = allocate_mipi_frames(main_pipe, &stream->info);
 		if (err)
 			goto ERR;
 	}
-#elif defined(ISP2401)
+#elif defined(USE_INPUT_SYSTEM_VERSION_2401)
 	if ((pipe_id != IA_CSS_PIPE_ID_ACC) &&
 	    (main_pipe->config.mode != IA_CSS_PIPE_MODE_COPY)) {
 		err = allocate_mipi_frames(main_pipe, &stream->info);
@@ -2410,7 +2410,7 @@ ia_css_uninit(void)
 
 	ia_css_rmgr_uninit();
 
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_FORMATTER)
 	/* needed for reprogramming the inputformatter after power cycle of css */
 	ifmtr_set_if_blocking_mode_reset = true;
 #endif
@@ -2420,8 +2420,10 @@ ia_css_uninit(void)
 
 	ia_css_spctrl_unload_fw(SP0_ID);
 	sh_css_sp_set_sp_running(false);
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 	/* check and free any remaining mipi frames */
 	free_mipi_frames(NULL);
+#endif
 
 	sh_css_sp_reset_global_vars();
 
@@ -2470,7 +2472,7 @@ int ia_css_irq_translate(
 		case virq_isys_csi:
 			infos |= IA_CSS_IRQ_INFO_INPUT_SYSTEM_ERROR;
 			break;
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_FORMATTER)
 		case virq_ifmt0_id:
 			infos |= IA_CSS_IRQ_INFO_IF_ERROR;
 			break;
@@ -2509,7 +2511,7 @@ int ia_css_irq_enable(
 	IA_CSS_ENTER("info=%d, enable=%d", info, enable);
 
 	switch (info) {
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_FORMATTER)
 	case IA_CSS_IRQ_INFO_CSS_RECEIVER_SOF:
 		irq = virq_isys_sof;
 		break;
@@ -2643,7 +2645,7 @@ alloc_continuous_frames(struct ia_css_pipe *pipe, bool init_time)
 		return -EINVAL;
 	}
 
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 	/* For CSI2+, the continuous frame will hold the full input frame */
 	ref_info.res.width = pipe->stream->config.input_config.input_res.width;
 	ref_info.res.height = pipe->stream->config.input_config.input_res.height;
@@ -2731,7 +2733,7 @@ load_preview_binaries(struct ia_css_pipe *pipe)
 	int err = 0;
 	bool need_vf_pp = false;
 	bool need_isp_copy_binary = false;
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	bool sensor = false;
 #else
 	bool continuous;
@@ -2746,7 +2748,7 @@ load_preview_binaries(struct ia_css_pipe *pipe)
 	assert(pipe->mode == IA_CSS_PIPE_ID_PREVIEW);
 
 	online = pipe->stream->config.online;
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	sensor = pipe->stream->config.mode == IA_CSS_INPUT_MODE_SENSOR;
 #else
 	continuous = pipe->stream->config.continuous;
@@ -2867,7 +2869,7 @@ load_preview_binaries(struct ia_css_pipe *pipe)
 			return err;
 	}
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	/* When the input system is 2401, only the Direct Sensor Mode
 	 * Offline Preview uses the ISP copy binary.
 	 */
@@ -3204,7 +3206,7 @@ init_vf_frameinfo_defaults(struct ia_css_pipe *pipe,
 	return err;
 }
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 static unsigned int
 get_crop_lines_for_bayer_order(const struct ia_css_stream_config *config)
 {
@@ -3360,7 +3362,7 @@ init_in_frameinfo_memory_defaults(struct ia_css_pipe *pipe,
 
 	in_frame->info.format = format;
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	if (format == IA_CSS_FRAME_FORMAT_RAW)
 		in_frame->info.format = (pipe->stream->config.pack_raw_pixels) ?
 		IA_CSS_FRAME_FORMAT_RAW_PACKED : IA_CSS_FRAME_FORMAT_RAW;
@@ -3377,7 +3379,7 @@ init_in_frameinfo_memory_defaults(struct ia_css_pipe *pipe,
 	ia_css_query_internal_queue_id(IA_CSS_BUFFER_TYPE_INPUT_FRAME, thread_id, &queue_id);
 	in_frame->dynamic_queue_id = queue_id;
 	in_frame->buf_type = IA_CSS_BUFFER_TYPE_INPUT_FRAME;
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	ia_css_get_crop_offsets(pipe, &in_frame->info);
 #endif
 	err = ia_css_frame_init_planes(in_frame);
@@ -3448,7 +3450,7 @@ static int create_host_video_pipeline(struct ia_css_pipe *pipe)
 
 	me->dvs_frame_delay = pipe->dvs_frame_delay;
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	/* When the input system is 2401, always enable 'in_frameinfo_memory'
 	 * except for the following: online or continuous
 	 */
@@ -3504,7 +3506,7 @@ static int create_host_video_pipeline(struct ia_css_pipe *pipe)
 			goto ERR;
 		in_frame = me->stages->args.out_frame[0];
 	} else if (pipe->stream->config.continuous) {
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 		/* When continuous is enabled, configure in_frame with the
 		 * last pipe, which is the copy pipe.
 		 */
@@ -3671,7 +3673,7 @@ create_host_preview_pipeline(struct ia_css_pipe *pipe)
 	struct ia_css_frame *out_frame;
 	struct ia_css_frame *out_frames[IA_CSS_BINARY_MAX_OUTPUT_PORTS];
 	bool need_in_frameinfo_memory = false;
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	bool sensor = false;
 	bool buffered_sensor = false;
 	bool online = false;
@@ -3689,7 +3691,7 @@ create_host_preview_pipeline(struct ia_css_pipe *pipe)
 	me = &pipe->pipeline;
 	ia_css_pipeline_clean(me);
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	/* When the input system is 2401, always enable 'in_frameinfo_memory'
 	 * except for the following:
 	 * - Direct Sensor Mode Online Preview
@@ -3737,8 +3739,14 @@ create_host_preview_pipeline(struct ia_css_pipe *pipe)
 		if (err)
 			goto ERR;
 		in_frame = me->stages->args.out_frame[0];
-	} else if (pipe->stream->config.continuous) {
-#ifdef ISP2401
+#ifndef ISP2401
+	} else
+	{
+#else
+	} else if (pipe->stream->config.continuous)
+	{
+#endif
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 		/* When continuous is enabled, configure in_frame with the
 		 * last pipe, which is the copy pipe.
 		 */
@@ -3836,12 +3844,14 @@ preview_start(struct ia_css_pipe *pipe)
 
 	sh_css_metrics_start_frame();
 
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 	/* multi stream video needs mipi buffers */
 	err = send_mipi_frames(pipe);
 	if (err) {
 		IA_CSS_LEAVE_ERR_PRIVATE(err);
 		return err;
 	}
+#endif
 	send_raw_frames(pipe);
 
 	{
@@ -4288,7 +4298,7 @@ ia_css_pipe_dequeue_buffer(struct ia_css_pipe *pipe,
 			case IA_CSS_BUFFER_TYPE_OUTPUT_FRAME:
 			case IA_CSS_BUFFER_TYPE_SEC_OUTPUT_FRAME:
 				if (pipe && pipe->stop_requested) {
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 					/* free mipi frames only for old input system
 					 * for 2401 it is done in ia_css_stream_destroy call
 					 */
@@ -4320,7 +4330,7 @@ ia_css_pipe_dequeue_buffer(struct ia_css_pipe *pipe,
 					pipe->num_invalid_frames--;
 
 				if (frame->info.format == IA_CSS_FRAME_FORMAT_BINARY_8) {
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 					frame->planes.binary.size = frame->data_bytes;
 #else
 					frame->planes.binary.size =
@@ -5049,7 +5059,7 @@ RET:
 	return rval;
 }
 
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 unsigned int
 sh_css_get_mipi_sizes_for_check(const unsigned int port, const unsigned int idx)
 {
@@ -5424,7 +5434,7 @@ static int load_video_binaries(struct ia_css_pipe *pipe)
 			    pipe->num_invalid_frames, pipe->dvs_frame_delay);
 
 	/* pqiao TODO: temp hack for PO, should be removed after offline YUVPP is enabled */
-#if !defined(ISP2401)
+#if !defined(USE_INPUT_SYSTEM_VERSION_2401)
 	/* Copy */
 	if (!online && !continuous) {
 		/* TODO: what exactly needs doing, prepend the copy binary to
@@ -5574,9 +5584,11 @@ static int video_start(struct ia_css_pipe *pipe)
 
 	/* multi stream video needs mipi buffers */
 
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 	err = send_mipi_frames(pipe);
 	if (err)
 		return err;
+#endif
 
 	send_raw_frames(pipe);
 	{
@@ -5812,7 +5824,7 @@ static int load_primary_binaries(
 	bool need_pp = false;
 	bool need_isp_copy_binary = false;
 	bool need_ldc = false;
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	bool sensor = false;
 #else
 	bool memory, continuous;
@@ -5836,7 +5848,7 @@ static int load_primary_binaries(
 	       pipe->mode == IA_CSS_PIPE_ID_COPY);
 
 	online = pipe->stream->config.online;
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	sensor = (pipe->stream->config.mode == IA_CSS_INPUT_MODE_SENSOR);
 #else
 	memory = pipe->stream->config.mode == IA_CSS_INPUT_MODE_MEMORY;
@@ -6063,7 +6075,7 @@ static int load_primary_binaries(
 	if (err)
 		return err;
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	/* When the input system is 2401, only the Direct Sensor Mode
 	    * Offline Capture uses the ISP copy binary.
 	    */
@@ -6277,7 +6289,7 @@ static int load_advanced_binaries(struct ia_css_pipe *pipe)
 	}
 
 	/* Copy */
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	/* For CSI2+, only the direct sensor mode/online requires ISP copy */
 	need_isp_copy = pipe->stream->config.mode == IA_CSS_INPUT_MODE_SENSOR;
 #endif
@@ -6425,7 +6437,7 @@ static int load_low_light_binaries(struct ia_css_pipe *pipe)
 	}
 
 	/* Copy */
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	/* For CSI2+, only the direct sensor mode/online requires ISP copy */
 	need_isp_copy = pipe->stream->config.mode == IA_CSS_INPUT_MODE_SENSOR;
 #endif
@@ -6498,7 +6510,7 @@ static int load_capture_binaries(struct ia_css_pipe *pipe)
 	switch (pipe->config.default_capture_config.mode) {
 	case IA_CSS_CAPTURE_MODE_RAW:
 		err = load_copy_binaries(pipe);
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 		if (!err)
 			pipe->pipe_settings.capture.copy_binary.online = pipe->stream->config.online;
 #endif
@@ -7003,7 +7015,7 @@ load_yuvpp_binaries(struct ia_css_pipe *pipe)
 	else
 		next_binary = NULL;
 
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 	/*
 	    * NOTES
 	    * - Why does the "yuvpp" pipe needs "isp_copy_binary" (i.e. ISP Copy) when
@@ -7023,9 +7035,9 @@ load_yuvpp_binaries(struct ia_css_pipe *pipe)
 	    */
 	need_isp_copy_binary =
 	    (pipe->stream->config.input_config.format == ATOMISP_INPUT_FORMAT_YUV422_8);
-#else  /* !ISP2401 */
+#else  /* !USE_INPUT_SYSTEM_VERSION_2401 */
 	need_isp_copy_binary = true;
-#endif /*  ISP2401 */
+#endif /*  USE_INPUT_SYSTEM_VERSION_2401 */
 
 	if (need_isp_copy_binary) {
 		err = load_copy_binary(pipe,
@@ -7156,11 +7168,13 @@ static int yuvpp_start(struct ia_css_pipe *pipe)
 
 	/* multi stream video needs mipi buffers */
 
+#if (defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401))
 	err = send_mipi_frames(pipe);
 	if (err) {
 		IA_CSS_LEAVE_ERR_PRIVATE(err);
 		return err;
 	}
+#endif
 
 	{
 		unsigned int thread_id;
@@ -7274,7 +7288,7 @@ create_host_yuvpp_pipeline(struct ia_css_pipe *pipe)
 	struct ia_css_frame *vf_frame[IA_CSS_PIPE_MAX_OUTPUT_STAGE];
 	struct ia_css_pipeline_stage_desc stage_desc;
 	bool need_in_frameinfo_memory = false;
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	bool sensor = false;
 	bool buffered_sensor = false;
 	bool online = false;
@@ -7296,7 +7310,7 @@ create_host_yuvpp_pipeline(struct ia_css_pipe *pipe)
 	num_stage  = pipe->pipe_settings.yuvpp.num_yuv_scaler;
 	num_output_stage   = pipe->pipe_settings.yuvpp.num_output;
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	/* When the input system is 2401, always enable 'in_frameinfo_memory'
 	    * except for the following:
 	    * - Direct Sensor Mode Online Capture
@@ -7399,7 +7413,7 @@ create_host_yuvpp_pipeline(struct ia_css_pipe *pipe)
 	if (pipe->pipe_settings.yuvpp.copy_binary.info) {
 		struct ia_css_frame *in_frame_local = NULL;
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 		/* After isp copy is enabled in_frame needs to be passed. */
 		if (!online)
 			in_frame_local = in_frame;
@@ -7624,7 +7638,7 @@ create_host_regular_capture_pipeline(struct ia_css_pipe *pipe)
 	struct ia_css_frame *vf_frame;
 	struct ia_css_pipeline_stage_desc stage_desc;
 	bool need_in_frameinfo_memory = false;
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	bool sensor = false;
 	bool buffered_sensor = false;
 	bool online = false;
@@ -7647,7 +7661,7 @@ create_host_regular_capture_pipeline(struct ia_css_pipe *pipe)
 	ia_css_pipeline_clean(me);
 	ia_css_pipe_util_create_output_frames(out_frames);
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	/* When the input system is 2401, always enable 'in_frameinfo_memory'
 	    * except for the following:
 	    * - Direct Sensor Mode Online Capture
@@ -7727,7 +7741,7 @@ create_host_regular_capture_pipeline(struct ia_css_pipe *pipe)
 	if (pipe->pipe_settings.capture.copy_binary.info) {
 		if (raw) {
 			ia_css_pipe_util_set_output_frames(out_frames, 0, out_frame);
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 			if (!continuous) {
 				ia_css_pipe_get_generic_stage_desc(&stage_desc,
 								   copy_binary,
@@ -8008,14 +8022,14 @@ static int capture_start(struct ia_css_pipe *pipe)
 		}
 	}
 
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 	/* old isys: need to send_mipi_frames() in all pipe modes */
 	err = send_mipi_frames(pipe);
 	if (err) {
 		IA_CSS_LEAVE_ERR_PRIVATE(err);
 		return err;
 	}
-#elif defined(ISP2401)
+#elif defined(USE_INPUT_SYSTEM_VERSION_2401)
 	if (pipe->config.mode != IA_CSS_PIPE_MODE_COPY) {
 		err = send_mipi_frames(pipe);
 		if (err) {
@@ -8034,7 +8048,7 @@ static int capture_start(struct ia_css_pipe *pipe)
 	}
 	start_pipe(pipe, copy_ovrd, pipe->stream->config.mode);
 
-#if !defined(ISP2401)
+#if !defined(USE_INPUT_SYSTEM_VERSION_2401)
 	/*
 	    * old isys: for IA_CSS_PIPE_MODE_COPY pipe, isys rx has to be configured,
 	    * which is currently done in start_binary(); but COPY pipe contains no binary,
@@ -8472,7 +8486,9 @@ sh_css_init_host_sp_control_vars(void)
 	unsigned int o = offsetof(struct host_sp_communication, host2sp_command)
 			    / sizeof(int);
 
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 	unsigned int i;
+#endif
 
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
 			    "sh_css_init_host_sp_control_vars() enter: void\n");
@@ -8845,7 +8861,7 @@ ia_css_pipe_override_frame_format(struct ia_css_pipe *pipe,
 	return err;
 }
 
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 /* Configuration of INPUT_SYSTEM_VERSION_2401 is done on SP */
 static int
 ia_css_stream_configure_rx(struct ia_css_stream *stream)
@@ -9030,7 +9046,7 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 	int err = -EINVAL;
 	struct ia_css_metadata_info md_info;
 	struct ia_css_resolution effective_res;
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	bool aspect_ratio_crop_enabled = false;
 #endif
 
@@ -9046,7 +9062,7 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 		return err;
 	}
 
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 	/* We don't support metadata for JPEG stream, since they both use str2mem */
 	if (stream_config->input_config.format == ATOMISP_INPUT_FORMAT_BINARY_8 &&
 	    stream_config->metadata_config.resolution.height > 0) {
@@ -9056,7 +9072,7 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 	}
 #endif
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	if (stream_config->online && stream_config->pack_raw_pixels) {
 		IA_CSS_LOG("online and pack raw is invalid on input system 2401");
 		err = -EINVAL;
@@ -9069,7 +9085,7 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 
 	/* check if mipi size specified */
 	if (stream_config->mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR)
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 		if (!stream_config->online)
 #endif
 		{
@@ -9146,13 +9162,13 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 	/* take over stream config */
 	curr_stream->config = *stream_config;
 
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401) && defined(CSI2P_DISABLE_ISYS2401_ONLINE_MODE)
 	if (stream_config->mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR &&
 	    stream_config->online)
 		curr_stream->config.online = false;
 #endif
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	if (curr_stream->config.online) {
 		curr_stream->config.source.port.num_lanes =
 		    stream_config->source.port.num_lanes;
@@ -9174,12 +9190,12 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 	switch (curr_stream->config.mode) {
 	case IA_CSS_INPUT_MODE_SENSOR:
 	case IA_CSS_INPUT_MODE_BUFFERED_SENSOR:
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 		ia_css_stream_configure_rx(curr_stream);
 #endif
 		break;
 	case IA_CSS_INPUT_MODE_TPG:
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 		IA_CSS_LOG("tpg_configuration: x_mask=%d, y_mask=%d, x_delta=%d, y_delta=%d, xy_mask=%d",
 			   curr_stream->config.source.tpg.x_mask,
 			   curr_stream->config.source.tpg.y_mask,
@@ -9196,7 +9212,7 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 #endif
 		break;
 	case IA_CSS_INPUT_MODE_PRBS:
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 		IA_CSS_LOG("mode prbs");
 		sh_css_sp_configure_prbs(curr_stream->config.source.prbs.seed);
 #endif
@@ -9209,7 +9225,7 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 		IA_CSS_LOG("mode sensor/default");
 	}
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 	err = aspect_ratio_crop_init(curr_stream, pipes,
 				     &aspect_ratio_crop_enabled);
 	if (err) {
@@ -9229,7 +9245,7 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 		if (effective_res.height == 0 || effective_res.width == 0) {
 			effective_res = curr_pipe->stream->config.input_config.effective_res;
 
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 			/* The aspect ratio cropping is currently only
 			    * supported on the new input system. */
 			if (aspect_ratio_crop_check(aspect_ratio_crop_enabled, curr_pipe)) {
@@ -9493,7 +9509,7 @@ ia_css_stream_destroy(struct ia_css_stream *stream)
 
 	if ((stream->last_pipe) &&
 	    ia_css_pipeline_is_mapped(stream->last_pipe->pipe_num)) {
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 		bool free_mpi;
 
 		for (i = 0; i < stream->num_pipes; i++) {
@@ -9682,13 +9698,13 @@ ia_css_stream_start(struct ia_css_stream *stream)
 		return err;
 	}
 
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 	if ((stream->config.mode == IA_CSS_INPUT_MODE_SENSOR) ||
 	    (stream->config.mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR))
 		stream_register_with_csi_rx(stream);
 #endif
 
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 	/* Initialize mipi size checks */
 	if (stream->config.mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR) {
 		unsigned int idx;
@@ -9723,7 +9739,7 @@ ia_css_stream_stop(struct ia_css_stream *stream)
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "ia_css_stream_stop: stopping %d\n",
 			    stream->last_pipe->mode);
 
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 	/* De-initialize mipi size checks */
 	if (stream->config.mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR) {
 		unsigned int idx;
@@ -10202,7 +10218,7 @@ void ia_css_pipe_map_queue(struct ia_css_pipe *pipe, bool map)
 
 	ia_css_pipeline_get_sp_thread_id(pipe_num, &thread_id);
 
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 	need_input_queue = true;
 #else
 	need_input_queue = pipe->stream->config.mode == IA_CSS_INPUT_MODE_MEMORY;
@@ -10524,7 +10540,7 @@ ia_css_pipe_update_qos_ext_mapped_arg(struct ia_css_pipe *pipe,
 	return err;
 }
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 static int
 aspect_ratio_crop_init(struct ia_css_stream *curr_stream,
 		       struct ia_css_pipe *pipes[],

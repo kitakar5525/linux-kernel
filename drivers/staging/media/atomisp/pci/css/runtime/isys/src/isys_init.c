@@ -18,12 +18,12 @@
 #include "ia_css_isys.h"
 #include "platform_support.h"
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 #include "isys_dma_public.h"	/* isys2401_dma_set_max_burst_size() */
 #include "isys_irq.h"
 #endif
 
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 input_system_err_t ia_css_isys_init(void)
 {
 	backend_channel_cfg_t backend_ch0;
@@ -86,7 +86,7 @@ input_system_err_t ia_css_isys_init(void)
 
 	return error;
 }
-#elif defined(ISP2401)
+#elif defined(USE_INPUT_SYSTEM_VERSION_2401)
 input_system_err_t ia_css_isys_init(void)
 {
 	ia_css_isys_csi_rx_lut_rmgr_init();
@@ -106,11 +106,11 @@ input_system_err_t ia_css_isys_init(void)
 }
 #endif
 
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 void ia_css_isys_uninit(void)
 {
 }
-#elif defined(ISP2401)
+#elif defined(USE_INPUT_SYSTEM_VERSION_2401)
 void ia_css_isys_uninit(void)
 {
 	ia_css_isys_csi_rx_lut_rmgr_uninit();

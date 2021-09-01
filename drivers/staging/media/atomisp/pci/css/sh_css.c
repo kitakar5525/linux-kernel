@@ -1879,6 +1879,88 @@ ia_css_init(const struct ia_css_env *env,
 	sh_css_params_map_and_store_default_gdc_lut();
 #endif
 
+#ifdef HAS_ISP_2400_MAMOIADA
+	pr_info("%s(): HAS_ISP_2400_MAMOIADA defined\n", __func__);
+#else
+	pr_info("%s(): HAS_ISP_2400_MAMOIADA not defined\n", __func__);
+#endif
+#ifdef HAS_SP_2400
+	pr_info("%s(): HAS_SP_2400 defined\n", __func__);
+#else
+	pr_info("%s(): HAS_SP_2400 not defined\n", __func__);
+#endif
+#ifdef IS_ISP_2400_MAMOIADA
+	pr_info("%s(): IS_ISP_2400_MAMOIADA defined\n", __func__);
+#else
+	pr_info("%s(): IS_ISP_2400_MAMOIADA not defined\n", __func__);
+#endif
+#ifdef IS_ISP_2400_MAMOIADA_SYSTEM
+	pr_info("%s(): IS_ISP_2400_MAMOIADA_SYSTEM defined\n", __func__);
+#else
+	pr_info("%s(): IS_ISP_2400_MAMOIADA_SYSTEM not defined\n", __func__);
+#endif
+#ifdef IS_ISP_2400_SYSTEM
+	pr_info("%s(): IS_ISP_2400_SYSTEM defined\n", __func__);
+#else
+	pr_info("%s(): IS_ISP_2400_SYSTEM not defined\n", __func__);
+#endif
+#ifdef IS_SP_2400
+	pr_info("%s(): IS_SP_2400 defined\n", __func__);
+#else
+	pr_info("%s(): IS_SP_2400 not defined\n", __func__);
+#endif
+#ifdef USE_INPUT_SYSTEM_VERSION_2
+	pr_info("%s(): USE_INPUT_SYSTEM_VERSION_2 defined\n", __func__);
+#else
+	pr_info("%s(): USE_INPUT_SYSTEM_VERSION_2 not defined\n", __func__);
+#endif
+
+#ifdef CSI2P_DISABLE_ISYS2401_ONLINE_MODE
+	pr_info("%s(): CSI2P_DISABLE_ISYS2401_ONLINE_MODE defined\n", __func__);
+#else
+	pr_info("%s(): CSI2P_DISABLE_ISYS2401_ONLINE_MODE not defined\n", __func__);
+#endif
+#ifdef HAS_INPUT_SYSTEM_VERSION_2401
+	pr_info("%s(): HAS_INPUT_SYSTEM_VERSION_2401 defined\n", __func__);
+#else
+	pr_info("%s(): HAS_INPUT_SYSTEM_VERSION_2401 not defined\n", __func__);
+#endif
+#ifdef HAS_ISP_2401_MAMOIADA
+	pr_info("%s(): HAS_ISP_2401_MAMOIADA defined\n", __func__);
+#else
+	pr_info("%s(): HAS_ISP_2401_MAMOIADA not defined\n", __func__);
+#endif
+#ifdef IS_INPUT_SYSTEM_VERSION_VERSION_2401
+	pr_info("%s(): IS_INPUT_SYSTEM_VERSION_VERSION_2401 defined\n", __func__);
+#else
+	pr_info("%s(): IS_INPUT_SYSTEM_VERSION_VERSION_2401 not defined\n", __func__);
+#endif
+#ifdef IS_ISP_2401_MAMOIADA
+	pr_info("%s(): IS_ISP_2401_MAMOIADA defined\n", __func__);
+#else
+	pr_info("%s(): IS_ISP_2401_MAMOIADA not defined\n", __func__);
+#endif
+#ifdef IS_ISP_2401_MAMOIADA_SYSTEM
+	pr_info("%s(): IS_ISP_2401_MAMOIADA_SYSTEM defined\n", __func__);
+#else
+	pr_info("%s(): IS_ISP_2401_MAMOIADA_SYSTEM not defined\n", __func__);
+#endif
+#ifdef IS_SP_2401
+	pr_info("%s(): IS_SP_2401 defined\n", __func__);
+#else
+	pr_info("%s(): IS_SP_2401 not defined\n", __func__);
+#endif
+#ifdef STORAGE_CLASS_ISYS2401_DMA_C
+	pr_info("%s(): STORAGE_CLASS_ISYS2401_DMA_C defined\n", __func__);
+#else
+	pr_info("%s(): STORAGE_CLASS_ISYS2401_DMA_C not defined\n", __func__);
+#endif
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
+	pr_info("%s(): USE_INPUT_SYSTEM_VERSION_2401 defined\n", __func__);
+#else
+	pr_info("%s(): USE_INPUT_SYSTEM_VERSION_2401 not defined\n", __func__);
+#endif
+
 	IA_CSS_LEAVE_ERR(err);
 	return err;
 }

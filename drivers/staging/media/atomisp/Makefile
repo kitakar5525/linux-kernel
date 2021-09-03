@@ -24,6 +24,12 @@ atomisp-objs += \
 	pci/atomisp2/atomisp_subdev.o \
 	pci/atomisp2/atomisp_tpg.o \
 	pci/atomisp2/atomisp_v4l2.o \
+	pci/atomisp2/hmm/hmm_bo.o \
+	pci/atomisp2/hmm/hmm_dynamic_pool.o \
+	pci/atomisp2/hmm/hmm.o \
+	pci/atomisp2/hmm/hmm_reserved_pool.o \
+	pci/atomisp2/mmu/isp_mmu.o \
+	pci/atomisp2/mmu/sh_mmu_mrfld.o \
 	pci/atomisp2/css2400/sh_css_firmware.o \
 	pci/atomisp2/css2400/sh_css_host_data.o \
 	pci/atomisp2/css2400/sh_css_hrt.o \
@@ -48,10 +54,6 @@ atomisp-objs += \
 	pci/atomisp2/css2400/camera/pipe/src/pipe_stagedesc.o \
 	pci/atomisp2/css2400/camera/pipe/src/pipe_util.o \
 	pci/atomisp2/css2400/camera/util/src/util.o \
-	pci/atomisp2/hmm/hmm_bo.o \
-	pci/atomisp2/hmm/hmm_dynamic_pool.o \
-	pci/atomisp2/hmm/hmm.o \
-	pci/atomisp2/hmm/hmm_reserved_pool.o \
 	pci/atomisp2/css2400/ia_css_device_access.o \
 	pci/atomisp2/css2400/isp/kernels/aa/aa_2/ia_css_aa2.host.o \
 	pci/atomisp2/css2400/isp/kernels/anr/anr_1.0/ia_css_anr.host.o \
@@ -113,8 +115,6 @@ atomisp-objs += \
 	pci/atomisp2/css2400/isp/kernels/xnr/xnr_3.0/ia_css_xnr3.host.o \
 	pci/atomisp2/css2400/isp/kernels/ynr/ynr_1.0/ia_css_ynr.host.o \
 	pci/atomisp2/css2400/isp/kernels/ynr/ynr_2/ia_css_ynr2.host.o \
-	pci/atomisp2/mmu/isp_mmu.o \
-	pci/atomisp2/mmu/sh_mmu_mrfld.o \
 	pci/atomisp2/css2400/runtime/binary/src/binary.o \
 	pci/atomisp2/css2400/runtime/bufq/src/bufq.o \
 	pci/atomisp2/css2400/runtime/debug/src/ia_css_debug.o \

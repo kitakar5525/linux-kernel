@@ -36,6 +36,7 @@ int ia_css_ref_config(struct sh_css_isp_ref_isp_config *to,
 		to->width_a_over_b = elems_a / to->port_b.elems;
 		to->dvs_frame_delay = from->dvs_frame_delay;
 	} else {
+		pr_alert("%s(): !ref_frames[0]\n", __func__);
 		to->width_a_over_b = 1;
 		to->dvs_frame_delay = 0;
 		to->port_b.elems = elems_a;

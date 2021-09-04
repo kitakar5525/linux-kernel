@@ -321,17 +321,22 @@ static struct gmin_cfg_var i8880_vars[] = {
 	{},
 };
 
-/* These are guessed values because Surface 3 doesn't describe these
- * values in DSDT or EFI. */
+/*
+ * Surface 3 does not describe CsiPort/CsiLanes in DSDT or EFI.
+ */
 static struct gmin_cfg_var surface3_vars[] = {
+	{"APTA0330:00_CamClk", "0"},
+	{"APTA0330:00_ClkSrc", "0"},
 	{"APTA0330:00_CsiPort", "0"},
-	{"APTA0330:00_CsiLanes", "1"},
+	{"APTA0330:00_CsiLanes", "2"},
 
-	/* when port=0 and lanes=4 for ov8835, atomisp fails to init saying:
-	 * atomisp_csi_lane_config: could not find the CSI port setting for 0-4-0
-	 * atomisp_register_entities failed (-22) */
+	{"OVTI8835:00_CamClk", "1"},
+	{"OVTI8835:00_ClkSrc", "0"},
 	{"OVTI8835:00_CsiPort", "1"},
 	{"OVTI8835:00_CsiLanes", "4"},
+
+	{"gmin_V1P8GPIO", "-1"},
+	{"gmin_V2P8GPIO", "-1"},
 	{},
 };
 

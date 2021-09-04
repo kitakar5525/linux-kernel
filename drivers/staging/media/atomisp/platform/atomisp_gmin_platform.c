@@ -722,13 +722,12 @@ static int gmin_subdev_add(struct gmin_subdev *gs)
 	 * otherwise.
 	 */
 
-	/* Try first to use ACPI to get the clock resource */
-	if (acpi_device_power_manageable(adev))
-		clock_num = atomisp_get_acpi_power(dev);
+	/* Try first to use EFI and/or DMI match to get the clock resource */
+	clock_num = gmin_get_var_int(dev, false, "CamClk", 0);
 
-	/* Fall-back use EFI and/or DMI match */
-	if (clock_num < 0)
-		clock_num = gmin_get_var_int(dev, false, "CamClk", 0);
+	/* Fall-back to use ACPI */
+	if (clock_num < 0 && acpi_device_power_manageable(adev))
+		clock_num = atomisp_get_acpi_power(dev);
 
 	if (clock_num < 0 || clock_num > MAX_CLK_COUNT) {
 		dev_err(dev, "Invalid clock number\n");

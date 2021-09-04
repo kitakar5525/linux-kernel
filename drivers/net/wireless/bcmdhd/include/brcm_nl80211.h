@@ -28,17 +28,9 @@
 #ifndef _brcm_nl80211_h_
 #define _brcm_nl80211_h_
 
-#define OUI_BRCM  0x001018
-
-enum wl_vendor_subcmd {
-	BRCM_VENDOR_SCMD_UNSPEC,
-	BRCM_VENDOR_SCMD_PRIV_STR,
-	BRCM_VENDOR_SCMD_BCM_STR
-};
-
 struct bcm_nlmsg_hdr {
 	uint cmd;	/* common ioctl definition */
-	uint len;	/* expected return buffer length */
+	uint len;	/* attached buffer length */
 	uint offset;	/* user buffer offset */
 	uint set;	/* get or set request optional */
 	uint magic;	/* magic number for verification */

@@ -732,7 +732,7 @@ int soc_new_compress(struct snd_soc_pcm_runtime *rtd, int num)
 	rtd->compr = compr;
 	compr->private_data = rtd;
 
-	dev_dbg(rtd->card->dev, "compress asoc: %s <-> %s mapping ok\n", codec_dai->name,
+	printk(KERN_INFO "compress asoc: %s <-> %s mapping ok\n", codec_dai->name,
 		cpu_dai->name);
 	return ret;
 

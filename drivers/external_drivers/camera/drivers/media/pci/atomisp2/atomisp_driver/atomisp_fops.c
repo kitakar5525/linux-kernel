@@ -4,7 +4,6 @@
  * Copyright (c) 2010 Intel Corporation. All Rights Reserved.
  *
  * Copyright (c) 2010 Silicon Hive www.siliconhive.com.
- * Copyright (C) 2016 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -469,7 +468,7 @@ int atomisp_qbuffers_to_css(struct atomisp_sub_device *asd)
 	}
 
 #ifdef ISP2401_NEW_INPUT_SYSTEM
-	if (asd->copy_mode) {
+	if (asd->isp->inputs[asd->input_curr].type == SOC_CAMERA || raw_mode) {
 		css_capture_pipe_id = CSS_PIPE_ID_COPY;
 		css_preview_pipe_id = CSS_PIPE_ID_COPY;
 		css_video_pipe_id = CSS_PIPE_ID_COPY;

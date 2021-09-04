@@ -4658,8 +4658,7 @@ static int __enable_continuous_mode(struct atomisp_sub_device *asd,
 		"continuous mode %d, raw buffers %d, stop preview %d\n",
 		enable, asd->continuous_raw_buffer_size->val,
 		!asd->continuous_viewfinder->val);
-	printk("change to update mode for new xnr config\r\n");
-	atomisp_update_capture_mode(asd);
+	atomisp_css_capture_set_mode(asd, CSS_CAPTURE_MODE_PRIMARY);
 	/* in case of ANR, force capture pipe to offline mode */
 	atomisp_css_capture_enable_online(asd, ATOMISP_INPUT_STREAM_GENERAL,
 			asd->params.low_light ? false : !enable);
@@ -5861,7 +5860,7 @@ int atomisp_s_ae_window(struct atomisp_sub_device *asd,
 			struct atomisp_ae_window *arg)
 {
 	struct atomisp_device *isp = asd->isp;
-	struct v4l2_subdev_selection sel = { 0 };
+	struct v4l2_subdev_selection sel;
 
 	sel.r.left = arg->x_left;
 	sel.r.top = arg->y_top;

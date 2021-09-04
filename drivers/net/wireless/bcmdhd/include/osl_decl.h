@@ -1,9 +1,8 @@
 /*
  * osl forward declarations
  *
- * Copyright (C) 1999-2015, Broadcom Corporation
- * Copyright (C) 2016 XiaoMi, Inc.
- *
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -31,5 +30,5 @@
 /* osl handle type forward declaration */
 typedef struct osl_info osl_t;
 typedef struct osl_dmainfo osldma_t;
-extern unsigned int lmtest; /* low memory test */
+
 #endif

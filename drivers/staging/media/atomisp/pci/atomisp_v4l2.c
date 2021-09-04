@@ -986,9 +986,11 @@ int atomisp_csi_lane_config(struct atomisp_device *isp)
 
 	if (i >= nportconfigs) {
 		dev_err(isp->dev,
-			"%s: could not find the CSI port setting for %d-%d-%d\n",
+			"%s: could not find the CSI port setting for num_lanes %d(port%d)-%d(port%d)-%d(port%d)\n",
 			__func__,
-			sensor_lanes[0], sensor_lanes[1], sensor_lanes[2]);
+			sensor_lanes[0], ATOMISP_CAMERA_PORT_PRIMARY,
+			sensor_lanes[1], ATOMISP_CAMERA_PORT_SECONDARY,
+			sensor_lanes[2], ATOMISP_CAMERA_PORT_TERTIARY);
 		return -EINVAL;
 	}
 

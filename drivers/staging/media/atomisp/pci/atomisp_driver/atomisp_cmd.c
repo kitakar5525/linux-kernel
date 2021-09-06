@@ -2060,10 +2060,12 @@ int atomisp_set_sensor_runmode(struct atomisp_sub_device *asd,
 
 	mutex_unlock(asd->ctrl_handler.lock);
 
-	dev_warn(isp->dev,
-		 "%s(): Your sensor driver for %s does not support v4l2 ctrl V4L2_CID_RUN_MODE\n",
-		 __func__,
-		 dev_name(isp->inputs[asd->input_curr].camera->dev));
+	if (isp->inputs[asd->input_curr].camera->dev)
+		dev_warn(isp->dev,
+			"%s(): Your sensor driver for %s does not support v4l2 ctrl V4L2_CID_RUN_MODE\n",
+			__func__,
+			dev_name(isp->inputs[asd->input_curr].camera->dev));
+
 	return ret;
 }
 

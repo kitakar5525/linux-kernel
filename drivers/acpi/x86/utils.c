@@ -128,9 +128,11 @@ bool acpi_device_always_present(struct acpi_device *adev)
 		if (acpi_match_device_ids(adev, always_present_ids[i].hid))
 			continue;
 
-		if (!adev->pnp.unique_id ||
-		    strcmp(adev->pnp.unique_id, always_present_ids[i].uid))
-			continue;
+		/* Ignore this check for devices that has no _UID defined. */
+		if (*always_present_ids[i].uid)
+			if ((!adev->pnp.unique_id ||
+			    strcmp(adev->pnp.unique_id, always_present_ids[i].uid)))
+				continue;
 
 		if (!x86_match_cpu(always_present_ids[i].cpu_ids))
 			continue;

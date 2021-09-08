@@ -142,6 +142,8 @@ bool acpi_device_always_present(struct acpi_device *adev)
 			continue;
 
 		ret = true;
+		pr_alert("%s(): always_present: %s\n",
+			 __func__, adev->pnp.bus_id);
 		break;
 	}
 

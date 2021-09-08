@@ -107,6 +107,16 @@ static const struct always_present_id always_present_ids[] = {
 		DMI_MATCH(DMI_PRODUCT_NAME, "Default string"),
 		DMI_MATCH(DMI_BIOS_DATE, "05/25/2017")
 	      }),
+
+	/*
+	 * Xiaomi Mi Pad 2 Battery device.
+	 * Note that _UID is not defined in DSDT.
+	 */
+	ENTRY("TXN27520", "", X86_MATCH(ATOM_AIRMONT), {
+		DMI_MATCH(DMI_BOARD_VENDOR, "Xiaomi Inc"),
+		DMI_MATCH(DMI_BOARD_NAME, "Mipad"),
+		DMI_MATCH(DMI_PRODUCT_NAME, "Mipad2"),
+	      }),
 };
 
 bool acpi_device_always_present(struct acpi_device *adev)

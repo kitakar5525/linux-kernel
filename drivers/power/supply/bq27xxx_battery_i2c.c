@@ -231,6 +231,7 @@ static const struct i2c_device_id bq27xxx_i2c_id_table[] = {
 	{ "bq27520g2", BQ27520G2 },
 	{ "bq27520g3", BQ27520G3 },
 	{ "bq27520g4", BQ27520G4 },
+	{ "TXN27520:00", BQ27520G4 },
 	{ "bq27521", BQ27521 },
 	{ "bq27530", BQ27530 },
 	{ "bq27531", BQ27531 },
@@ -291,10 +292,19 @@ static const struct of_device_id bq27xxx_battery_i2c_of_match_table[] = {
 MODULE_DEVICE_TABLE(of, bq27xxx_battery_i2c_of_match_table);
 #endif
 
+#ifdef CONFIG_ACPI
+static struct acpi_device_id bq27xxx_battery_i2c_acpi_match_table[] = {
+	{ "TXN27520", BQ27520G4 },
+	{},
+};
+MODULE_DEVICE_TABLE(acpi, bq27xxx_battery_i2c_acpi_match_table);
+#endif
+
 static struct i2c_driver bq27xxx_battery_i2c_driver = {
 	.driver = {
 		.name = "bq27xxx-battery",
 		.of_match_table = of_match_ptr(bq27xxx_battery_i2c_of_match_table),
+		.acpi_match_table = ACPI_PTR(bq27xxx_battery_i2c_acpi_match_table),
 	},
 	.probe = bq27xxx_battery_i2c_probe,
 	.remove = bq27xxx_battery_i2c_remove,

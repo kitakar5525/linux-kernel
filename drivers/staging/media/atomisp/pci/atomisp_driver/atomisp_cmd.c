@@ -1488,7 +1488,6 @@ void atomisp_wdt_work(struct work_struct *work)
 						  wdt_work);
 	int i;
 	unsigned int pipe_wdt_cnt[MAX_STREAM_NUM][4] = { {0} };
-	bool css_recover = true;
 
 	rt_mutex_lock(&isp->mutex);
 	if (!atomisp_streaming_count(isp)) {
@@ -1507,139 +1506,28 @@ void atomisp_wdt_work(struct work_struct *work)
 			atomic_read(&asd->video_out_preview.wdt_count);
 		pipe_wdt_cnt[i][3] +=
 			atomic_read(&asd->video_out_video_capture.wdt_count);
-		css_recover =
-			(pipe_wdt_cnt[i][0] <= ATOMISP_ISP_MAX_TIMEOUT_COUNT &&
-			pipe_wdt_cnt[i][1] <= ATOMISP_ISP_MAX_TIMEOUT_COUNT &&
-			pipe_wdt_cnt[i][2] <= ATOMISP_ISP_MAX_TIMEOUT_COUNT &&
-			pipe_wdt_cnt[i][3] <= ATOMISP_ISP_MAX_TIMEOUT_COUNT)
-			? true : false;
-		dev_err(isp->dev, "pipe on asd%d timeout cnt: (%d, %d, %d, %d) of %d, recover = %d\n",
+		dev_err(isp->dev, "pipe on asd%d timeout cnt: (%d, %d, %d, %d) of %d\n",
 			asd->index, pipe_wdt_cnt[i][0], pipe_wdt_cnt[i][1],
 			pipe_wdt_cnt[i][2], pipe_wdt_cnt[i][3],
-			ATOMISP_ISP_MAX_TIMEOUT_COUNT, css_recover);
+			ATOMISP_ISP_MAX_TIMEOUT_COUNT);
 	}
 
-	if (css_recover) {
-		unsigned int old_dbglevel = dbg_level;
-		atomisp_css_debug_dump_sp_sw_debug_info();
-		atomisp_css_debug_dump_debug_info(__func__);
-		dbg_level = old_dbglevel;
-		for (i = 0; i < isp->num_of_streams; i++) {
-			struct atomisp_sub_device *asd = &isp->asd[i];
-
-			if (asd->streaming != ATOMISP_DEVICE_STREAMING_ENABLED)
-				continue;
-			dev_err(isp->dev, "%s, vdev %s buffers in css: %d\n",
-				__func__,
-				asd->video_out_capture.vdev.name,
-				asd->video_out_capture.
-				buffers_in_css);
-			dev_err(isp->dev,
-				"%s, vdev %s buffers in css: %d\n",
-				__func__,
-				asd->video_out_vf.vdev.name,
-				asd->video_out_vf.
-				buffers_in_css);
-			dev_err(isp->dev,
-				"%s, vdev %s buffers in css: %d\n",
-				__func__,
-				asd->video_out_preview.vdev.name,
-				asd->video_out_preview.
-				buffers_in_css);
-			dev_err(isp->dev,
-				"%s, vdev %s buffers in css: %d\n",
-				__func__,
-				asd->video_out_video_capture.vdev.name,
-				asd->video_out_video_capture.
-				buffers_in_css);
-			dev_err(isp->dev,
-				"%s, s3a buffers in css preview pipe:%d\n",
-				__func__,
-				asd->s3a_bufs_in_css[CSS_PIPE_ID_PREVIEW]);
-			dev_err(isp->dev,
-				"%s, s3a buffers in css capture pipe:%d\n",
-				__func__,
-				asd->s3a_bufs_in_css[CSS_PIPE_ID_CAPTURE]);
-			dev_err(isp->dev,
-				"%s, s3a buffers in css video pipe:%d\n",
-				__func__,
-				asd->s3a_bufs_in_css[CSS_PIPE_ID_VIDEO]);
-			dev_err(isp->dev,
-				"%s, dis buffers in css: %d\n",
-				__func__, asd->dis_bufs_in_css);
-			dev_err(isp->dev,
-				"%s, metadata buffers in css preview pipe:%d\n",
-				__func__,
-				asd->metadata_bufs_in_css
-				[ATOMISP_INPUT_STREAM_GENERAL]
-				[CSS_PIPE_ID_PREVIEW]);
-			dev_err(isp->dev,
-				"%s, metadata buffers in css capture pipe:%d\n",
-				__func__,
-				asd->metadata_bufs_in_css
-				[ATOMISP_INPUT_STREAM_GENERAL]
-				[CSS_PIPE_ID_CAPTURE]);
-			dev_err(isp->dev,
-				"%s, metadata buffers in css video pipe:%d\n",
-				__func__,
-				asd->metadata_bufs_in_css
-				[ATOMISP_INPUT_STREAM_GENERAL]
-				[CSS_PIPE_ID_VIDEO]);
-			if (asd->enable_raw_buffer_lock->val) {
-				unsigned int j;
-
-				dev_err(isp->dev, "%s, raw_buffer_locked_count %d\n",
-					__func__, asd->raw_buffer_locked_count);
-				for (j = 0; j <= ATOMISP_MAX_EXP_ID/32; j++)
-					dev_err(isp->dev, "%s, raw_buffer_bitmap[%d]: 0x%x\n",
-						__func__, j,
-						asd->raw_buffer_bitmap[j]);
-			}
-		}
-
-		/*sh_css_dump_sp_state();*/
-		/*sh_css_dump_isp_state();*/
-	} else {
-		for (i = 0; i < isp->num_of_streams; i++) {
-			struct atomisp_sub_device *asd = &isp->asd[i];
-			if (asd->streaming ==
-			    ATOMISP_DEVICE_STREAMING_ENABLED) {
-				atomisp_clear_css_buffer_counters(asd);
-				atomisp_flush_bufs_and_wakeup(asd);
-				complete(&asd->init_done);
-			}
-			atomisp_wdt_stop(asd, false);
-		}
-
-		isp->isp_fatal_error = true;
-		atomic_set(&isp->wdt_work_queued, 0);
-
-		rt_mutex_unlock(&isp->mutex);
-		return;
-	}
-
-#ifndef CONFIG_INTEL_MID_ISP
-	/* Push CrashEvent log for recovery cases tracking */
-	if (dbg_level > 5)
-		kct_log(CT_EV_CRASH, "ATOMISP2", "TIMEOUT", 0, "", "", "", "", "", "", "/logs/aplog");
-#endif
-
-	__atomisp_css_recover(isp, true);
 	for (i = 0; i < isp->num_of_streams; i++) {
 		struct atomisp_sub_device *asd = &isp->asd[i];
 		if (asd->streaming ==
-			ATOMISP_DEVICE_STREAMING_ENABLED) {
-			atomisp_wdt_refresh(asd,
-				isp->sw_contex.file_input ?
-				ATOMISP_ISP_FILE_TIMEOUT_DURATION :
-				ATOMISP_ISP_TIMEOUT_DURATION);
+		    ATOMISP_DEVICE_STREAMING_ENABLED) {
+			atomisp_clear_css_buffer_counters(asd);
+			atomisp_flush_bufs_and_wakeup(asd);
+			complete(&asd->init_done);
 		}
+		atomisp_wdt_stop(asd, false);
 	}
-	atomisp_set_stop_timeout(ATOMISP_CSS_STOP_TIMEOUT_US);
-	dev_err(isp->dev, "timeout recovery handling done\n");
+
+	isp->isp_fatal_error = true;
 	atomic_set(&isp->wdt_work_queued, 0);
 
 	rt_mutex_unlock(&isp->mutex);
+	return;
 }
 
 void atomisp_css_flush(struct atomisp_device *isp)

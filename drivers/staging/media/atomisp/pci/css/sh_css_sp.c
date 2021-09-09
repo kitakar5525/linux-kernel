@@ -1041,18 +1041,16 @@ sh_css_sp_init_stage(struct ia_css_binary *binary,
 		return err;
 
 #ifdef USE_INPUT_SYSTEM_VERSION_2401
-	if (stage == 0) {
-		if (args->in_frame) {
-			pipe = find_pipe_by_num(sh_css_sp_group.pipe[thread_id].pipe_num);
-			if (pipe == NULL)
-				return IA_CSS_ERR_INTERNAL_ERROR;
-			ia_css_get_crop_offsets(pipe, &args->in_frame->info);
-		} else if (&binary->in_frame_info) {
-			pipe = find_pipe_by_num(sh_css_sp_group.pipe[thread_id].pipe_num);
-			if (pipe == NULL)
-				return IA_CSS_ERR_INTERNAL_ERROR;
-			ia_css_get_crop_offsets(pipe, &binary->in_frame_info);
-		}
+	if (args->in_frame) {
+		pipe = find_pipe_by_num(sh_css_sp_group.pipe[thread_id].pipe_num);
+		if (pipe == NULL)
+			return IA_CSS_ERR_INTERNAL_ERROR;
+		ia_css_get_crop_offsets(pipe, &args->in_frame->info);
+	} else if (&binary->in_frame_info) {
+		pipe = find_pipe_by_num(sh_css_sp_group.pipe[thread_id].pipe_num);
+		if (pipe == NULL)
+			return IA_CSS_ERR_INTERNAL_ERROR;
+		ia_css_get_crop_offsets(pipe, &binary->in_frame_info);
 	}
 #else
 	(void)pipe; /*avoid build warning*/

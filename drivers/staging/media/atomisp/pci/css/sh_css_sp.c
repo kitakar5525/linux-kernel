@@ -836,8 +836,6 @@ configure_isp_from_args(
 	ia_css_output1_configure(binary, &args->out_vf_frame->info);
 	ia_css_copy_output_configure(binary, args->copy_output);
 	ia_css_output0_configure(binary, &args->out_frame[0]->info);
-	ia_css_sc_configure(binary, pipe->shading.internal_frame_origin_x_bqs_on_sctbl,
-				    pipe->shading.internal_frame_origin_y_bqs_on_sctbl);
 #else
 	/* Currently this is a 2500 only kernel */
 	ia_css_input_yuv_configure(pipe, binary, &args->in_frame->info);

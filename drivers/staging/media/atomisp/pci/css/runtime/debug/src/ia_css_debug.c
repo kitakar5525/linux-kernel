@@ -3213,8 +3213,6 @@ ia_css_debug_dump_pipe_config(
 	ia_css_debug_dump_resolution(&config->capt_pp_in_res,
 			"capt_pp_in_res");
 	ia_css_debug_dump_resolution(&config->vf_pp_in_res, "vf_pp_in_res");
-	ia_css_debug_dump_resolution(&config->output_system_in_res,
-				     "output_system_in_res");
 	ia_css_debug_dump_resolution(&config->dvs_crop_out_res,
 			"dvs_crop_out_res");
 	for (i = 0; i < IA_CSS_PIPE_MAX_OUTPUT_STAGE; i++) {

@@ -79,11 +79,6 @@ struct ia_css_pipe_config {
 	/**< capture post processing input resolution */
 	struct ia_css_resolution vf_pp_in_res;
 	/**< view finder post processing input resolution */
-	struct ia_css_resolution output_system_in_res;
-	/**< For IPU3 only: use output_system_in_res to specify what input resolution
-	     will OSYS receive, this resolution is equal to the output resolution of GDC
-	     if not determined CSS will set output_system_in_res with main osys output pin resolution
-	     All other IPUs may ignore this property */
 	struct ia_css_resolution dvs_crop_out_res;
 	/**< dvs crop, video only, not in use yet. Use dvs_envelope below. */
 	struct ia_css_frame_info output_info[IA_CSS_PIPE_MAX_OUTPUT_STAGE];
@@ -116,9 +111,6 @@ struct ia_css_pipe_config {
 	/**< Enabling BCI mode will cause yuv_scale binary to be picked up
 	     instead of vf_pp. This only applies to viewfinder post
 	     processing stages. */
-	bool enable_tnr;
-	/**< Enabling of TNR (temporal noise reduction). This is only applicable to video
-	     pipes. Non video-pipes should always set this parameter to false. */
 	struct ia_css_isp_config *p_isp_config;
 	/**< Pointer to ISP configuration */
 	struct ia_css_resolution gdc_in_buffer_res;
@@ -138,7 +130,6 @@ struct ia_css_pipe_config {
 	{ 0, 0 },				/* bayer_ds_out_res */ \
 	{ 0, 0 },				/* vf_pp_in_res */ \
 	{ 0, 0 },				/* capt_pp_in_res */ \
-	{ 0, 0 },				/* output_system_in_res */ \
 	{ 0, 0 },				/* dvs_crop_out_res */ \
 	{IA_CSS_BINARY_DEFAULT_FRAME_INFO},	/* output_info */ \
 	{IA_CSS_BINARY_DEFAULT_FRAME_INFO},	/* vf_output_info */ \
@@ -152,7 +143,6 @@ struct ia_css_pipe_config {
 	false,					/* enable_dz */ \
 	false,					/* enable_dpc */ \
 	false,					/* enable_vfpp_bci */ \
-	false,					/* enable_tnr */ \
 	NULL,					/* p_isp_config */\
 	{ 0, 0 },				/* gdc_in_buffer_res */ \
 	{ 0, 0 }				/* gdc_in_buffer_offset */ \

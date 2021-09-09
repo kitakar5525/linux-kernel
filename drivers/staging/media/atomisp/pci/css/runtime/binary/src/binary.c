@@ -490,10 +490,6 @@ ia_css_binary_get_shading_info_type_1(const struct ia_css_binary *binary,	/* [in
 	shading_info->info.type_1.sensor_data_origin_bqs_on_sctbl.x = (int32_t)sensor_org_x_bqs_on_tbl;
 	shading_info->info.type_1.sensor_data_origin_bqs_on_sctbl.y = (int32_t)sensor_org_y_bqs_on_tbl;
 
-	/* The shading information related to ISP (but, not necessary as API) is stored in the pipe_config. */
-	pipe_config->internal_frame_origin_bqs_on_sctbl.x = (int32_t)internal_org_x_bqs_on_tbl;
-	pipe_config->internal_frame_origin_bqs_on_sctbl.y = (int32_t)internal_org_y_bqs_on_tbl;
-
 	IA_CSS_LOG("shading_info: grids=%dx%d, cell=%d, scale=%d,%d,%d,%d, input=%dx%d, data=%dx%d, origin=(%d,%d)",
 		shading_info->info.type_1.num_hor_grids,
 		shading_info->info.type_1.num_ver_grids,
@@ -508,10 +504,6 @@ ia_css_binary_get_shading_info_type_1(const struct ia_css_binary *binary,	/* [in
 		shading_info->info.type_1.sensor_data_res_bqs.height,
 		shading_info->info.type_1.sensor_data_origin_bqs_on_sctbl.x,
 		shading_info->info.type_1.sensor_data_origin_bqs_on_sctbl.y);
-
-	IA_CSS_LOG("pipe_config: origin=(%d,%d)",
-		pipe_config->internal_frame_origin_bqs_on_sctbl.x,
-		pipe_config->internal_frame_origin_bqs_on_sctbl.y);
 
 	IA_CSS_LEAVE_ERR_PRIVATE(err);
 	return err;

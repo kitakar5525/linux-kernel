@@ -125,22 +125,7 @@ struct ia_css_pipe_config {
 	/**< GDC in buffer resolution. */
 	struct ia_css_point gdc_in_buffer_offset;
 	/**< GDC in buffer offset - indicates the pixel coordinates of the first valid pixel inside the buffer */
-	struct ia_css_coordinate internal_frame_origin_bqs_on_sctbl;
-	/**< Origin of internal frame positioned on shading table at shading correction in ISP.
-	     NOTE: Shading table is larger than or equal to internal frame.
-		   Shading table has shading gains and internal frame has bayer data.
-		   The origin of internal frame is used in shading correction in ISP
-		   to retrieve shading gains which correspond to bayer data. */
 };
-
-/**
- * Default origin of internal frame positioned on shading table.
- */
-#define IA_CSS_PIPE_DEFAULT_INTERNAL_FRAME_ORIGIN_BQS_ON_SCTBL \
-{ \
-	0,					/* x [bqs] */ \
-	0					/* y [bqs] */ \
-}
 
 /**
  * Default settings for newly created pipe configurations.
@@ -170,8 +155,7 @@ struct ia_css_pipe_config {
 	false,					/* enable_tnr */ \
 	NULL,					/* p_isp_config */\
 	{ 0, 0 },				/* gdc_in_buffer_res */ \
-	{ 0, 0 },				/* gdc_in_buffer_offset */ \
-	IA_CSS_PIPE_DEFAULT_INTERNAL_FRAME_ORIGIN_BQS_ON_SCTBL	/* internal_frame_origin_bqs_on_sctbl */ \
+	{ 0, 0 }				/* gdc_in_buffer_offset */ \
 }
 
 /** Pipe info, this struct describes properties of a pipe after it's stream has

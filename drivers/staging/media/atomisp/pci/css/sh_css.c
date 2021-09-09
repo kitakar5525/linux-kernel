@@ -1490,10 +1490,9 @@ static void start_pipe(
 #if !defined(HAS_NO_INPUT_SYSTEM)
 				(input_mode == IA_CSS_INPUT_MODE_MEMORY) ?
 					(mipi_port_ID_t)0 :
-					me->stream->config.source.port.port,
+					me->stream->config.source.port.port
 #endif
-				&me->config.internal_frame_origin_bqs_on_sctbl,
-				me->stream->isp_params_configs);
+				);
 
 	if (me->config.mode != IA_CSS_PIPE_MODE_COPY) {
 		struct ia_css_pipeline_stage *stage;
@@ -4284,10 +4283,9 @@ preview_start(struct ia_css_pipe *pipe)
 			&pipe->stream->config.metadata_config,
 			&pipe->stream->info.metadata_info,
 #if !defined(HAS_NO_INPUT_SYSTEM)
-			pipe->stream->config.source.port.port,
+			pipe->stream->config.source.port.port
 #endif
-			&pipe->config.internal_frame_origin_bqs_on_sctbl,
-			pipe->stream->isp_params_configs);
+			);
 
 		/* make the preview pipe start with mem mode input, copy handles
 		   the actual mode */
@@ -4309,10 +4307,9 @@ preview_start(struct ia_css_pipe *pipe)
 			&pipe->stream->config.metadata_config,
 			&pipe->stream->info.metadata_info,
 #if !defined(HAS_NO_INPUT_SYSTEM)
-			(mipi_port_ID_t)0,
+			(mipi_port_ID_t)0
 #endif
-			&capture_pipe->config.internal_frame_origin_bqs_on_sctbl,
-			capture_pipe->stream->isp_params_configs);
+			);
 	}
 
 	if (acc_pipe) {
@@ -4329,10 +4326,9 @@ preview_start(struct ia_css_pipe *pipe)
 			NULL,
 			NULL,
 #if !defined(HAS_NO_INPUT_SYSTEM)
-			(mipi_port_ID_t) 0,
+			(mipi_port_ID_t) 0
 #endif
-			&pipe->config.internal_frame_origin_bqs_on_sctbl,
-			pipe->stream->isp_params_configs);
+			);
 	}
 
 	start_pipe(pipe, copy_ovrd, preview_pipe_input_mode);
@@ -6027,10 +6023,9 @@ static enum ia_css_err video_start(struct ia_css_pipe *pipe)
 			&pipe->stream->config.metadata_config,
 			&pipe->stream->info.metadata_info,
 #if !defined(HAS_NO_INPUT_SYSTEM)
-			pipe->stream->config.source.port.port,
+			pipe->stream->config.source.port.port
 #endif
-			&copy_pipe->config.internal_frame_origin_bqs_on_sctbl,
-			copy_pipe->stream->isp_params_configs);
+			);
 
 		/* make the video pipe start with mem mode input, copy handles
 		   the actual mode */
@@ -6052,10 +6047,9 @@ static enum ia_css_err video_start(struct ia_css_pipe *pipe)
 			&pipe->stream->config.metadata_config,
 			&pipe->stream->info.metadata_info,
 #if !defined(HAS_NO_INPUT_SYSTEM)
-			(mipi_port_ID_t)0,
+			(mipi_port_ID_t)0
 #endif
-			&capture_pipe->config.internal_frame_origin_bqs_on_sctbl,
-			capture_pipe->stream->isp_params_configs);
+			);
 	}
 
 	start_pipe(pipe, copy_ovrd, video_pipe_input_mode);

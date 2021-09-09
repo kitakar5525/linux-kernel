@@ -1221,11 +1221,9 @@ sh_css_sp_init_pipeline(struct ia_css_pipeline *me,
 			const struct ia_css_metadata_config *md_config,
 			const struct ia_css_metadata_info *md_info,
 #if !defined(HAS_NO_INPUT_SYSTEM)
-			const mipi_port_ID_t port_id,
+			const mipi_port_ID_t port_id
 #endif
-			const struct ia_css_coordinate *internal_frame_origin_bqs_on_sctbl, /* Origin of internal frame
-							positioned on shading table at shading correction in ISP. */
-			const struct ia_css_isp_parameters *params)
+			)
 {
 	/* Get first stage */
 	struct ia_css_pipeline_stage *stage        = NULL;
@@ -1342,20 +1340,6 @@ sh_css_sp_init_pipeline(struct ia_css_pipeline *me,
 		ia_css_query_internal_queue_id(IA_CSS_BUFFER_TYPE_OUTPUT_FRAME, thread_id, (enum sh_css_queue_id *)(&sh_css_sp_group.pipe[thread_id].output_frame_queue_id));
 	}
 #endif
-
-	/* For the shading correction type 1 (the legacy shading table conversion in css is not used),
-	 * the parameters are passed to the isp for the shading table centering.
-	 */
-	if (internal_frame_origin_bqs_on_sctbl != NULL &&
-			params != NULL && params->shading_settings.enable_shading_table_conversion == 0) {
-		sh_css_sp_group.pipe[thread_id].shading.internal_frame_origin_x_bqs_on_sctbl
-								= (uint32_t)internal_frame_origin_bqs_on_sctbl->x;
-		sh_css_sp_group.pipe[thread_id].shading.internal_frame_origin_y_bqs_on_sctbl
-								= (uint32_t)internal_frame_origin_bqs_on_sctbl->y;
-	} else {
-		sh_css_sp_group.pipe[thread_id].shading.internal_frame_origin_x_bqs_on_sctbl = 0;
-		sh_css_sp_group.pipe[thread_id].shading.internal_frame_origin_y_bqs_on_sctbl = 0;
-	}
 
 	IA_CSS_LOG("pipe_id %d port_config %08x",
 		   pipe_id, sh_css_sp_group.pipe[thread_id].inout_port_config);

@@ -140,9 +140,9 @@ void ia_css_pipeline_start(enum ia_css_pipe_id pipe_id,
 				SH_CSS_PIPE_CONFIG_OVRD_NO_OVRD,
 				IA_CSS_INPUT_MODE_MEMORY, NULL, NULL,
 #if !defined(HAS_NO_INPUT_SYSTEM)
-				(mipi_port_ID_t) 0,
+				(mipi_port_ID_t) 0
 #endif
-				NULL, NULL);
+				);
 	ia_css_pipeline_get_sp_thread_id(pipe_num, &thread_id);
 	if (!sh_css_sp_is_running()) {
 		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,

@@ -64,11 +64,9 @@ sh_css_sp_init_pipeline(struct ia_css_pipeline *me,
 			const struct ia_css_metadata_config *md_config,
 			const struct ia_css_metadata_info *md_info,
 #if !defined(HAS_NO_INPUT_SYSTEM)
-			const mipi_port_ID_t port_id,
+			const mipi_port_ID_t port_id
 #endif
-			const struct ia_css_coordinate *internal_frame_origin_bqs_on_sctbl, /* Origin of internal frame
-							positioned on shading table at shading correction in ISP. */
-			const struct ia_css_isp_parameters *params);
+			);
 
 void
 sh_css_sp_uninit_pipeline(unsigned int pipe_num);

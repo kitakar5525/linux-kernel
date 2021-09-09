@@ -242,7 +242,7 @@ RGB[0,8191],coef[-8192,8191] -> RGB[0,8191]
 #define NUM_TNR_REF_BUF_SETS	(1)
 #endif
 
-#define NUM_TNR_FRAMES		(NUM_TNR_FRAMES_PER_REF_BUF_SET * NUM_TNR_REF_BUF_SETS)
+#define NUM_TNR_FRAMES		2
 
 
 /* Rules: these implement logic shared between the host code and ISP firmware.

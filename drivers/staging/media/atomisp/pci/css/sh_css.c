@@ -6587,7 +6587,6 @@ allocate_delay_frames(struct ia_css_pipe *pipe)
 			 */
 			ref_info.format        = IA_CSS_FRAME_FORMAT_NV12;
 #endif
-			delay_frames = mycs_preview->delay_frames;
 		}
 		break;
 		default:

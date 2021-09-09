@@ -1598,16 +1598,6 @@ sh_css_params_set_binning_factor(struct ia_css_stream *stream, unsigned int binn
 
 #if !defined(IS_ISP_2500_SYSTEM)
 static void
-sh_css_update_shading_table_status(struct ia_css_pipe *pipe,
-			struct ia_css_isp_parameters *params)
-{
-	if (params && pipe && (pipe->pipe_num != params->sc_table_last_pipe_num)) {
-		params->sc_table_dirty = true;
-		params->sc_table_last_pipe_num = pipe->pipe_num;
-	}
-}
-
-static void
 sh_css_set_shading_table(struct ia_css_stream *stream,
 			 struct ia_css_isp_parameters *params,
 			 const struct ia_css_shading_table *table)
@@ -1620,10 +1610,9 @@ sh_css_set_shading_table(struct ia_css_stream *stream,
 	if (!table->enable)
 		table = NULL;
 
-	if ((table != params->sc_table) || params->sc_table_dirty) {
+	if (table != params->sc_table) {
 		params->sc_table = table;
 		params->sc_table_changed = true;
-		params->sc_table_dirty = false;
 		/* Not very clean, this goes to sh_css.c to invalidate the
 		 * shading table for all pipes. Should replaced by a loop
 		 * and a pipe-specific call.
@@ -2368,66 +2357,19 @@ ia_css_get_3a_statistics(struct ia_css_3a_statistics           *host_stats,
    This function hnadles some of the exceptions.
 */
 static void
-ia_css_set_param_exceptions(const struct ia_css_pipe *pipe,
-				struct ia_css_isp_parameters *params)
+ia_css_set_param_exceptions(struct ia_css_isp_parameters *params)
 {
 	assert(params != NULL);
-	assert(pipe != NULL);
-	assert(pipe->mode < IA_CSS_PIPE_ID_NUM);
 
 	/* Copy also to DP. Should be done by the driver. */
 	params->dp_config.gr = params->wb_config.gr;
 	params->dp_config.r  = params->wb_config.r;
 	params->dp_config.b  = params->wb_config.b;
 	params->dp_config.gb = params->wb_config.gb;
-	if (pipe->mode < IA_CSS_PIPE_ID_NUM) {
-		params->pipe_dp_config[pipe->mode].gr = params->wb_config.gr;
-		params->pipe_dp_config[pipe->mode].r  = params->wb_config.r;
-		params->pipe_dp_config[pipe->mode].b  = params->wb_config.b;
-		params->pipe_dp_config[pipe->mode].gb = params->wb_config.gb;
-	}
 }
 #endif
 
 #if !defined(IS_ISP_2500_SYSTEM)
-
-static void
-sh_css_set_dp_config(const struct ia_css_pipe *pipe,
-			struct ia_css_isp_parameters *params,
-			const struct ia_css_dp_config *config)
-{
-	if (config == NULL)
-		return;
-
-	assert(params != NULL);
-	assert(pipe != NULL);
-	assert(pipe->mode < IA_CSS_PIPE_ID_NUM);
-
-	IA_CSS_ENTER_PRIVATE("config=%p", config);
-	ia_css_dp_debug_dtrace(config, IA_CSS_DEBUG_TRACE_PRIVATE);
-	if (pipe->mode < IA_CSS_PIPE_ID_NUM) {
-		params->pipe_dp_config[pipe->mode] = *config;
-		params->pipe_dpc_config_changed[pipe->mode] = true;
-	}
-	IA_CSS_LEAVE_PRIVATE("void");
-}
-
-static void
-sh_css_get_dp_config(const struct ia_css_pipe *pipe,
-			const struct ia_css_isp_parameters *params,
-			struct ia_css_dp_config *config)
-{
-	if (config == NULL)
-		return;
-
-	assert(params != NULL);
-	assert(pipe != NULL);
-	IA_CSS_ENTER_PRIVATE("config=%p", config);
-
-	*config = params->pipe_dp_config[pipe->mode];
-
-	IA_CSS_LEAVE_PRIVATE("void");
-}
 
 static void
 sh_css_set_nr_config(struct ia_css_isp_parameters *params,
@@ -2859,7 +2801,6 @@ sh_css_init_isp_params_from_config(struct ia_css_pipe *pipe,
 			sh_css_set_pipe_dvs_6axis_config(pipe, params, config->dvs_6axis_config);
 	sh_css_set_dz_config(params, config->dz_config);
 	sh_css_set_motion_vector(params, config->motion_vector);
-	sh_css_update_shading_table_status(pipe_in, params);
 	sh_css_set_shading_table(pipe->stream, params, config->shading_table);
 	sh_css_set_morph_table(params, config->morph_table);
 	sh_css_set_macc_table(params, config->macc_table);
@@ -2874,13 +2815,6 @@ sh_css_init_isp_params_from_config(struct ia_css_pipe *pipe,
 
 	params->output_frame = config->output_frame;
 	params->isp_parameters_id = config->isp_config_id;
-	/* Currently we do not offer CSS interface to set different
-	 * configurations for DPC, i.e. depending on DPC being enabled
-	 * before (NORM+OBC) or after. The folllowing code to set the
-	 * DPC configuration should be updated when this interface is made
-	 * available */
-	sh_css_set_dp_config(pipe, params, config->dp_config);
-	ia_css_set_param_exceptions(pipe, params);
 
 	if (IA_CSS_SUCCESS ==
 		sh_css_select_dp_10bpp_config(pipe, &is_dp_10bpp)) {
@@ -2896,6 +2830,7 @@ sh_css_init_isp_params_from_config(struct ia_css_pipe *pipe,
 		goto exit;
 	}
 
+	ia_css_set_param_exceptions(params);
 exit:
 #endif
 	IA_CSS_LEAVE_ERR_PRIVATE(err);
@@ -2933,7 +2868,6 @@ ia_css_pipe_get_isp_config(struct ia_css_pipe *pipe,
 	sh_css_get_ee_config(params, config->ee_config);
 	sh_css_get_baa_config(params, config->baa_config);
 	sh_css_get_pipe_dvs_6axis_config(pipe, params, config->dvs_6axis_config);
-	sh_css_get_dp_config(pipe, params, config->dp_config);
 	sh_css_get_macc_table(params, config->macc_table);
 	sh_css_get_gamma_table(params, config->gamma_table);
 	sh_css_get_ctc_table(params, config->ctc_table);
@@ -3428,26 +3362,7 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 		ia_css_set_tnr_config(params, &default_tnr_config);
 		ia_css_set_ob_config(params, &default_ob_config);
 		ia_css_set_dp_config(params, &default_dp_config);
-
-		for (i = 0; i < stream->num_pipes; i++) {
-			if (IA_CSS_SUCCESS == sh_css_select_dp_10bpp_config(stream->pipes[i], &is_dp_10bpp)) {
-				/* set the return value as false if both DPC and
-				 * BDS is enabled by the user. But we do not return
-				 * the value immediately to enable internal firmware
-				 * feature testing. */
-				if(is_dp_10bpp) {
-					sh_css_set_dp_config(stream->pipes[i], params, &default_dp_10bpp_config);
-				} else {
-					sh_css_set_dp_config(stream->pipes[i], params, &default_dp_config);
-				}
-			} else {
-				retval = false;
-				goto exit;
-			}
-
-			ia_css_set_param_exceptions(stream->pipes[i], params);
-		}
-
+		ia_css_set_param_exceptions(params);
 		ia_css_set_de_config(params, &default_de_config);
 		ia_css_set_gc_config(params, &default_gc_config);
 		ia_css_set_anr_config(params, &default_anr_config);
@@ -3483,8 +3398,6 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 
 		params->sc_table = NULL;
 		params->sc_table_changed = true;
-		params->sc_table_dirty = false;
-		params->sc_table_last_pipe_num = 0;
 
 		ia_css_sdis2_clear_coefficients(&params->dvs2_coefs);
 		params->dvs2_coef_table_changed = true;
@@ -3550,22 +3463,14 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 				 * BDS is enabled by the user. But we do not return
 				 * the value immediately to enable internal firmware
 				 * feature testing. */
-				if (is_dp_10bpp) {
-					retval = false;
-				}
-			} else {
-				retval = false;
-				goto exit;
-			}
-			if (stream->pipes[i]->mode < IA_CSS_PIPE_ID_NUM) {
-				sh_css_set_dp_config(stream->pipes[i], params,
-					&stream_params->pipe_dp_config[stream->pipes[i]->mode]);
-				ia_css_set_param_exceptions(stream->pipes[i], params);
+				retval = !is_dp_10bpp;
 			} else {
 				retval = false;
 				goto exit;
 			}
 		}
+
+		ia_css_set_param_exceptions(params);
 
 		params->fpn_config.data = stream_params->fpn_config.data;
 		params->config_changed[IA_CSS_FPN_ID] = stream_params->config_changed[IA_CSS_FPN_ID];
@@ -3575,14 +3480,11 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 		sh_css_set_morph_table(params, stream_params->morph_table);
 
 		if (stream_params->sc_table) {
-			sh_css_update_shading_table_status(pipe_in, params);
 			sh_css_set_shading_table(stream, params, stream_params->sc_table);
 		}
 		else {
 			params->sc_table = NULL;
 			params->sc_table_changed = true;
-			params->sc_table_dirty = false;
-			params->sc_table_last_pipe_num = 0;
 		}
 
 		/* Only IA_CSS_PIPE_ID_VIDEO & IA_CSS_PIPE_ID_CAPTURE will support dvs_6axis_config*/
@@ -4578,22 +4480,7 @@ sh_css_params_write_to_ddr_internal(
 			}
 		}
 	}
-	/* DPC configuration is made pipe specific to allow flexibility in positioning of the
-	 * DPC kernel. The code below sets the pipe specific configuration to
-	 * individual binaries. */
-	if (params->pipe_dpc_config_changed[pipe_id] && binary->info->sp.enable.dpc) {
-		unsigned size   = stage->binary->info->mem_offsets.offsets.param->dmem.dp.size;
 
-		unsigned offset = stage->binary->info->mem_offsets.offsets.param->dmem.dp.offset;
-		if (size) {
-			ia_css_dp_encode((struct sh_css_isp_dp_params *)
-				&binary->mem_params.params[IA_CSS_PARAM_CLASS_PARAM][IA_CSS_ISP_DMEM].address[offset],
-				&params->pipe_dp_config[pipe_id], size);
-
-			params->isp_params_changed = true;
-			params->isp_mem_params_changed[pipe_id][stage->stage_num][IA_CSS_ISP_DMEM] = true;
-		}
-	}
 	if (params->config_changed[IA_CSS_MACC_ID] && binary->info->sp.enable.macc) {
 		unsigned int i, j, idx;
 		unsigned int idx_map[] = {

@@ -2659,10 +2659,10 @@ ia_css_pipe_destroy(struct ia_css_pipe *pipe)
 		break;
 	}
 
-#if !defined(IS_ISP_2500_SYSTEM)
-	sh_css_params_free_gdc_lut(pipe->scaler_pp_lut);
-	pipe->scaler_pp_lut = mmgr_NULL;
-#endif
+	if (pipe->scaler_pp_lut != mmgr_NULL) {
+		mmgr_free(pipe->scaler_pp_lut);
+		pipe->scaler_pp_lut = mmgr_NULL;
+	}
 
 	my_css.active_pipes[ia_css_pipe_get_pipe_num(pipe)] = NULL;
 	sh_css_pipe_free_shading_table(pipe);

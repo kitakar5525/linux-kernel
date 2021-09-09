@@ -67,19 +67,6 @@ ia_css_sc_config(
 	to->internal_frame_origin_y_bqs_on_sctbl = internal_org_y_bqs;
 }
 
-void
-ia_css_sc_configure(
-	const struct ia_css_binary *binary,
-	uint32_t internal_frame_origin_x_bqs_on_sctbl,
-	uint32_t internal_frame_origin_y_bqs_on_sctbl)
-{
-	const struct ia_css_sc_configuration config = {
-		internal_frame_origin_x_bqs_on_sctbl,
-		internal_frame_origin_y_bqs_on_sctbl };
-
-	ia_css_configure_sc(binary, &config);
-}
-
 /* ------ deprecated(bz675) : from ------ */
 /* It looks like @parameter{} (in *.pipe) is used to generate the process/get/set functions,
    for parameters which should be used in the isp kernels.

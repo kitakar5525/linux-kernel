@@ -825,4 +825,13 @@ config CHARGER_SURFACE
 	  Microsoft Surface devices, i.e. Surface Pro 7, Surface Laptop 3,
 	  Surface Book 3, and Surface Laptop Go.
 
+config BATTERY_BQ27520
+	tristate "BQ27520 battery driver"
+	depends on I2C
+	help
+	  Say Y here to enable support for batteries with BQ27520 (I2C) chips.
+	  BQ27520 is a Texas Instruments fuel-gauge system for Li-Ion
+	  batteries in handheld and portable equipments. The BQ27520
+	  is configured to operate with a single-cell Li-Ion battery packs.
+
 endif # POWER_SUPPLY

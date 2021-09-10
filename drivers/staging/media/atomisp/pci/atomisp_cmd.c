@@ -1518,6 +1518,9 @@ void atomisp_wdt_work(struct work_struct *work)
 		}
 	}
 
+	dev_warn(isp->dev, "setting css_recover to false for now\n");
+	css_recover = false;
+
 	if (css_recover) {
 		ia_css_debug_dump_sp_sw_debug_info();
 		ia_css_debug_dump_debug_info(__func__);

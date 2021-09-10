@@ -1263,7 +1263,6 @@ ia_css_binary_find(struct ia_css_binary_descr *descr,
 	bool enable_dvs_6axis;
 	bool enable_reduced_pipe;
 	bool enable_capture_pp_bli;
-	bool enable_luma_only;
 	enum ia_css_err err = IA_CSS_ERR_INTERNAL_ERROR;
 	bool continuous;
 	unsigned int isp_pipe_version;
@@ -1310,7 +1309,6 @@ ia_css_binary_find(struct ia_css_binary_descr *descr,
 	enable_dvs_6axis  = descr->enable_dvs_6axis;
 	enable_reduced_pipe = descr->enable_reduced_pipe;
 	enable_capture_pp_bli = descr->enable_capture_pp_bli;
-	enable_luma_only = descr->enable_luma_only;
 	continuous = descr->continuous;
 	striped = descr->striped;
 	isp_pipe_version = descr->isp_pipe_version;
@@ -1605,14 +1603,6 @@ ia_css_binary_find(struct ia_css_binary_descr *descr,
 				"ia_css_binary_find() [%d] continue: 0x%x & 0x%x)\n",
 				__LINE__, candidate->uds.use_bci,
 				descr->enable_capture_pp_bli);
-			continue;
-		}
-
-		if (candidate->enable.luma_only != enable_luma_only) {
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-				"ia_css_binary_find() [%d] continue: %d != %d\n",
-				__LINE__, candidate->enable.luma_only,
-				descr->enable_luma_only);
 			continue;
 		}
 

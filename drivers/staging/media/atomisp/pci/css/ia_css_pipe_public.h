@@ -116,9 +116,6 @@ struct ia_css_pipe_config {
 	/**< Enabling BCI mode will cause yuv_scale binary to be picked up
 	     instead of vf_pp. This only applies to viewfinder post
 	     processing stages. */
-	bool enable_luma_only;
-	/**< Enabling of monochrome mode for a pipeline. If enabled only luma processing
-	     will be done. */
 	bool enable_tnr;
 	/**< Enabling of TNR (temporal noise reduction). This is only applicable to video
 	     pipes. Non video-pipes should always set this parameter to false. */
@@ -170,7 +167,6 @@ struct ia_css_pipe_config {
 	false,					/* enable_dz */ \
 	false,					/* enable_dpc */ \
 	false,					/* enable_vfpp_bci */ \
-	false,					/* enable_luma_only */ \
 	false,					/* enable_tnr */ \
 	NULL,					/* p_isp_config */\
 	{ 0, 0 },				/* gdc_in_buffer_res */ \

@@ -102,7 +102,6 @@ struct ia_css_binary_descr {
 	bool enable_xnr;
 	bool enable_fractional_ds;
 	bool enable_dpc;
-	bool enable_tnr;
 	bool enable_capture_pp_bli;
 	struct ia_css_resolution dvs_env;
 	enum ia_css_stream_format stream_format;
@@ -137,8 +136,6 @@ struct ia_css_binary {
 	int                      sctbl_width_per_color;
 	int                      sctbl_aligned_width_per_color;
 	int                      sctbl_height;
-	int                      sctbl_legacy_width_per_color;
-	int                      sctbl_legacy_height;
 	struct ia_css_sdis_info	 dis;
 	struct ia_css_resolution dvs_envelope;
 	bool                     online;
@@ -172,8 +169,6 @@ struct ia_css_binary {
 	0,	/* sctbl_width_per_color */ \
 	0,	/* sctbl_aligned_width_per_color */ \
 	0,	/* sctbl_height */ \
-	0,	/* sctbl_legacy_width_per_color */ \
-	0,	/* sctbl_legacy_height */ \
 	IA_CSS_DEFAULT_SDIS_INFO, /* dis */ \
 	{ 0, 0},/* dvs_envelope_info */ \
 	false,	/* online */ \
@@ -215,12 +210,9 @@ ia_css_binary_find(struct ia_css_binary_descr *descr,
  * @param[in] type: The shading correction type.
  * @param[in] required_bds_factor: The bayer downscaling factor required in the pipe.
  * @param[in] stream_config: The stream configuration.
- * @param[out] shading_info: The shading information.
- *		The shading information necessary as API is stored in the shading_info.
+ * @param[out] info: The shading information.
  *		The driver needs to get this information to generate
- *		the shading table directly required from ISP.
- * @param[out] pipe_config: The pipe configuration.
- *		The shading information related to ISP (but, not necessary as API) is stored in the pipe_config.
+ *		the shading table directly required in the isp.
  * @return	IA_CSS_SUCCESS or error code upon error.
  *
  */
@@ -229,8 +221,7 @@ ia_css_binary_get_shading_info(const struct ia_css_binary *binary,
 			enum ia_css_shading_correction_type type,
 			unsigned int required_bds_factor,
 			const struct ia_css_stream_config *stream_config,
-			struct ia_css_shading_info *shading_info,
-			struct ia_css_pipe_config *pipe_config);
+			struct ia_css_shading_info *info);
 
 enum ia_css_err
 ia_css_binary_3a_grid_info(const struct ia_css_binary *binary,

@@ -21,8 +21,7 @@
 void
 sh_css_params_shading_id_table_generate(
 	struct ia_css_shading_table **target_table,
-	unsigned int table_width,
-	unsigned int table_height);
+	const struct ia_css_binary *binary);
 
 void
 prepare_shading_table(const struct ia_css_shading_table *in_table,

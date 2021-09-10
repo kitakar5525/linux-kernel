@@ -207,6 +207,7 @@ RGB[0,8191],coef[-8192,8191] -> RGB[0,8191]
  * reads the previous and writes the current frame concurrently */
 #define MAX_NUM_VIDEO_DELAY_FRAMES	(MAX_DVS_FRAME_DELAY + 1)
 #define NUM_VIDEO_TNR_FRAMES		2
+#define NUM_TNR_FRAMES			NUM_VIDEO_TNR_FRAMES
 
 /* Rules: these implement logic shared between the host code and ISP firmware.
    The ISP firmware needs these rules to be applied at pre-processor time,

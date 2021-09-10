@@ -28,14 +28,6 @@ enum ia_css_prbs_id {
 };
 
 /**
- * Maximum number of PRBS IDs.
- *
- * Make sure the value of this define gets changed to reflect the correct
- * number of ia_css_prbs_id enum if you add/delete an item in the enum.
- */
-#define N_CSS_PRBS_IDS (IA_CSS_PRBS_ID2+1)
-
-/**
  * PRBS configuration structure.
  *
  * Seed the for the Pseudo Random Bit Sequence.

@@ -47,9 +47,6 @@
 /* force a value to a lower even value */
 #define EVEN_FLOOR(x)        ((x) & ~1)
 
-/* If the number is odd, find the next even number */
-#define EVEN_CEIL(x)         ((IS_ODD(x)) ? ((x) + 1) : (x))
-
 /* A => B */
 #define IMPLIES(a, b)        (!(a) || (b))
 
@@ -59,14 +56,11 @@
    otherwise use min and max */
 #define MAX(a, b)            (((a) > (b)) ? (a) : (b))
 #define MIN(a, b)            (((a) < (b)) ? (a) : (b))
-#define ROUND_DIV(a, b)      (((b) != 0) ? ((a) + ((b) >> 1)) / (b) : 0)
-#define CEIL_DIV(a, b)       (((b) != 0) ? ((a) + (b) - 1) / (b) : 0)
+#define CEIL_DIV(a, b)       ((b) ? ((a) + (b) - 1) / (b) : 0)
 #define CEIL_MUL(a, b)       (CEIL_DIV(a, b) * (b))
 #define CEIL_MUL2(a, b)      (((a) + (b) - 1) & ~((b) - 1))
 #define CEIL_SHIFT(a, b)     (((a) + (1 << (b)) - 1)>>(b))
 #define CEIL_SHIFT_MUL(a, b) (CEIL_SHIFT(a, b) << (b))
-#define ROUND_HALF_DOWN_DIV(a, b)	(((b) != 0) ? ((a) + (b / 2) - 1) / (b) : 0)
-#define ROUND_HALF_DOWN_MUL(a, b)	(ROUND_HALF_DOWN_DIV(a, b) * (b))
 
 
 /*To Find next power of 2 number from x */
@@ -151,15 +145,6 @@ STORAGE_CLASS_INLINE unsigned int ceil_shift_mul(unsigned int a, unsigned int b)
 	return CEIL_SHIFT_MUL(a, b);
 }
 
-STORAGE_CLASS_INLINE unsigned int round_half_down_div(unsigned int a, unsigned int b)
-{
-	return ROUND_HALF_DOWN_DIV(a, b);
-}
-
-STORAGE_CLASS_INLINE unsigned int round_half_down_mul(unsigned int a, unsigned int b)
-{
-	return ROUND_HALF_DOWN_MUL(a, b);
-}
 
 /** @brief Next Power of Two
  *

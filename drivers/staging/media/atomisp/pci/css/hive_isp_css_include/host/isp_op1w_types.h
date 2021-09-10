@@ -42,7 +42,6 @@ typedef mpudata_t       tvector1w_unsigned;
 typedef mpsdata_t       tscalar1w_weight;
 typedef mpsdata_t       tvector1w_signed_positive;
 typedef mpsdata_t       tvector1w_weight;
-typedef bool            tscalar_bool;
 
 typedef  struct {
   tvector1w       d;

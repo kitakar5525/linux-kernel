@@ -20,7 +20,6 @@
 #include "ia_css_dp_param.h"
 
 extern const struct ia_css_dp_config default_dp_config;
-extern const struct ia_css_dp_config default_dp_10bpp_config;
 
 void
 ia_css_dp_encode(

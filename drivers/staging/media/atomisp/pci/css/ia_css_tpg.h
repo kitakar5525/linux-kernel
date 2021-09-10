@@ -27,14 +27,6 @@ enum ia_css_tpg_id {
 	IA_CSS_TPG_ID2
 };
 
-/**
- * Maximum number of TPG IDs.
- *
- * Make sure the value of this define gets changed to reflect the correct
- * number of ia_css_tpg_id enum if you add/delete an item in the enum.
- */
-#define N_CSS_TPG_IDS (IA_CSS_TPG_ID2+1)
-
 /** Enumerate the TPG modes.
  */
 enum ia_css_tpg_mode {

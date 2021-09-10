@@ -201,43 +201,12 @@ RGB[0,8191],coef[-8192,8191] -> RGB[0,8191]
 /* Each line of this table is aligned to the maximum line width. */
 #define SH_CSS_MAX_S3ATBL_WIDTH              SH_CSS_MAX_BQ_GRID_WIDTH
 
-/* Video mode specific DVS define */
-/* The video binary supports a delay of 1 or 2 frames */
-#define VIDEO_FRAME_DELAY		2
-/* +1 because DVS reads the previous and writes the current frame concurrently */
-#define MAX_NUM_VIDEO_DELAY_FRAMES	(VIDEO_FRAME_DELAY + 1)
-
-/* Preview mode specific DVS define. */
-/* In preview we only need GDC functionality (and not the DVS functionality) */
-/* The minimum number of DVS frames you need is 2, one were GDC reads from and another where GDC writes into */
-#define NUM_PREVIEW_DVS_FRAMES		(2)
-
-/* Note that this is the define used to configure all data structures common for all modes */
-/* It should be equal or bigger to the max number of DVS frames for all possible modes */
-#define MAX_NUM_DELAY_FRAMES	MAX(MAX_NUM_VIDEO_DELAY_FRAMES, NUM_PREVIEW_DVS_FRAMES)
-
-/* TNR is no longer exclusive to video, SkyCam preview has TNR too (same kernel as video).
- * All uses the generic define NUM_TNR_FRAMES. The define NUM_VIDEO_TNR_FRAMES has been deprecated.
- *
- * Notes
- * 1) The value depends on the used TNR kernel and is not something that depends on the mode
- *    and it is not something you just could choice.
- * 2) For the luma only pipeline a version that supports two different sets of TNR reference frames
- * is being used.
- *.
- */
-#define NUM_VALID_TNR_REF_FRAMES		(1) /* At least one valid TNR reference frame is required */
-#define NUM_TNR_FRAMES_PER_REF_BUF_SET		(2)
-
-/* In luma-only mode alternate illuminated frames are supported, that requires two double buffers */
-#ifdef ENABLE_LUMA_ONLY
-#define NUM_TNR_REF_BUF_SETS	(2)
-#else
-#define NUM_TNR_REF_BUF_SETS	(1)
-#endif
-
-#define NUM_TNR_FRAMES		2
-
+/* The video binary supports a delay of 1 or 2 */
+#define MAX_DVS_FRAME_DELAY		2
+/* We always need one additional frame because the video binary
+ * reads the previous and writes the current frame concurrently */
+#define MAX_NUM_VIDEO_DELAY_FRAMES	(MAX_DVS_FRAME_DELAY + 1)
+#define NUM_VIDEO_TNR_FRAMES		2
 
 /* Rules: these implement logic shared between the host code and ISP firmware.
    The ISP firmware needs these rules to be applied at pre-processor time,

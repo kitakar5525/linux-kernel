@@ -268,6 +268,14 @@ RGB[0,8191],coef[-8192,8191] -> RGB[0,8191]
 	CEIL_MUL(_ISP_MORPH_TABLE_WIDTH(width), \
 		 SH_CSS_MORPH_TABLE_ELEMS_PER_DDR_WORD)
 
+#define _ISP_SCTBL_WIDTH_PER_COLOR(input_width, deci_factor_log2) \
+	(ISP_BQ_GRID_WIDTH(input_width, deci_factor_log2) + 1)
+#define _ISP_SCTBL_HEIGHT(input_height, deci_factor_log2) \
+	(ISP_BQ_GRID_HEIGHT(input_height, deci_factor_log2) + 1)
+#define _ISP_SCTBL_ALIGNED_WIDTH_PER_COLOR(input_width, deci_factor_log2) \
+	CEIL_MUL(_ISP_SCTBL_WIDTH_PER_COLOR(input_width, deci_factor_log2), \
+		 ISP_VEC_NELEMS)
+
 /* *****************************************************************
  * Statistics for 3A (Auto Focus, Auto White Balance, Auto Exposure)
  * *****************************************************************/

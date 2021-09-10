@@ -50,9 +50,7 @@ struct sh_css {
 			   int caller_line);
 	void (*free_ex)(void *ptr, const char *caller_func, int caller_line);
 
-/* ISP2400 */
 	bool stop_copy_preview;
-
 	bool                           check_system_idle;
 	unsigned int                   num_cont_raw_frames;
 	unsigned int                   num_mipi_frames[N_CSI_PORTS];

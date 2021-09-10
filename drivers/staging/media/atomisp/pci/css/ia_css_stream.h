@@ -43,8 +43,6 @@ struct ia_css_stream {
 
 	bool                           cont_capt;
 	bool                           disable_cont_vf;
-
-	/* ISP2401 */
 	bool                           stop_copy_preview;
 	bool                           started;
 };

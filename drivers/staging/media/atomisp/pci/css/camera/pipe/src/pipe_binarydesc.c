@@ -603,12 +603,10 @@ void ia_css_pipe_get_primary_binarydesc(
 		 * since it has better performance. */
 		if (pipe_version == IA_CSS_PIPE_VERSION_2_6_1)
 			prim_descr->striped = false;
-		else if (!IS_ISP2401) {
+		else 
 			prim_descr->striped = prim_descr->continuous &&
 					      (!pipe->stream->stop_copy_preview || !pipe->stream->disable_cont_vf);
-		} else {
-			prim_descr->striped = prim_descr->continuous && !pipe->stream->disable_cont_vf;
-
+		if (IS_ISP2401) {
 			if ((pipe->config.default_capture_config.enable_xnr != 0) &&
 			    (pipe->extra_config.enable_dvs_6axis == true))
 				prim_descr->enable_xnr = true;

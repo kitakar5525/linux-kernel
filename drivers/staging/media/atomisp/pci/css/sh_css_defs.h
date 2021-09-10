@@ -138,13 +138,9 @@ RGB[0,8191],coef[-8192,8191] -> RGB[0,8191]
 #define SH_CSS_MAX_BQ_GRID_WIDTH          80
 #define SH_CSS_MAX_BQ_GRID_HEIGHT         60
 
-/* The minimum dvs envelope is 12x12(for IPU2) and 8x8(for IPU3) to make sure the 
- * invalid rows/columns that result from filter initialization are skipped. */
-#if defined(IS_ISP_2500_SYSTEM)
-#define SH_CSS_MIN_DVS_ENVELOPE           8U
-#else
+/* The minimum dvs envelope is 12x12 to make sure the invalid rows/columns
+   that result from filter initialization are skipped. */
 #define SH_CSS_MIN_DVS_ENVELOPE           12U
-#endif
 
 /* The FPGA system (vec_nelems == 16) only supports upto 5MP */
 #if ISP_VEC_NELEMS == 16
@@ -197,10 +193,8 @@ RGB[0,8191],coef[-8192,8191] -> RGB[0,8191]
 #define SH_CSS_MORPH_TABLE_ELEMS_PER_DDR_WORD \
 	(HIVE_ISP_DDR_WORD_BYTES/SH_CSS_MORPH_TABLE_ELEM_BYTES)
 
-/* TODO: I will move macros of "*_SCTBL_*" to SC kernel.
-   "+ 2" should be "+ SH_CSS_SCTBL_CENTERING_MARGIN + SH_CSS_SCTBL_LAST_GRID_COUNT". (michie, Sep/23/2014) */
-#define SH_CSS_MAX_SCTBL_WIDTH_PER_COLOR   (SH_CSS_MAX_BQ_GRID_WIDTH + 2)
-#define SH_CSS_MAX_SCTBL_HEIGHT_PER_COLOR   (SH_CSS_MAX_BQ_GRID_HEIGHT + 2)
+#define SH_CSS_MAX_SCTBL_WIDTH_PER_COLOR   (SH_CSS_MAX_BQ_GRID_WIDTH + 1)
+#define SH_CSS_MAX_SCTBL_HEIGHT_PER_COLOR   (SH_CSS_MAX_BQ_GRID_HEIGHT + 1)
 #define SH_CSS_MAX_SCTBL_ALIGNED_WIDTH_PER_COLOR \
 	CEIL_MUL(SH_CSS_MAX_SCTBL_WIDTH_PER_COLOR, ISP_VEC_NELEMS)
 

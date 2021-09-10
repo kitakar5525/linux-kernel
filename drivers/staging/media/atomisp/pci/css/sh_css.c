@@ -8863,6 +8863,7 @@ sh_css_init_host_sp_control_vars(void)
 	unsigned int HIVE_ADDR_host_sp_queues_initialized;
 	unsigned int HIVE_ADDR_sp_sleep_mode;
 	unsigned int HIVE_ADDR_ia_css_dmaproxy_sp_invalidate_tlb;
+	unsigned int HIVE_ADDR_sp_stop_copy_preview;
 	unsigned int HIVE_ADDR_host_sp_com;
 	unsigned int o = offsetof(struct host_sp_communication, host2sp_command)
 				/ sizeof(int);
@@ -8881,12 +8882,14 @@ sh_css_init_host_sp_control_vars(void)
 		fw->info.sp.host_sp_queues_initialized;
 	HIVE_ADDR_sp_sleep_mode = fw->info.sp.sleep_mode;
 	HIVE_ADDR_ia_css_dmaproxy_sp_invalidate_tlb = fw->info.sp.invalidate_tlb;
+	HIVE_ADDR_sp_stop_copy_preview = fw->info.sp.stop_copy_preview;
 	HIVE_ADDR_host_sp_com = fw->info.sp.host_sp_com;
 
 	(void)HIVE_ADDR_ia_css_ispctrl_sp_isp_started; /* Suppres warnings in CRUN */
 
 	(void)HIVE_ADDR_sp_sleep_mode;
 	(void)HIVE_ADDR_ia_css_dmaproxy_sp_invalidate_tlb;
+	(void)HIVE_ADDR_sp_stop_copy_preview;
 	(void)HIVE_ADDR_host_sp_com;
 
 	sp_dmem_store_uint32(SP0_ID,
@@ -8902,6 +8905,9 @@ sh_css_init_host_sp_control_vars(void)
 	sp_dmem_store_uint32(SP0_ID,
 		(unsigned int)sp_address_of(ia_css_dmaproxy_sp_invalidate_tlb),
 		(uint32_t)(false));
+	sp_dmem_store_uint32(SP0_ID,
+		(unsigned int)sp_address_of(sp_stop_copy_preview),
+		my_css.stop_copy_preview?(uint32_t)(1):(uint32_t)(0));
 	store_sp_array_uint(host_sp_com, o, host2sp_cmd_ready);
 
 #if !defined(HAS_NO_INPUT_SYSTEM)
@@ -9736,6 +9742,7 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 		if (num_pipes >= 2) {
 			curr_stream->cont_capt = true;
 			curr_stream->disable_cont_vf = curr_stream->config.disable_cont_viewfinder;
+			curr_stream->stop_copy_preview = my_css.stop_copy_preview;
 		}
 
 		/* Create copy pipe here, since it may not be exposed to the driver */

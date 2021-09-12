@@ -322,7 +322,6 @@ struct ia_css_sp_info {
 	u32 host_sp_queues_initialized; /** Polled from the SP */
 	u32 sleep_mode;  /** different mode to halt SP */
 	u32 invalidate_tlb;		/** inform SP to invalidate mmu TLB */
-	u32 stop_copy_preview;       /** suspend copy and preview pipe when capture */
 	u32 debug_buffer_ddr_address;	/** inform SP the address
 	of DDR debug queue */
 	u32 perf_counter_input_system_error; /** input system perf

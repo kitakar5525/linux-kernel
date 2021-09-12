@@ -600,8 +600,7 @@ void ia_css_pipe_get_primary_binarydesc(
 		 * since it has better performance. */
 		if (pipe_version == IA_CSS_PIPE_VERSION_2_6_1)
 			prim_descr->striped = false;
-		prim_descr->striped = prim_descr->continuous &&
-				      (!pipe->stream->stop_copy_preview || !pipe->stream->disable_cont_vf);
+		prim_descr->striped = prim_descr->continuous && !pipe->stream->disable_cont_vf;
 	}
 	IA_CSS_LEAVE_PRIVATE("");
 }

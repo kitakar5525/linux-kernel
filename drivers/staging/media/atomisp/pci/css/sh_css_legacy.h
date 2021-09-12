@@ -64,7 +64,4 @@ int
 sh_css_set_black_frame(struct ia_css_stream *stream,
 		       const struct ia_css_frame *raw_black_frame);
 
-void
-sh_css_enable_cont_capt(bool enable, bool stop_copy_preview);
-
 #endif /* _SH_CSS_LEGACY_H_ */

@@ -44,7 +44,6 @@ struct sh_css {
 	void *(*malloc)(size_t bytes, bool zero_mem);
 	void (*free)(void *ptr);
 	void (*flush)(struct ia_css_acc_fw *fw);
-	bool stop_copy_preview;
 	bool                           check_system_idle;
 	unsigned int                   num_cont_raw_frames;
 #if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)

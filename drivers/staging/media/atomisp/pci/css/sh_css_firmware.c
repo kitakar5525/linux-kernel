@@ -205,6 +205,13 @@ sh_css_check_firmware_version(const char *fw_data)
 		       release_version, file_header->version);
 	}
 
+	pr_info("%s(): paramstruct_size: %lu\n",
+		__func__, sizeof(struct ia_css_memory_offsets));
+	pr_info("%s(): configstruct_size: %lu\n",
+		__func__, sizeof(struct ia_css_config_memory_offsets));
+	pr_info("%s(): statestruct_size: %lu\n",
+		__func__, sizeof(struct ia_css_state_memory_offsets));
+
 	/* For now, let's just accept a wrong version, even if wrong */
 	return true;
 }

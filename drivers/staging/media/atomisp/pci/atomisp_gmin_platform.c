@@ -154,6 +154,49 @@ const struct atomisp_platform_data *atomisp_get_platform_data(void)
 }
 EXPORT_SYMBOL_GPL(atomisp_get_platform_data);
 
+static int af_power_ctrl(struct v4l2_subdev *subdev, int flag)
+{
+	struct gmin_subdev *gs = find_gmin_subdev(subdev);
+
+	if (gs && gs->v2p8_vcm_on == flag)
+		return 0;
+	gs->v2p8_vcm_on = flag;
+
+	/*
+	 * The power here is used for dw9817,
+	 * regulator is from rear sensor
+	 */
+	if (gs->v2p8_vcm_reg) {
+		if (flag)
+			return regulator_enable(gs->v2p8_vcm_reg);
+		else
+			return regulator_disable(gs->v2p8_vcm_reg);
+	}
+	return 0;
+}
+
+/*
+ * Used in a handful of modules.  Focus motor control, I think.  Note
+ * that there is no configurability in the API, so this needs to be
+ * fixed where it is used.
+ *
+ * struct camera_af_platform_data {
+ *     int (*power_ctrl)(struct v4l2_subdev *subdev, int flag);
+ * };
+ *
+ * Note that the implementation in MCG platform_camera.c is stubbed
+ * out anyway (i.e. returns zero from the callback) on BYT.  So
+ * neither needed on gmin platforms or supported upstream.
+ */
+const struct camera_af_platform_data *camera_get_af_platform_data(void)
+{
+	static struct camera_af_platform_data afpd = {
+		.power_ctrl = af_power_ctrl,
+	};
+	return &afpd;
+}
+EXPORT_SYMBOL_GPL(camera_get_af_platform_data);
+
 int atomisp_register_i2c_module(struct v4l2_subdev *subdev,
 				struct camera_sensor_platform_data *plat_data,
 				enum intel_v4l2_subdev_type type)
@@ -321,6 +364,53 @@ static struct gmin_cfg_var i8880_vars[] = {
 	{},
 };
 
+/* These are guessed values because Surface 3 doesn't describe these
+ * values in DSDT or EFI. */
+static struct gmin_cfg_var surface3_vars[] = {
+	{"APTA0330:00_CsiPort", "0"},
+	{"APTA0330:00_CsiLanes", "1"},
+
+	/* when port=0 and lanes=4 for ov8835, atomisp fails to init saying:
+	 * atomisp_csi_lane_config: could not find the CSI port setting for 0-4-0
+	 * atomisp_register_entities failed (-22) */
+	{"OVTI8835:00_CsiPort", "1"},
+	{"OVTI8835:00_CsiLanes", "4"},
+	{},
+};
+
+/* Xiaomi Mi Pad 2 does not define any variables in DSDT or EFI
+ * (for when OSID=4), but hardcodes in the kernel driver. Here are the
+ * those variables. */
+static struct gmin_cfg_var mipad2_vars[] = {
+	/* When OSID=4. */
+	{"OVTI5693:00_CamClk", "1"},
+	{"OVTI5693:00_ClkSrc", "0"},
+	{"OVTI5693:00_CsiPort", "0"},
+	{"OVTI5693:00_CsiLanes", "2"},
+
+	{"TOSB0001:00_CamClk", "0"},
+	{"TOSB0001:00_ClkSrc", "0"},
+	{"TOSB0001:00_CsiPort", "1"},
+	{"TOSB0001:00_CsiLanes", "4"},
+
+	/* When OSID=1. */
+	/* TODO: The _DSM defines different values against values hardcoded
+	 * in the Android kernel driver. Do these values really change
+	 * depending on what mode the BIOS sets?
+	 * (Windows (OSID=1) vs GMIN (OSID=4))
+	 * For now, use the same values with OSID=4 */
+	{"INT33BE:00_CamClk", "1"},
+	{"INT33BE:00_ClkSrc", "0"},
+	{"INT33BE:00_CsiPort", "0"},
+	{"INT33BE:00_CsiLanes", "2"},
+
+	{"XMCC0003:00_CamClk", "0"},
+	{"XMCC0003:00_ClkSrc", "0"},
+	{"XMCC0003:00_CsiPort", "1"},
+	{"XMCC0003:00_CsiLanes", "4"},
+	{},
+};
+
 static const struct dmi_system_id gmin_vars[] = {
 	{
 		.ident = "BYT-T FFD8",
@@ -357,6 +447,33 @@ static const struct dmi_system_id gmin_vars[] = {
 			DMI_MATCH(DMI_BOARD_NAME, "VTA0803"),
 		},
 		.driver_data = i8880_vars,
+	},
+	{
+		.ident = "Surface 3",
+		.matches = {
+			DMI_MATCH(DMI_BOARD_NAME, "Surface 3"),
+		},
+		.driver_data = surface3_vars,
+	},
+	{
+		.ident = "Surface 3",
+		.matches = {
+			/* DMI info for Surface 3 with broken DMI table */
+			DMI_MATCH(DMI_BIOS_VENDOR, "American Megatrends Inc."),
+			DMI_MATCH(DMI_BOARD_NAME, "OEMB"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "OEMB"),
+			DMI_MATCH(DMI_SYS_VENDOR, "OEMB"),
+		},
+		.driver_data = surface3_vars,
+	},
+	{
+		.ident = "Mi Pad 2",
+		.matches = {
+			DMI_MATCH(DMI_BOARD_VENDOR, "Xiaomi Inc"),
+			DMI_MATCH(DMI_BOARD_NAME, "Mipad"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Mipad2"),
+		},
+		.driver_data = mipad2_vars,
 	},
 	{}
 };
@@ -521,9 +638,22 @@ static int gmin_subdev_add(struct gmin_subdev *gs)
 
 	dev_info(dev, "%s: ACPI path is %pfw\n", __func__, dev_fwnode(dev));
 
-	/*WA:CHT requires XTAL clock as PLL is not stable.*/
+	/*
+	 * FIXME:
+	 * 	WA:CHT requires XTAL clock as PLL is not stable.
+	 *
+	 * However, such data doesn't seem to be present at the _DSM
+	 * table under the GUID dc2f6c4f-045b-4f1d-97b9-882a6860a4be.
+	 * So, let's change the default according with the ISP version,
+	 * but allowing it to be overridden by BIOS or by DMI match tables.
+	 */
+	if (IS_ISP2401)
+		gs->clock_src = VLV2_CLK_XTAL_25_0MHz;
+	else
+		gs->clock_src = VLV2_CLK_PLL_19P2MHZ;
+
 	gs->clock_src = gmin_get_var_int(dev, false, "ClkSrc",
-				         VLV2_CLK_PLL_19P2MHZ);
+				         gs->clock_src);
 
 	gs->csi_port = gmin_get_var_int(dev, false, "CsiPort", 0);
 	gs->csi_lanes = gmin_get_var_int(dev, false, "CsiLanes", 1);
@@ -646,11 +776,15 @@ static int gmin_subdev_add(struct gmin_subdev *gs)
 
 	switch (pmic_id) {
 	case PMIC_REGULATOR:
+		/*
+		 * TODO: regulator names may vary depending on devices it
+		 * seems. So, for now, this is mipad2-specific.
+		 */
+		/* Regulators used on Xiaomi Mi Pad 2 */
 		gs->v1p8_reg = regulator_get(dev, "V1P8SX");
 		gs->v2p8_reg = regulator_get(dev, "V2P8SX");
-
-		gs->v1p2_reg = regulator_get(dev, "V1P2A");
-		gs->v2p8_vcm_reg = regulator_get(dev, "VPROG4B");
+		gs->v1p2_reg = regulator_get(dev, "V1P2SX");
+		gs->v2p8_vcm_reg = regulator_get(dev, "VPROG4D");
 
 		/* Note: ideally we would initialize v[12]p8_on to the
 		 * output of regulator_is_enabled(), but sadly that
@@ -836,11 +970,22 @@ static int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
 		gpio_set_value(gs->v1p8_gpio, on);
 
 	if (gs->v1p8_reg) {
-		regulator_set_voltage(gs->v1p8_reg, 1800000, 1800000);
-		if (on)
-			return regulator_enable(gs->v1p8_reg);
-		else
-			return regulator_disable(gs->v1p8_reg);
+		/*
+		 * The original mipad2 driver does not set voltage manually.
+		 * So, I guess this is not needed for mipad2.
+		 */
+		// regulator_set_voltage(gs->v1p8_reg, 1800000, 1800000);
+		if (on) {
+			ret = regulator_enable(gs->v1p2_reg);
+			/* TODO: add error handling */
+			ret = regulator_enable(gs->v1p8_reg);
+			return ret;
+		} else {
+			ret = regulator_disable(gs->v1p2_reg);
+			/* TODO: add error handling */
+			ret = regulator_disable(gs->v1p8_reg);
+			return ret;
+		}
 	}
 
 	switch (pmic_id) {
@@ -893,11 +1038,22 @@ static int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
 		gpio_set_value(gs->v2p8_gpio, on);
 
 	if (gs->v2p8_reg) {
-		regulator_set_voltage(gs->v2p8_reg, 2900000, 2900000);
-		if (on)
-			return regulator_enable(gs->v2p8_reg);
-		else
-			return regulator_disable(gs->v2p8_reg);
+		/*
+		 * The original mipad2 driver does not set voltage manually.
+		 * So, I guess this is not needed for mipad2.
+		 */
+		// regulator_set_voltage(gs->v2p8_reg, 2900000, 2900000);
+		if (on) {
+			ret = regulator_enable(gs->v2p8_vcm_reg);
+			/* TODO: add error handling */
+			ret = regulator_enable(gs->v2p8_reg);
+			return ret;
+		} else {
+			ret = regulator_disable(gs->v2p8_vcm_reg);
+			/* TODO: add error handling */
+			ret = regulator_disable(gs->v2p8_reg);
+			return ret;
+		}
 	}
 
 	switch (pmic_id) {
@@ -1149,7 +1305,7 @@ static int gmin_get_config_dsm_var(struct device *dev,
 #endif
 
 	/* Seek for the desired var */
-	for (i = 0; i < obj->package.count - 1; i += 2) {
+	for (i = 0; (i + 1) < obj->package.count; i += 2) {
 		if (obj->package.elements[i].type == ACPI_TYPE_STRING &&
 		    !strcmp(obj->package.elements[i].string.pointer, var)) {
 			/* Next element should be the required value */
@@ -1186,6 +1342,99 @@ static int gmin_get_config_dsm_var(struct device *dev,
 	return 0;
 }
 
+/**
+ * get_dsm_data_integer - wrapper for acpi_evaluate_dsm()
+ * @adev: ACPI device
+ * @guid: GUID of requested functions, should be 16 bytes
+ * @dsm_rev: revision number of requested function
+ * @dsm_func: requested function number
+ * @out: pointer to integer to point returned integer value from _DSM
+ *
+ * Return negative values for errors.
+ * Return 0 for success.
+ */
+static int get_dsm_data_integer(struct acpi_device *adev, const guid_t *guid,
+				int dsm_rev, int dsm_func, u64 *out)
+{
+	struct acpi_handle *handle = adev->handle;
+	union acpi_object *obj;
+
+	obj = acpi_evaluate_dsm_typed(handle, guid, dsm_rev, dsm_func,
+				      NULL, ACPI_TYPE_INTEGER);
+	if (!obj) {
+		pr_debug("%s(): _DSM execution failed. GUID not exist?\n",
+			 __func__);
+		return -ENODEV;
+	}
+
+	/* TODO: Even if the GUID doesn't exist, it seems that
+	 * acpi_evaluate_dsm_typed() doesn't fail and obj->integer.value
+	 * will be 0 anyway. Until we find a better way to tell if the
+	 * GUID really doesn't exist, ignore this case.
+	 */
+	*out = obj->integer.value;
+
+	ACPI_FREE(obj);
+	return 0;
+}
+
+/*
+ * _DSM that returns mipi port data
+ */
+#define MIPI_PORT_DSM_REV	0x0
+#define MIPI_PORT_DSM_FUNC	0x1
+/* MIPI_PORT _DSM UUID: "ea3b7bd8-e09b-4239-ad6e-ed525f3f26ab" */
+static const guid_t mipi_port_dsm_guid =
+	GUID_INIT(0xea3b7bd8, 0xe09b, 0x4239,
+		0xad, 0x6e, 0xed, 0x52, 0x5f, 0x3f, 0x26, 0xab);
+#define MIPI_PORT_DSM_BUF_SIZE	1
+
+static int gmin_get_config_dsm_var_port(struct device *dev,
+					const char *var,
+					char *out, size_t *out_len)
+{
+	struct acpi_device *adev = ACPI_COMPANION(dev);
+	u64 port_dsm_data;
+	int csi2_port;
+	int csi2_nlanes;
+	int ret;
+
+	ret = get_dsm_data_integer(adev, &mipi_port_dsm_guid,
+				   MIPI_PORT_DSM_REV,
+				   MIPI_PORT_DSM_FUNC,
+				   &port_dsm_data);
+	if (ret) {
+		dev_info_once(dev, "Couldn't get port data. GUID not exist?\n");
+		return -ENODEV;
+	}
+
+	csi2_port = port_dsm_data & 0xf;
+	csi2_nlanes = (port_dsm_data & 0xf0) >> 4;
+
+	*out_len = MIPI_PORT_DSM_BUF_SIZE;
+
+	/* dsdt data currently contains wrong numbers for combo ports */
+	if (csi2_port >= 6)
+		csi2_port -= 2;
+
+	if (csi2_nlanes == 0) {
+		dev_info_once(dev, "mipi port data from _DSM is invalid\n");
+		return -ENODEV;
+	}
+
+	if (!strcmp(var, "CsiPort")) {
+		snprintf(out, sizeof(&out), "%d", csi2_port);
+		dev_info(dev, "CsiPort: %s\n", out);
+	}
+
+	if (!strcmp(var, "CsiLanes")) {
+		snprintf(out, sizeof(&out), "%d", csi2_nlanes);
+		dev_info(dev, "CsiLanes: %s\n", out);
+	}
+
+	return 0;
+}
+
 /* Retrieves a device-specific configuration variable.  The dev
  * argument should be a device with an ACPI companion, as all
  * configuration is based on firmware ID.
@@ -1201,15 +1450,6 @@ static int gmin_get_config_var(struct device *maindev,
 	char var8[CFG_VAR_NAME_MAX];
 	struct efivar_entry *ev;
 	int i, ret;
-
-	/* For sensors, try first to use the _DSM table */
-	if (!is_gmin) {
-		ret = gmin_get_config_dsm_var(maindev, var, out, out_len);
-		if (!ret)
-			return 0;
-	}
-
-	/* Fall-back to other approaches */
 
 	if (!is_gmin && ACPI_COMPANION(dev))
 		dev = &ACPI_COMPANION(dev)->dev;
@@ -1233,6 +1473,18 @@ static int gmin_get_config_var(struct device *maindev,
 		if (!ret)
 			return 0;
 	}
+
+	/* For sensors, try first to use the _DSM table */
+	if (!is_gmin) {
+		ret = gmin_get_config_dsm_var(maindev, var, out, out_len);
+		if (!ret)
+			return 0;
+		ret = gmin_get_config_dsm_var_port(maindev, var, out, out_len);
+		if (!ret)
+			return 0;
+	}
+
+	/* Fall-back to other approaches */
 
 	/* Our variable names are ASCII by construction, but EFI names
 	 * are wide chars.  Convert and zero-pad.

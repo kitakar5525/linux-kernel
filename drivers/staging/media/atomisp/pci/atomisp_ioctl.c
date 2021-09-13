@@ -49,6 +49,22 @@ static const char *CARD = "ATOM ISP";	/* max size 31 */
  */
 static struct v4l2_queryctrl ci_v4l2_controls[] = {
 	{
+		.id = V4L2_CID_VFLIP,
+		.type = V4L2_CTRL_TYPE_BOOLEAN,
+		.name = "Vertical flip",
+		.minimum = 0,
+		.maximum = 1,
+		.step = 1,
+		.default_value = 0,
+	}, {
+		.id = V4L2_CID_HFLIP,
+		.type = V4L2_CTRL_TYPE_BOOLEAN,
+		.name = "Horizontal flip",
+		.minimum = 0,
+		.maximum = 1,
+		.step = 1,
+		.default_value = 0,
+	}, {
 		.id = V4L2_CID_AUTO_WHITE_BALANCE,
 		.type = V4L2_CTRL_TYPE_BOOLEAN,
 		.name = "Automatic White Balance",
@@ -207,6 +223,24 @@ static struct v4l2_queryctrl ci_v4l2_controls[] = {
 		.name = "exposure",
 		.minimum = -4,
 		.maximum = 4,
+		.step = 1,
+		.default_value = 0,
+	},
+	{
+		.id = V4L2_CID_EXPOSURE_ABSOLUTE,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "exposure absolute",
+		.minimum = -0xFFFF,
+		.maximum = 0xFFFF,
+		.step = 1,
+		.default_value = 0,
+	},
+	{
+		.id = V4L2_CID_GAIN,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "gain",
+		.minimum = -0xFFFF,
+		.maximum = 0xFFFF,
 		.step = 1,
 		.default_value = 0,
 	},
@@ -645,6 +679,13 @@ static int atomisp_g_input(struct file *file, void *fh, unsigned int *input)
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_device *isp = video_get_drvdata(vdev);
 	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
+	bool acc_node = false;
+
+	acc_node = !strcmp(vdev->name, "ATOMISP ISP ACC");
+	if (acc_node) {
+		dev_warn(isp->dev, "%s(): skipping ACC node\n", __func__);
+		return -EINVAL;
+	}
 
 	rt_mutex_lock(&isp->mutex);
 	*input = asd->input_curr;
@@ -764,6 +805,13 @@ static int atomisp_enum_fmt_cap(struct file *file, void *fh,
 	struct v4l2_subdev_mbus_code_enum code = { 0 };
 	unsigned int i, fi = 0;
 	int rval;
+	bool acc_node = false;
+
+	acc_node = !strcmp(vdev->name, "ATOMISP ISP ACC");
+	if (acc_node) {
+		dev_warn(isp->dev, "%s(): skipping ACC node\n", __func__);
+		return -EINVAL;
+	}
 
 	rt_mutex_lock(&isp->mutex);
 	rval = v4l2_subdev_call(isp->inputs[asd->input_curr].camera, pad,
@@ -841,6 +889,13 @@ static int atomisp_try_fmt_cap(struct file *file, void *fh,
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_device *isp = video_get_drvdata(vdev);
 	int ret;
+	bool acc_node = false;
+
+	acc_node = !strcmp(vdev->name, "ATOMISP ISP ACC");
+	if (acc_node) {
+		dev_warn(isp->dev, "%s(): skipping ACC node\n", __func__);
+		return -EINVAL;
+	}
 
 	rt_mutex_lock(&isp->mutex);
 	ret = atomisp_try_fmt(vdev, &f->fmt.pix, NULL);
@@ -854,6 +909,13 @@ static int atomisp_s_fmt_cap(struct file *file, void *fh,
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_device *isp = video_get_drvdata(vdev);
 	int ret;
+	bool acc_node = false;
+
+	acc_node = !strcmp(vdev->name, "ATOMISP ISP ACC");
+	if (acc_node) {
+		dev_warn(isp->dev, "%s(): skipping ACC node\n", __func__);
+		return -EINVAL;
+	}
 
 	rt_mutex_lock(&isp->mutex);
 	if (isp->isp_fatal_error) {
@@ -2170,6 +2232,7 @@ static int atomisp_g_ctrl(struct file *file, void *fh,
 	case V4L2_CID_AUTO_N_PRESET_WHITE_BALANCE:
 	case V4L2_CID_EXPOSURE:
 	case V4L2_CID_EXPOSURE_AUTO:
+	case V4L2_CID_GAIN:
 	case V4L2_CID_SCENE_MODE:
 	case V4L2_CID_ISO_SENSITIVITY:
 	case V4L2_CID_ISO_SENSITIVITY_AUTO:
@@ -2243,8 +2306,12 @@ static int atomisp_s_ctrl(struct file *file, void *fh,
 	switch (control->id) {
 	case V4L2_CID_AUTO_N_PRESET_WHITE_BALANCE:
 	case V4L2_CID_EXPOSURE:
+	case V4L2_CID_EXPOSURE_ABSOLUTE:
+	case V4L2_CID_HFLIP:
+	case V4L2_CID_VFLIP:
 	case V4L2_CID_EXPOSURE_AUTO:
 	case V4L2_CID_EXPOSURE_AUTO_PRIORITY:
+	case V4L2_CID_GAIN:
 	case V4L2_CID_SCENE_MODE:
 	case V4L2_CID_ISO_SENSITIVITY:
 	case V4L2_CID_ISO_SENSITIVITY_AUTO:
@@ -2590,6 +2657,13 @@ static int atomisp_g_parm(struct file *file, void *fh,
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
 	struct atomisp_device *isp = video_get_drvdata(vdev);
+	bool acc_node = false;
+
+	acc_node = !strcmp(vdev->name, "ATOMISP ISP ACC");
+	if (acc_node) {
+		dev_warn(isp->dev, "%s(): skipping ACC node\n", __func__);
+		return -EINVAL;
+	}
 
 	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		dev_err(isp->dev, "unsupported v4l2 buf type\n");
@@ -2638,7 +2712,9 @@ static int atomisp_s_parm(struct file *file, void *fh,
 				asd->high_speed_mode = true;
 		}
 
-		goto out;
+		dev_warn(isp->dev, "assuming run_mode is PREVIEW\n");
+		mode = ATOMISP_RUN_MODE_PREVIEW;
+		break;
 	}
 	case CI_MODE_VIDEO:
 		mode = ATOMISP_RUN_MODE_VIDEO;

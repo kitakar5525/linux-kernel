@@ -31,16 +31,9 @@ enum ia_css_pipe_id {
 	IA_CSS_PIPE_ID_VIDEO,
 	IA_CSS_PIPE_ID_CAPTURE,
 	IA_CSS_PIPE_ID_YUVPP,
-#ifndef ISP2401
 	IA_CSS_PIPE_ID_ACC,
 	IA_CSS_PIPE_ID_NUM
-#else
-	IA_CSS_PIPE_ID_ACC
-#endif
 };
-#ifdef ISP2401
-#define IA_CSS_PIPE_ID_NUM (IA_CSS_PIPE_ID_ACC+1)
-#endif
 
 struct ia_css_pipe_extra_config {
 	bool enable_raw_binning;
@@ -80,9 +73,7 @@ enum ia_css_err
 sh_css_set_black_frame(struct ia_css_stream *stream,
 			const struct ia_css_frame *raw_black_frame);
 
-#ifndef ISP2401
 void
 sh_css_enable_cont_capt(bool enable, bool stop_copy_preview);
 
-#endif
 #endif /* _SH_CSS_LEGACY_H_ */

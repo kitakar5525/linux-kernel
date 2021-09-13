@@ -13,16 +13,10 @@
  */
 
 #include "ia_css_mmu.h"
-#ifdef ISP2401
-#include "ia_css_mmu_private.h"
-#endif
 #include <ia_css_debug.h>
 #include "sh_css_sp.h"
 #include "sh_css_firmware.h"
 #include "sp.h"
-#ifdef ISP2401
-#include "mmu_device.h"
-#endif
 
 void
 ia_css_mmu_invalidate_cache(void)
@@ -44,19 +38,3 @@ ia_css_mmu_invalidate_cache(void)
 	}
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "ia_css_mmu_invalidate_cache() leave\n");
 }
-#ifdef ISP2401
-
-/* Deprecated, this is an HRT backend function (memory_access.h) */
-void
-sh_css_mmu_set_page_table_base_index(hrt_data base_index)
-{
-	int i;
-	IA_CSS_ENTER_PRIVATE("base_index=0x%08x\n", base_index);
-	for (i = 0; i < N_MMU_ID; i++) {
-		mmu_ID_t mmu_id = i;
-		mmu_set_page_table_base_index(mmu_id, base_index);
-		mmu_invalidate_cache(mmu_id);
-	}
-	IA_CSS_LEAVE_PRIVATE("");
-}
-#endif

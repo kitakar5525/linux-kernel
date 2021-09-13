@@ -37,9 +37,6 @@ typedef enum {
 	bbb_func_OP_1w_subhalfrnd,
 	bbb_func_OP_1w_abs,
 	bbb_func_OP_1w_subabssat,
-#ifdef ISP2401
-	bbb_func_OP_1w_subsat_u,
-#endif
 	bbb_func_OP_1w_muld,
 	bbb_func_OP_1w_mul,
 	bbb_func_OP_1w_qmul,
@@ -56,10 +53,6 @@ typedef enum {
 	bbb_func_OP_1w_aslsat,
 	bbb_func_OP_1w_lsl,
 	bbb_func_OP_1w_lsr,
-#ifdef ISP2401
-	bbb_func_OP_1w_ashift,
-	bbb_func_OP_1w_lshift,
-#endif
 	bbb_func_OP_int_cast_to_1w ,
 	bbb_func_OP_1w_cast_to_int ,
 	bbb_func_OP_1w_cast_to_2w ,
@@ -116,11 +109,6 @@ typedef enum {
 	bbb_func_OP_2w_min,
 	bbb_func_OP_2w_max,
 	bbb_func_OP_1w_mul_realigning,
-#ifdef ISP2401
-	bbb_func_OP_1w_imax32,
-	bbb_func_OP_1w_imaxidx32,
-	bbb_func_OP_1w_cond_add,
-#endif
 
 	bbb_func_num_functions
 } bbb_functions_t;
@@ -137,9 +125,6 @@ typedef enum {
 	core_func_OP_subasr1,
 	core_func_OP_abs,
 	core_func_OP_subabssat,
-#ifdef ISP2401
-	core_func_OP_subsat_u,
-#endif
 	core_func_OP_muld,
 	core_func_OP_mul,
 	core_func_OP_qrmul,

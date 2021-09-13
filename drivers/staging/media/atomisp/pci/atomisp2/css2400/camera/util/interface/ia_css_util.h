@@ -74,40 +74,6 @@ extern enum ia_css_err ia_css_util_check_res(
 	unsigned int width,
 	unsigned int height);
 
-#ifdef ISP2401
-/** @brief compare resolutions (less or equal)
- *
- * @param[in] a resolution
- * @param[in] b resolution
- * @return    true if both dimensions of a are less or
- *            equal than those of b, false otherwise
- *
- */
-extern bool ia_css_util_res_leq(
-	struct ia_css_resolution a,
-	struct ia_css_resolution b);
-
-/**
- * @brief Check if resolution is zero
- *
- * @param[in] resolution The resolution to check
- *
- * @returns true if resolution is zero
- */
-extern bool ia_css_util_resolution_is_zero(
-		const struct ia_css_resolution resolution);
-
-/**
- * @brief Check if resolution is even
- *
- * @param[in] resolution The resolution to check
- *
- * @returns true if resolution is even
- */
-extern bool ia_css_util_resolution_is_even(
-		const struct ia_css_resolution resolution);
-
-#endif
 /** @brief check width and height
  *
  * @param[in] stream_format

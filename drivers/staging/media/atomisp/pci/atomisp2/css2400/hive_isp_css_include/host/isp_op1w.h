@@ -166,23 +166,6 @@ STORAGE_CLASS_ISP_OP1W_FUNC_H tvector1w OP_1w_subsat(
     const tvector1w     _a,
     const tvector1w     _b);
 
-#ifdef ISP2401
-/** @brief Unsigned saturated subtraction
- *
- * @param[in] _a	first argument
- * @param[in] _b	second argument
- *
- * @return		saturated subtraction of both input arguments
- *
- * This function will subtract _b from _a.
- * in case of overflow it will saturate.
- * result = CLIP(_a - _b, 0, MAX_RANGE);
- */
-STORAGE_CLASS_ISP_OP1W_FUNC_H tvector1w_unsigned OP_1w_subsat_u(
-    const tvector1w_unsigned _a,
-    const tvector1w_unsigned _b);
-
-#endif
 /** @brief subtraction with shift right and rounding
  *
  * @param[in] _a	first argument
@@ -528,65 +511,6 @@ STORAGE_CLASS_ISP_OP1W_FUNC_H tvector1w OP_1w_lsr(
     const tvector1w     _a,
     const tvector1w     _b);
 
-#ifdef ISP2401
-/** @brief bidirectional saturating arithmetic shift
- *
- * @param[in] _a	input
- * @param[in] _b	shift amount
- *
- * @return		_a << |_b| if _b is positive
- *			_a >> |_b| if _b is negative
- *
- * If _b > 0, this function will shift _a with _b bits to the left,
- * saturating at MIN_RANGE/MAX_RANGE in case of overflow.
- * if _b < 0, this function will shift _a with _b bits to the right.
- * It asserts -MAX_SHIFT_1W <= _b <= MAX_SHIFT_1W.
- * If _b = 0, it returns _a.
- */
-STORAGE_CLASS_ISP_OP1W_FUNC_H tvector1w OP_1w_ashift_sat(
-    const tvector1w     _a,
-    const tvector1w     _b);
-
-/** @brief bidirectional non-saturating arithmetic shift
- *
- * @param[in] _a	input
- * @param[in] _b	shift amount
- *
- * @return		_a << |_b| if _b is positive
- *			_a >> |_b| if _b is negative
- *
- * If _b > 0, this function will shift _a with _b bits to the left,
- * no saturation is performed in case of overflow.
- * if _b < 0, this function will shift _a with _b bits to the right.
- * It asserts -MAX_SHIFT_1W <= _b <= MAX_SHIFT_1W.
- * If _b = 0, it returns _a.
- */
-STORAGE_CLASS_ISP_OP1W_FUNC_H tvector1w OP_1w_ashift(
-    const tvector1w     _a,
-    const tvector1w     _b);
-
-
-/** @brief bidirectional logical shift
- *
- * @param[in] _a	input
- * @param[in] _b	shift amount
- *
- * @return		_a << |_b| if _b is positive
- *			_a >> |_b| if _b is negative
- *
- * This function will shift _a with _b bits to the left if _b is positive.
- * This function will shift _a with _b bits to the right if _b is negative.
- * It asserts -MAX_SHIFT_1W <= _b <= MAX_SHIFT_1W.
- * It inserts zeros on the left or right depending on the shift direction: 
- * right or left.
- * The operation count for this function assumes that
- * the shift amount is a cloned scalar input.
- */
-STORAGE_CLASS_ISP_OP1W_FUNC_H tvector1w OP_1w_lshift(
-    const tvector1w     _a,
-    const tvector1w     _b);
-
-#endif
 /* Cast */
 
 /** @brief Cast from int to 1w

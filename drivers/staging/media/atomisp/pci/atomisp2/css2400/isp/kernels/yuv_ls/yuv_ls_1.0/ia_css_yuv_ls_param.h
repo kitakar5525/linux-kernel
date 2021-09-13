@@ -16,7 +16,6 @@
 #define __IA_CSS_YUV_LS_PARAM_H
 
 #include "type_support.h"
-#ifndef ISP2401
 
 /* The number of load/store kernels in a pipeline can be greater than one.
  * A kernel can consume more than one input or can produce more
@@ -32,8 +31,5 @@ struct sh_css_isp_yuv_ls_isp_config {
 	unsigned stride[NUM_YUV_LS];
 };
 
-#else
-#include "../../io_ls/common/ia_css_common_io_types.h"
-#endif
 
 #endif /* __IA_CSS_YUV_LS_PARAM_H */

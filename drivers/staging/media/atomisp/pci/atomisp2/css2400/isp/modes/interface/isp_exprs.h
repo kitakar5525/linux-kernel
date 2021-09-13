@@ -1,4 +1,3 @@
-#ifndef ISP2401
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -12,21 +11,6 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  */
-#else
-/**
-Support for Intel Camera Imaging ISP subsystem.
-Copyright (c) 2010 - 2015, Intel Corporation.
-
-This program is free software; you can redistribute it and/or modify it
-under the terms and conditions of the GNU General Public License,
-version 2, as published by the Free Software Foundation.
-
-This program is distributed in the hope it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-more details.
-*/
-#endif
 
 #ifndef _COMMON_ISP_EXPRS_H_
 #define _COMMON_ISP_EXPRS_H_
@@ -293,12 +277,10 @@ more details.
 #define OUTPUT_C_VECTORS_PER_CHUNK  	CEIL_DIV(MAX_VECTORS_PER_CHUNK, 2)
 #endif
 
-#ifndef ISP2401
 /**** SCTBL defs *******/
 #define ISP_SCTBL_HEIGHT \
 	_ISP_SCTBL_HEIGHT(ISP_INPUT_HEIGHT, DECI_FACTOR_LOG2)
 
-#endif
 /**** UDS defs *********/
 #define UDS_DMACH_STRIDE_B_IN_Y           (( ISP_INTERNAL_WIDTH   /BITS8_ELEMENTS_PER_XMEM_ADDR)*HIVE_ISP_DDR_WORD_BYTES)
 #define UDS_DMACH_STRIDE_B_IN_C           (((ISP_INTERNAL_WIDTH/2)/BITS8_ELEMENTS_PER_XMEM_ADDR)*HIVE_ISP_DDR_WORD_BYTES)

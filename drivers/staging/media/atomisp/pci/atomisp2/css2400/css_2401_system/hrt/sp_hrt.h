@@ -1,4 +1,3 @@
-#ifndef ISP2401
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -21,4 +20,3 @@
 #define hrt_sp_dmem_master_port_address(cell) hrt_mem_master_port_address(cell, hrt_sp_dmem(cell))
 
 #endif /* _sp_hrt_h_ */
-#endif

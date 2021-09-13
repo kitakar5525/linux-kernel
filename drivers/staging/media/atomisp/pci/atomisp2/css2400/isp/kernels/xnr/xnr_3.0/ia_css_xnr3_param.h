@@ -16,10 +16,6 @@
 #define __IA_CSS_XNR3_PARAM_H
 
 #include "type_support.h"
-#ifdef ISP2401
-#include "vmem.h" /* needed for VMEM_ARRAY */
-
-#endif
 
 /* Scaling factor of the alpha values: which fixed-point value represents 1.0?
  * It must be chosen such that 1/min_sigma still fits in an ISP vector
@@ -78,19 +74,4 @@ struct sh_css_isp_xnr3_params {
 	struct sh_css_xnr3_blending_params blending;
 };
 
-#ifdef ISP2401
-/*
- * STRUCT sh_css_isp_xnr3_vmem_params
- * -----------------------------------------------
- * ISP VMEM parameters
- */
-struct sh_css_isp_xnr3_vmem_params {
-	VMEM_ARRAY(x, ISP_VEC_NELEMS);
-	VMEM_ARRAY(a, ISP_VEC_NELEMS);
-	VMEM_ARRAY(b, ISP_VEC_NELEMS);
-	VMEM_ARRAY(c, ISP_VEC_NELEMS);
-};
-
-
-#endif
 #endif  /*__IA_CSS_XNR3_PARAM_H */

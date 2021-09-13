@@ -33,9 +33,6 @@
 #define SLOPE_A_RESOLUTION 10
 #define CONFIG_UNIT_LUT_SIZE_32 32 /*XCU works for ISP_NWAY = 32 */
 #define LXCU_LUT_SIZE      16
-#ifdef ISP2401
-#define IMAX32_ELEM_SIZE   32
-#endif
 
 #define ONE_IN_Q14 (1<<(NUM_BITS-2))
 #define Q29_TO_Q15_SHIFT_VAL (NUM_BITS-2)
@@ -163,11 +160,7 @@ typedef struct {
 	  0, 0, 0, 0, 0, \
 	  0, 0, 0, 0, 0, \
 	  0, 0, 0, 0, 0 })
-#ifndef ISP2401
 	
-#else
-
-#endif
 typedef struct {
 	tvector1w v00;
 	tvector1w v01;
@@ -339,12 +332,6 @@ typedef struct {
 } xcu_ref_init_vectors;
 
 typedef struct {
-#ifdef ISP2401
-	tvector1w elem[IMAX32_ELEM_SIZE];
-} imax32_ref_in_vector;
-
-typedef struct {
-#endif
 	tscalar1w search[BMA_SEARCH_BLOCK_SZ_16][BMA_SEARCH_BLOCK_SZ_16];
 } bma_16x16_search_window;
 

@@ -24,9 +24,6 @@
 #include <ia_css_types.h>
 #include <ia_css_frame_public.h>
 #include <ia_css_buffer.h>
-#ifdef ISP2401
-#include <ia_css_acc_types.h>
-#endif
 
 enum {
 	IA_CSS_PIPE_OUTPUT_STAGE_0 = 0,
@@ -79,22 +76,9 @@ struct ia_css_pipe_config {
 	struct ia_css_resolution bayer_ds_out_res;
 	/**< bayer down scaling */
 	struct ia_css_resolution capt_pp_in_res;
-#ifndef ISP2401
 	/**< bayer down scaling */
-#else
-	/**< capture post processing input resolution */
-#endif
 	struct ia_css_resolution vf_pp_in_res;
-#ifndef ISP2401
 	/**< bayer down scaling */
-#else
-	/**< view finder post processing input resolution */
-	struct ia_css_resolution output_system_in_res;
-	/**< For IPU3 only: use output_system_in_res to specify what input resolution
-	     will OSYS receive, this resolution is equal to the output resolution of GDC
-	     if not determined CSS will set output_system_in_res with main osys output pin resolution
-	     All other IPUs may ignore this property */
-#endif
 	struct ia_css_resolution dvs_crop_out_res;
 	/**< dvs crop, video only, not in use yet. Use dvs_envelope below. */
 	struct ia_css_frame_info output_info[IA_CSS_PIPE_MAX_OUTPUT_STAGE];
@@ -127,75 +111,15 @@ struct ia_css_pipe_config {
 	/**< Enabling BCI mode will cause yuv_scale binary to be picked up
 	     instead of vf_pp. This only applies to viewfinder post
 	     processing stages. */
-#ifdef ISP2401
-	bool enable_luma_only;
-	/**< Enabling of monochrome mode for a pipeline. If enabled only luma processing
-	     will be done. */
-	bool enable_tnr;
-	/**< Enabling of TNR (temporal noise reduction). This is only applicable to video
-	     pipes. Non video-pipes should always set this parameter to false. */
-#endif
 	struct ia_css_isp_config *p_isp_config;
 	/**< Pointer to ISP configuration */
 	struct ia_css_resolution gdc_in_buffer_res;
 	/**< GDC in buffer resolution. */
 	struct ia_css_point gdc_in_buffer_offset;
 	/**< GDC in buffer offset - indicates the pixel coordinates of the first valid pixel inside the buffer */
-#ifdef ISP2401
-	struct ia_css_coordinate internal_frame_origin_bqs_on_sctbl;
-	/**< Origin of internal frame positioned on shading table at shading correction in ISP.
-	     NOTE: Shading table is larger than or equal to internal frame.
-		   Shading table has shading gains and internal frame has bayer data.
-		   The origin of internal frame is used in shading correction in ISP
-		   to retrieve shading gains which correspond to bayer data. */
-#endif
 };
 
 
-#ifdef ISP2401
-/**
- * Default origin of internal frame positioned on shading table.
- */
-#define IA_CSS_PIPE_DEFAULT_INTERNAL_FRAME_ORIGIN_BQS_ON_SCTBL \
-{ \
-	0,					/* x [bqs] */ \
-	0					/* y [bqs] */ \
-}
-
-/**
- * Default settings for newly created pipe configurations.
- */
-#define DEFAULT_PIPE_CONFIG \
-{ \
-	IA_CSS_PIPE_MODE_PREVIEW,		/* mode */ \
-	1,					/* isp_pipe_version */ \
-	{ 0, 0 },				/* pipe_effective_input_res */ \
-	{ 0, 0 },				/* bayer_ds_out_res */ \
-	{ 0, 0 },				/* vf_pp_in_res */ \
-	{ 0, 0 },				/* capt_pp_in_res */ \
-	{ 0, 0 },				/* output_system_in_res */ \
-	{ 0, 0 },				/* dvs_crop_out_res */ \
-	{IA_CSS_BINARY_DEFAULT_FRAME_INFO},	/* output_info */ \
-	{IA_CSS_BINARY_DEFAULT_FRAME_INFO},	/* vf_output_info */ \
-	NULL,					/* acc_extension */ \
-	NULL,					/* acc_stages */ \
-	0,					/* num_acc_stages */ \
-	DEFAULT_CAPTURE_CONFIG,			/* default_capture_config */ \
-	{ 0, 0 },				/* dvs_envelope */ \
-	IA_CSS_FRAME_DELAY_1,			/* dvs_frame_delay */ \
-	-1,					/* acc_num_execs */ \
-	false,					/* enable_dz */ \
-	false,					/* enable_dpc */ \
-	false,					/* enable_vfpp_bci */ \
-	false,					/* enable_luma_only */ \
-	false,					/* enable_tnr */ \
-	NULL,					/* p_isp_config */\
-	{ 0, 0 },				/* gdc_in_buffer_res */ \
-	{ 0, 0 },				/* gdc_in_buffer_offset */ \
-	IA_CSS_PIPE_DEFAULT_INTERNAL_FRAME_ORIGIN_BQS_ON_SCTBL	/* internal_frame_origin_bqs_on_sctbl */ \
-}
-
-#else
 
 /**
  * Default settings for newly created pipe configurations.
@@ -226,7 +150,6 @@ struct ia_css_pipe_config {
 	{ 0, 0 }				/* gdc_in_buffer_offset */ \
 }
 
-#endif
 
 /** Pipe info, this struct describes properties of a pipe after it's stream has
  * been created.
@@ -250,11 +173,6 @@ struct ia_css_pipe_info {
 	     pixels normally used to initialize the ISP filters.
 	     This is why the raw output resolution should normally be set to
 	     the input resolution - 8x8. */
-#ifdef ISP2401
-	struct ia_css_resolution output_system_in_res_info;
-	/**< For IPU3 only. Info about output system in resolution which is considered
-	     as gdc out resolution. */
-#endif
 	struct ia_css_shading_info shading_info;
 	/**< After an image pipe is created, this field will contain the info
 	     for the shading correction. */
@@ -272,20 +190,6 @@ struct ia_css_pipe_info {
 /**
  * Defaults for ia_css_pipe_info structs.
  */
-#ifdef ISP2401
-
-#define DEFAULT_PIPE_INFO \
-{ \
-	{IA_CSS_BINARY_DEFAULT_FRAME_INFO},	/* output_info */ \
-	{IA_CSS_BINARY_DEFAULT_FRAME_INFO},	/* vf_output_info */ \
-	IA_CSS_BINARY_DEFAULT_FRAME_INFO,	/* raw_output_info */ \
-	{ 0, 0},				/* output system in res */ \
-	DEFAULT_SHADING_INFO,			/* shading_info */ \
-	DEFAULT_GRID_INFO,			/* grid_info */ \
-	0					/* num_invalid_frames */ \
-}
-
-#else
 
 #define DEFAULT_PIPE_INFO \
 { \
@@ -297,7 +201,6 @@ struct ia_css_pipe_info {
 	0					/* num_invalid_frames */ \
 }
 
-#endif
 
 /** @brief Load default pipe configuration
  * @param[out]	pipe_config The pipe configuration.
@@ -572,29 +475,6 @@ ia_css_pipe_get_qos_ext_state (struct ia_css_pipe *pipe,
                            uint32_t fw_handle,
                            bool * enable);
 
-#ifdef ISP2401
-/** @brief  Update mapped CSS and ISP arguments for QoS pipe during SP runtime.
- * @param[in] pipe     	Pipe handle.
- * @param[in] fw_handle	Extension firmware Handle (ia_css_fw_info.handle).
- * @param[in] css_seg  	Parameter memory descriptors for CSS segments.
- * @param[in] isp_seg  	Parameter memory descriptors for ISP segments.
- *
- * @return
- * IA_CSS_SUCCESS 			: Success
- * IA_CSS_ERR_INVALID_ARGUMENTS		: Invalid Parameters
- * IA_CSS_ERR_RESOURCE_NOT_AVAILABLE	: Inactive QOS Pipe
- * 					(No active stream with this pipe)
- *
- * \deprecated{This interface is used to temporarily support a late-developed,
- * specific use-case on a specific IPU2 platform. It will not be supported or
- * maintained on IPU3 or further.}
- */
-enum ia_css_err
-ia_css_pipe_update_qos_ext_mapped_arg(struct ia_css_pipe *pipe, uint32_t fw_handle,
-			struct ia_css_isp_param_css_segments *css_seg,
-			struct ia_css_isp_param_isp_segments *isp_seg);
-
-#endif
 /** @brief Get selected configuration settings
  * @param[in]	pipe	The pipe.
  * @param[out]	config	Configuration settings.
@@ -630,30 +510,4 @@ ia_css_pipe_set_bci_scaler_lut( struct ia_css_pipe *pipe,
  */
 bool ia_css_pipe_has_dvs_stats(struct ia_css_pipe_info *pipe_info);
 
-#ifdef ISP2401
-/** @brief Override the frameformat set on the output pins.
- * @param[in]  pipe        Pipe handle.
- * @param[in]  output_pin  Pin index to set the format on
- *                         0 - main output pin
- *                         1 - display output pin
- * @param[in]  format      Format to set
- *
- * @return
- * IA_CSS_SUCCESS		: Success
- * IA_CSS_ERR_INVALID_ARGUMENTS	: Invalid Parameters
- * IA_CSS_ERR_INTERNAL_ERROR	: Pipe misses binary info
- *
- * Note:
- * 1) This is an optional function to override the formats set in the pipe.
- * 2) Only overriding with IA_CSS_FRAME_FORMAT_NV12_TILEY is currently allowed.
- * 3) This function is only to be used on pipes that use the output system.
- * 4) If this function is used, it MUST be called after ia_css_pipe_create.
- * 5) If this function is used, this function MUST be called before ia_css_stream_start.
- */
-enum ia_css_err
-ia_css_pipe_override_frame_format(struct ia_css_pipe *pipe,
-				int output_pin,
-				enum ia_css_frame_format format);
-
-#endif
 #endif /* __IA_CSS_PIPE_PUBLIC_H */

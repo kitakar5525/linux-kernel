@@ -1,4 +1,3 @@
-#ifndef ISP2401
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -96,4 +95,3 @@ extern void *csim_processor_get_crun_symbol(hive_proc_id p, const char *sym);
 #endif /* C_RUN */
 
 #endif /* _HRT_VAR_H */
-#endif

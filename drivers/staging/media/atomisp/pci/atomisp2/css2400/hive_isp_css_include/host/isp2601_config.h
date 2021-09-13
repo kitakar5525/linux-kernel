@@ -1,4 +1,3 @@
-#ifndef ISP2401
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -67,4 +66,3 @@
 #define BFA_WEIGHT_SHIFT            (6)
 
 #endif /* __ISP2601_CONFIG_H_INCLUDED__ */
-#endif

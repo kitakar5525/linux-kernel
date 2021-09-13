@@ -16,7 +16,6 @@
 #define __IA_CSS_BAYER_LS_PARAM_H
 
 #include "type_support.h"
-#ifndef ISP2401
 
 #define NUM_BAYER_LS 2
 #define BAYER_IDX_GR 0
@@ -35,8 +34,5 @@ struct sh_css_isp_bayer_ls_isp_config {
 	uint32_t stride[NUM_BAYER_LS];
 };
 
-#else
-#include "../../io_ls/common/ia_css_common_io_types.h"
-#endif
 
 #endif /* __IA_CSS_BAYER_LS_PARAM_H */

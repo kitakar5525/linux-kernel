@@ -62,11 +62,7 @@
 #define IA_CSS_INCLUDE_STATES
 #include "ia_css_isp_states.h"
 
-#ifndef ISP2401
 #include "isp/kernels/io_ls/bayer_io_ls/ia_css_bayer_io.host.h"
-#else
-#include "isp/kernels/ipu2_io_ls/bayer_io_ls/ia_css_bayer_io.host.h"
-#endif
 
 struct sh_css_sp_group		sh_css_sp_group;
 struct sh_css_sp_stage		sh_css_sp_stage;
@@ -120,9 +116,6 @@ copy_isp_stage_to_sp_stage(void)
 	*/
 	sh_css_sp_stage.enable.sdis = sh_css_isp_stage.binary_info.enable.dis;
 	sh_css_sp_stage.enable.s3a = sh_css_isp_stage.binary_info.enable.s3a;
-#ifdef ISP2401	
-	sh_css_sp_stage.enable.lace_stats = sh_css_isp_stage.binary_info.enable.lace_stats;
-#endif	
 }
 
 void
@@ -826,11 +819,6 @@ configure_isp_from_args(
 	bool deinterleaved)
 {
 	enum ia_css_err err = IA_CSS_SUCCESS;
-#ifdef ISP2401
-	struct ia_css_pipe *pipe = find_pipe_by_num(pipeline->pipe_num);
-	const struct ia_css_resolution *res;
-
-#endif
 	ia_css_fpn_configure(binary,  &binary->in_frame_info);
 	ia_css_crop_configure(binary, &args->delay_frames[0]->info);
 	ia_css_qplane_configure(pipeline, binary, &binary->in_frame_info);
@@ -838,10 +826,6 @@ configure_isp_from_args(
 	ia_css_output1_configure(binary, &args->out_vf_frame->info);
 	ia_css_copy_output_configure(binary, args->copy_output);
 	ia_css_output0_configure(binary, &args->out_frame[0]->info);
-#ifdef ISP2401
-	ia_css_sc_configure(binary, pipeline->shading.internal_frame_origin_x_bqs_on_sctbl,
-				    pipeline->shading.internal_frame_origin_y_bqs_on_sctbl);
-#endif
 	ia_css_iterator_configure(binary, &args->in_frame->info);
 	ia_css_dvs_configure(binary, &args->out_frame[0]->info);
 	ia_css_output_configure(binary, &args->out_frame[0]->info);
@@ -1017,7 +1001,6 @@ sh_css_sp_init_stage(struct ia_css_binary *binary,
 		return err;
 
 #ifdef USE_INPUT_SYSTEM_VERSION_2401
-#ifndef ISP2401
 	if (args->in_frame) {
 		pipe = find_pipe_by_num(sh_css_sp_group.pipe[thread_id].pipe_num);
 		if (pipe == NULL)
@@ -1028,20 +1011,6 @@ sh_css_sp_init_stage(struct ia_css_binary *binary,
 		if (pipe == NULL)
 			return IA_CSS_ERR_INTERNAL_ERROR;
 		ia_css_get_crop_offsets(pipe, &binary->in_frame_info);
-#else
-	if (stage == 0) {
-		if (args->in_frame) {
-			pipe = find_pipe_by_num(sh_css_sp_group.pipe[thread_id].pipe_num);
-			if (pipe == NULL)
-				return IA_CSS_ERR_INTERNAL_ERROR;
-			ia_css_get_crop_offsets(pipe, &args->in_frame->info);
-		} else if (&binary->in_frame_info) {
-			pipe = find_pipe_by_num(sh_css_sp_group.pipe[thread_id].pipe_num);
-			if (pipe == NULL)
-				return IA_CSS_ERR_INTERNAL_ERROR;
-			ia_css_get_crop_offsets(pipe, &binary->in_frame_info);
-		}
-#endif
 	}
 #else
 	(void)pipe; /*avoid build warning*/
@@ -1211,12 +1180,6 @@ sh_css_sp_init_pipeline(struct ia_css_pipeline *me,
 #if !defined(HAS_NO_INPUT_SYSTEM)
 			const mipi_port_ID_t port_id
 #endif
-#ifdef ISP2401
-			,
-			const struct ia_css_coordinate *internal_frame_origin_bqs_on_sctbl, /* Origin of internal frame
-							positioned on shading table at shading correction in ISP. */
-			const struct ia_css_isp_parameters *params
-#endif
 	)
 {
 	/* Get first stage */
@@ -1335,22 +1298,6 @@ sh_css_sp_init_pipeline(struct ia_css_pipeline *me,
 	}
 #endif
 
-#ifdef ISP2401
-	/* For the shading correction type 1 (the legacy shading table conversion in css is not used),
-	 * the parameters are passed to the isp for the shading table centering.
-	 */
-	if (internal_frame_origin_bqs_on_sctbl != NULL &&
-			params != NULL && params->shading_settings.enable_shading_table_conversion == 0) {
-		sh_css_sp_group.pipe[thread_id].shading.internal_frame_origin_x_bqs_on_sctbl
-								= (uint32_t)internal_frame_origin_bqs_on_sctbl->x;
-		sh_css_sp_group.pipe[thread_id].shading.internal_frame_origin_y_bqs_on_sctbl
-								= (uint32_t)internal_frame_origin_bqs_on_sctbl->y;
-	} else {
-		sh_css_sp_group.pipe[thread_id].shading.internal_frame_origin_x_bqs_on_sctbl = 0;
-		sh_css_sp_group.pipe[thread_id].shading.internal_frame_origin_y_bqs_on_sctbl = 0;
-	}
-
-#endif
 	IA_CSS_LOG("pipe_id %d port_config %08x",
 		   pipe_id, sh_css_sp_group.pipe[thread_id].inout_port_config);
 

@@ -300,11 +300,7 @@ struct ia_css_isp_parameter_set_info {
 struct sh_css_binary_args {
 	struct ia_css_frame *in_frame;	     /* input frame */
 	struct ia_css_frame *delay_frames[MAX_NUM_VIDEO_DELAY_FRAMES];   /* reference input frame */
-#ifndef ISP2401
 	struct ia_css_frame *tnr_frames[NUM_VIDEO_TNR_FRAMES];   /* tnr frames */
-#else
-	struct ia_css_frame *tnr_frames[NUM_TNR_FRAMES];   /* tnr frames */
-#endif
 	struct ia_css_frame *out_frame[IA_CSS_BINARY_MAX_OUTPUT_PORTS];      /* output frame */
 	struct ia_css_frame *out_vf_frame;   /* viewfinder output frame */
 	bool                 copy_vf;
@@ -590,14 +586,6 @@ struct sh_css_sp_pipeline {
 			uint32_t	raw_bit_depth;
 		} raw;
 	} copy;
-#ifdef ISP2401
-
-	/* Parameters passed to Shading Correction kernel. */
-	struct {
-		uint32_t internal_frame_origin_x_bqs_on_sctbl; /* Origin X (bqs) of internal frame on shading table */
-		uint32_t internal_frame_origin_y_bqs_on_sctbl; /* Origin Y (bqs) of internal frame on shading table */
-	} shading;
-#endif
 };
 
 /*
@@ -962,11 +950,7 @@ struct host_sp_queues {
 #if !defined(HAS_NO_INPUT_SYSTEM)
 #define IA_CSS_NUM_CIRCBUF_DESCS 5
 #else
-#ifndef ISP2401
 #define IA_CSS_NUM_CIRCBUF_DESCS 3
-#else
-#define IA_CSS_NUM_CIRCBUF_DESCS 2
-#endif
 #endif
 
 #define SIZE_OF_QUEUES_DESC \

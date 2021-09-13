@@ -157,7 +157,11 @@
 #define CCK_FUSE_REG_0			0x08
 #define CCK_FUSE_HPLL_FREQ_MASK		0x03
 
-#define ISP_FREQ_MAX	ISP_FREQ_400MHZ
+#if defined(ISP2401)
+#define ISP_FREQ_MAX   ISP_FREQ_320MHZ
+#else
+#define ISP_FREQ_MAX   ISP_FREQ_400MHZ
+#endif
 
 /* ISP2401 CSI2+ receiver delay settings */
 #define CSI2_PORT_A_BASE					0xC0000

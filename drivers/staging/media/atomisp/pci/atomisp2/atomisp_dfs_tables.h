@@ -145,11 +145,7 @@ static const struct atomisp_freq_scaling_rule dfs_rules_merr_117a[] = {
 		.width = 1080,
 		.height = 1920,
 		.fps = 30,
-#ifndef ISP2401
 		.isp_freq = ISP_FREQ_266MHZ,
-#else
-		.isp_freq = ISP_FREQ_400MHZ,
-#endif
 		.run_mode = ATOMISP_RUN_MODE_VIDEO,
 	},
 	{
@@ -340,53 +336,6 @@ static const struct atomisp_freq_scaling_rule dfs_rules_cht[] = {
 		.run_mode = ATOMISP_RUN_MODE_PREVIEW,
 	},
 	{
-#ifdef ISP2401
-		.width = 1280,
-		.height = 720,
-		.fps = ISP_FREQ_RULE_ANY,
-		.isp_freq = ISP_FREQ_320MHZ,
-		.run_mode = ATOMISP_RUN_MODE_SDV,
-	},
-	{
-		.width = ISP_FREQ_RULE_ANY,
-		.height = ISP_FREQ_RULE_ANY,
-		.fps = ISP_FREQ_RULE_ANY,
-		.isp_freq = ISP_FREQ_356MHZ,
-		.run_mode = ATOMISP_RUN_MODE_SDV,
-	},
-};
-
-static const struct atomisp_freq_scaling_rule dfs_rules_cht_soc[] = {
-	{
-		.width = ISP_FREQ_RULE_ANY,
-		.height = ISP_FREQ_RULE_ANY,
-		.fps = ISP_FREQ_RULE_ANY,
-		.isp_freq = ISP_FREQ_356MHZ,
-		.run_mode = ATOMISP_RUN_MODE_VIDEO,
-	},
-	{
-		.width = ISP_FREQ_RULE_ANY,
-		.height = ISP_FREQ_RULE_ANY,
-		.fps = ISP_FREQ_RULE_ANY,
-		.isp_freq = ISP_FREQ_356MHZ,
-		.run_mode = ATOMISP_RUN_MODE_STILL_CAPTURE,
-	},
-	{
-		.width = ISP_FREQ_RULE_ANY,
-		.height = ISP_FREQ_RULE_ANY,
-		.fps = ISP_FREQ_RULE_ANY,
-		.isp_freq = ISP_FREQ_320MHZ,
-		.run_mode = ATOMISP_RUN_MODE_CONTINUOUS_CAPTURE,
-	},
-	{
-		.width = ISP_FREQ_RULE_ANY,
-		.height = ISP_FREQ_RULE_ANY,
-		.fps = ISP_FREQ_RULE_ANY,
-		.isp_freq = ISP_FREQ_320MHZ,
-		.run_mode = ATOMISP_RUN_MODE_PREVIEW,
-	},
-	{
-#endif
 		.width = ISP_FREQ_RULE_ANY,
 		.height = ISP_FREQ_RULE_ANY,
 		.fps = ISP_FREQ_RULE_ANY,
@@ -403,14 +352,4 @@ static const struct atomisp_dfs_config dfs_config_cht = {
 	.dfs_table_size = ARRAY_SIZE(dfs_rules_cht),
 };
 
-#ifdef ISP2401
-static const struct atomisp_dfs_config dfs_config_cht_soc = {
-	.lowest_freq = ISP_FREQ_100MHZ,
-	.max_freq_at_vmin = ISP_FREQ_356MHZ,
-	.highest_freq = ISP_FREQ_356MHZ,
-	.dfs_table = dfs_rules_cht_soc,
-	.dfs_table_size = ARRAY_SIZE(dfs_rules_cht_soc),
-};
-
-#endif
 #endif /* __ATOMISP_DFS_TABLES_H__ */

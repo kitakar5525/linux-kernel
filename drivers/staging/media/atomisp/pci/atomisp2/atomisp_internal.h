@@ -35,13 +35,8 @@
 #include <media/media-device.h>
 #include <media/v4l2-subdev.h>
 
-#ifndef ISP2401
 #include "ia_css_types.h"
 #include "sh_css_legacy.h"
-#else
-/*#include "ia_css_types.h"*/
-/*#include "sh_css_legacy.h"*/
-#endif
 
 #include "atomisp_csi2.h"
 #include "atomisp_file.h"
@@ -164,13 +159,6 @@
 #define ATOMISP_DEPTH_DEFAULT_MASTER_SENSOR 0
 #define ATOMISP_DEPTH_DEFAULT_SLAVE_SENSOR 1
 
-#ifdef ISP2401
-#define ATOMISP_ION_DEVICE_FD_OFFSET   16
-#define ATOMISP_ION_SHARED_FD_MASK     (0xFFFF)
-#define ATOMISP_ION_DEVICE_FD_MASK     (~ATOMISP_ION_SHARED_FD_MASK)
-#define ION_FD_UNSET (-1)
-
-#endif
 #define DIV_NEAREST_STEP(n, d, step) \
 	round_down((2 * (n) + (d) * (step))/(2 * (d)), (step))
 
@@ -289,9 +277,7 @@ struct atomisp_device {
 	bool isp_fatal_error;
 	struct workqueue_struct *wdt_work_queue;
 	struct work_struct wdt_work;
-#ifndef ISP2401
 	atomic_t wdt_count;
-#endif
 	atomic_t wdt_work_queued;
 
 	spinlock_t lock; /* Just for streaming below */
@@ -315,17 +301,8 @@ extern void *atomisp_kernel_malloc(size_t bytes);
 extern void atomisp_kernel_free(void *ptr);
 
 #define atomisp_is_wdt_running(a) timer_pending(&(a)->wdt)
-#ifdef ISP2401
-extern void atomisp_wdt_refresh_pipe(struct atomisp_video_pipe *pipe,
-					unsigned int delay);
-#endif
 extern void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay);
-#ifndef ISP2401
 extern void atomisp_wdt_start(struct atomisp_sub_device *asd);
-#else
-extern void atomisp_wdt_start(struct atomisp_video_pipe *pipe);
-extern void atomisp_wdt_stop_pipe(struct atomisp_video_pipe *pipe, bool sync);
-#endif
 extern void atomisp_wdt_stop(struct atomisp_sub_device *asd, bool sync);
 
 #endif /* __ATOMISP_INTERNAL_H__ */

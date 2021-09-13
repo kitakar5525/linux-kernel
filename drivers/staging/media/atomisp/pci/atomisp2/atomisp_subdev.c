@@ -324,17 +324,10 @@ static void isp_subdev_propagate(struct v4l2_subdev *sd,
 		r.width = ffmt[pad]->width;
 		r.height = ffmt[pad]->height;
 
-#ifndef ISP2401
 		atomisp_subdev_set_selection(sd, cfg, which, pad, target, flags,
 					     &r);
 		break;
 	}
-#else
-			atomisp_subdev_set_selection(sd, cfg, which, pad,
-						     target, flags, &r);
-			break;
-		}
-#endif
 	}
 }
 
@@ -446,19 +439,10 @@ int atomisp_subdev_set_selection(struct v4l2_subdev *sd,
 			     i < ATOMISP_SUBDEV_PADS_NUM; i++) {
 				struct v4l2_rect tmp = *crop[pad];
 
-#ifndef ISP2401
 				atomisp_subdev_set_selection(
 					sd, cfg, which, i, V4L2_SEL_TGT_COMPOSE,
 					flags, &tmp);
 			}
-#else
-					atomisp_subdev_set_selection(sd, cfg,
-								     which, i,
-								     V4L2_SEL_TGT_COMPOSE,
-								     flags,
-								     &tmp);
-				}
-#endif
 		}
 
 		if (which == V4L2_SUBDEV_FORMAT_TRY)
@@ -613,24 +597,14 @@ static int atomisp_get_sensor_bin_factor(struct atomisp_sub_device *asd)
 	return hbin;
 }
 
-#ifndef ISP2401
 void atomisp_subdev_set_ffmt(struct v4l2_subdev *sd, struct v4l2_subdev_pad_config *cfg,
 			     uint32_t which, uint32_t pad,
 			     struct v4l2_mbus_framefmt *ffmt)
-#else
-void atomisp_subdev_set_ffmt(struct v4l2_subdev *sd,
-			     struct v4l2_subdev_pad_config *cfg, uint32_t which,
-			     uint32_t pad, struct v4l2_mbus_framefmt *ffmt)
-#endif
 {
 	struct atomisp_sub_device *isp_sd = v4l2_get_subdevdata(sd);
 	struct atomisp_device *isp = isp_sd->isp;
 	struct v4l2_mbus_framefmt *__ffmt =
-#ifndef ISP2401
 		atomisp_subdev_get_ffmt(sd, cfg, which, pad);
-#else
-	    atomisp_subdev_get_ffmt(sd, cfg, which, pad);
-#endif
 	uint16_t vdev_pad = atomisp_subdev_source_pad(sd->devnode);
 	enum atomisp_input_stream_id stream_id;
 
@@ -694,12 +668,7 @@ void atomisp_subdev_set_ffmt(struct v4l2_subdev *sd,
  * to the format type.
  */
 static int isp_subdev_get_format(struct v4l2_subdev *sd,
-#ifndef ISP2401
 	struct v4l2_subdev_pad_config *cfg, struct v4l2_subdev_format *fmt)
-#else
-				 struct v4l2_subdev_pad_config *cfg,
-				 struct v4l2_subdev_format *fmt)
-#endif
 {
 	fmt->format = *atomisp_subdev_get_ffmt(sd, cfg, fmt->which, fmt->pad);
 
@@ -717,12 +686,7 @@ static int isp_subdev_get_format(struct v4l2_subdev *sd,
  * to the format type.
  */
 static int isp_subdev_set_format(struct v4l2_subdev *sd,
-#ifndef ISP2401
 	struct v4l2_subdev_pad_config *cfg, struct v4l2_subdev_format *fmt)
-#else
-				 struct v4l2_subdev_pad_config *cfg,
-				 struct v4l2_subdev_format *fmt)
-#endif
 {
 	atomisp_subdev_set_ffmt(sd, cfg, fmt->which, fmt->pad, &fmt->format);
 
@@ -738,30 +702,16 @@ static const struct v4l2_subdev_core_ops isp_subdev_v4l2_core_ops = {
 
 /* V4L2 subdev pad operations */
 static const struct v4l2_subdev_pad_ops isp_subdev_v4l2_pad_ops = {
-#ifndef ISP2401
 	 .enum_mbus_code = isp_subdev_enum_mbus_code,
 	 .get_fmt = isp_subdev_get_format, .set_fmt = isp_subdev_set_format,
 	 .get_selection = isp_subdev_get_selection,
 	 .set_selection = isp_subdev_set_selection,
 	 .link_validate = v4l2_subdev_link_validate_default,
-#else
-	.enum_mbus_code = isp_subdev_enum_mbus_code,
-	.get_fmt = isp_subdev_get_format,
-	.set_fmt = isp_subdev_set_format,
-	.get_selection = isp_subdev_get_selection,
-	.set_selection = isp_subdev_set_selection,
-	.link_validate = v4l2_subdev_link_validate_default,
-#endif
 };
 
 /* V4L2 subdev operations */
 static const struct v4l2_subdev_ops isp_subdev_v4l2_ops = {
-#ifndef ISP2401
 	 .core = &isp_subdev_v4l2_core_ops, .pad = &isp_subdev_v4l2_pad_ops,
-#else
-	.core = &isp_subdev_v4l2_core_ops,
-	.pad = &isp_subdev_v4l2_pad_ops,
-#endif
 };
 
 static void isp_subdev_init_params(struct atomisp_sub_device *asd)
@@ -1096,45 +1046,6 @@ static const struct v4l2_ctrl_config ctrl_depth_mode = {
 	.def = 0,
 };
 
-#ifdef ISP2401
-/*
- * Control for selectting ISP version
- *
- * When enabled, that means ISP version will be used ISP2.7. when disable, the
- * isp will default to use ISP2.2.
- * Note: Make sure set this configuration before creating stream.
- */
-static const struct v4l2_ctrl_config ctrl_select_isp_version = {
-	.ops = &ctrl_ops,
-	.id = V4L2_CID_ATOMISP_SELECT_ISP_VERSION,
-	.type = V4L2_CTRL_TYPE_BOOLEAN,
-	.name = "Select Isp version",
-	.min = 0,
-	.max = 1,
-	.step = 1,
-	.def = 0,
-};
-
-#ifdef CONFIG_ION
-/*
- * Control for ISP ion device fd
- *
- * userspace will open ion device and pass the fd to kernel.
- * this fd will be used to map shared fd to buffer.
- */
-static const struct v4l2_ctrl_config ctrl_ion_dev_fd = {
-		.ops = &ctrl_ops,
-		.id = V4L2_CID_ATOMISP_ION_DEVICE_FD,
-		.type = V4L2_CTRL_TYPE_INTEGER,
-		.name = "Ion Device Fd",
-		.min = -1,
-		.max = 1024,
-		.step = 1,
-		.def = ION_FD_UNSET
-};
-#endif
-
-#endif
 static void atomisp_init_subdev_pipe(struct atomisp_sub_device *asd,
 		struct atomisp_video_pipe *pipe, enum v4l2_buf_type buf_type)
 {
@@ -1189,12 +1100,8 @@ static int isp_subdev_init_entities(struct atomisp_sub_device *asd)
 	pads[ATOMISP_SUBDEV_PAD_SOURCE_CAPTURE].flags = MEDIA_PAD_FL_SOURCE;
 	pads[ATOMISP_SUBDEV_PAD_SOURCE_VIDEO].flags = MEDIA_PAD_FL_SOURCE;
 
-#ifndef ISP2401
 	asd->fmt[ATOMISP_SUBDEV_PAD_SINK].fmt.code =
 		MEDIA_BUS_FMT_SBGGR10_1X10;
-#else
-	asd->fmt[ATOMISP_SUBDEV_PAD_SINK].fmt.code = MEDIA_BUS_FMT_SBGGR10_1X10;
-#endif
 	asd->fmt[ATOMISP_SUBDEV_PAD_SOURCE_PREVIEW].fmt.code =
 		MEDIA_BUS_FMT_SBGGR10_1X10;
 	asd->fmt[ATOMISP_SUBDEV_PAD_SOURCE_VF].fmt.code =
@@ -1211,39 +1118,19 @@ static int isp_subdev_init_entities(struct atomisp_sub_device *asd)
 		return ret;
 
 	atomisp_init_subdev_pipe(asd, &asd->video_in,
-#ifndef ISP2401
 			V4L2_BUF_TYPE_VIDEO_OUTPUT);
-#else
-				 V4L2_BUF_TYPE_VIDEO_OUTPUT);
-#endif
 
 	atomisp_init_subdev_pipe(asd, &asd->video_out_preview,
-#ifndef ISP2401
 			V4L2_BUF_TYPE_VIDEO_CAPTURE);
-#else
-				 V4L2_BUF_TYPE_VIDEO_CAPTURE);
-#endif
 
 	atomisp_init_subdev_pipe(asd, &asd->video_out_vf,
-#ifndef ISP2401
 			V4L2_BUF_TYPE_VIDEO_CAPTURE);
-#else
-				 V4L2_BUF_TYPE_VIDEO_CAPTURE);
-#endif
 
 	atomisp_init_subdev_pipe(asd, &asd->video_out_capture,
-#ifndef ISP2401
 			V4L2_BUF_TYPE_VIDEO_CAPTURE);
-#else
-				 V4L2_BUF_TYPE_VIDEO_CAPTURE);
-#endif
 
 	atomisp_init_subdev_pipe(asd, &asd->video_out_video_capture,
-#ifndef ISP2401
 			V4L2_BUF_TYPE_VIDEO_CAPTURE);
-#else
-				 V4L2_BUF_TYPE_VIDEO_CAPTURE);
-#endif
 
 	atomisp_init_acc_pipe(asd, &asd->video_acc);
 
@@ -1301,19 +1188,6 @@ static int isp_subdev_init_entities(struct atomisp_sub_device *asd)
 			v4l2_ctrl_new_custom(&asd->ctrl_handler,
 					     &ctrl_disable_dz,
 					     NULL);
-#ifdef ISP2401
-	asd->select_isp_version =
-			v4l2_ctrl_new_custom(&asd->ctrl_handler,
-					     &ctrl_select_isp_version,
-					     NULL);
-
-#ifdef CONFIG_ION
-	asd->ion_dev_fd =
-			v4l2_ctrl_new_custom(&asd->ctrl_handler,
-						&ctrl_ion_dev_fd,
-						 NULL);
-#endif
-#endif
 
 	/* Make controls visible on subdev as well. */
 	asd->subdev.ctrl_handler = &asd->ctrl_handler;
@@ -1403,11 +1277,7 @@ void atomisp_subdev_cleanup_pending_events(struct atomisp_sub_device *asd)
 	unsigned int i, pending_event;
 
 	list_for_each_entry_safe(fh, fh_tmp,
-#ifndef ISP2401
 		&asd->subdev.devnode->fh_list, list) {
-#else
-				 &asd->subdev.devnode->fh_list, list) {
-#endif
 		pending_event = v4l2_event_pending(fh);
 		for (i = 0; i < pending_event; i++)
 			v4l2_event_dequeue(fh, &event, 1);
@@ -1473,9 +1343,7 @@ error:
 	return ret;
 }
 
-#ifndef ISP2401
 
-#endif
 /*
  * atomisp_subdev_init - ISP Subdevice  initialization.
  * @dev: Device pointer specific to the ATOM ISP.

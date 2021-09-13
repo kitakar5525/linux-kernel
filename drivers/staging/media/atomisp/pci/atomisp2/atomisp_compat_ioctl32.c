@@ -695,10 +695,6 @@ static int get_atomisp_parameters32(struct atomisp_parameters *kp,
 				sizeof(compat_uptr_t);
 	unsigned int size, offset = 0;
 	void  __user *user_ptr;
-#ifdef ISP2401
-	unsigned int stp, mtp, dcp, dscp = 0;
-
-#endif
 	if (!access_ok(VERIFY_READ, up, sizeof(struct atomisp_parameters32)))
 			return -EFAULT;
 
@@ -711,15 +707,7 @@ static int get_atomisp_parameters32(struct atomisp_parameters *kp,
 		n--;
 	}
 	if (get_user(kp->isp_config_id, &up->isp_config_id) ||
-#ifndef ISP2401
 	    get_user(kp->per_frame_setting, &up->per_frame_setting))
-#else
-	    get_user(kp->per_frame_setting, &up->per_frame_setting) ||
-	    get_user(stp, &up->shading_table) ||
-	    get_user(mtp, &up->morph_table) ||
-	    get_user(dcp, &up->dvs2_coefs) ||
-	    get_user(dscp, &up->dvs_6axis_config))
-#endif
 		return -EFAULT;
 
 	{
@@ -737,18 +725,10 @@ static int get_atomisp_parameters32(struct atomisp_parameters *kp,
 		user_ptr = compat_alloc_user_space(size);
 
 		/* handle shading table */
-#ifndef ISP2401
 		if (up->shading_table != 0) {
-#else
-		if (stp != 0) {
-#endif
 			if (get_atomisp_shading_table32(&karg.shading_table,
 				(struct atomisp_shading_table32 __user *)
-#ifndef ISP2401
 						(uintptr_t)up->shading_table))
-#else
-						(uintptr_t)stp))
-#endif
 				return -EFAULT;
 
 			kp->shading_table = user_ptr + offset;
@@ -763,18 +743,10 @@ static int get_atomisp_parameters32(struct atomisp_parameters *kp,
 		}
 
 		/* handle morph table */
-#ifndef ISP2401
 		if (up->morph_table != 0) {
-#else
-		if (mtp != 0) {
-#endif
 			if (get_atomisp_morph_table32(&karg.morph_table,
 					(struct atomisp_morph_table32 __user *)
-#ifndef ISP2401
 						(uintptr_t)up->morph_table))
-#else
-						(uintptr_t)mtp))
-#endif
 				return -EFAULT;
 
 			kp->morph_table = user_ptr + offset;
@@ -788,18 +760,10 @@ static int get_atomisp_parameters32(struct atomisp_parameters *kp,
 		}
 
 		/* handle dvs2 coefficients */
-#ifndef ISP2401
 		if (up->dvs2_coefs != 0) {
-#else
-		if (dcp != 0) {
-#endif
 			if (get_atomisp_dis_coefficients32(&karg.dvs2_coefs,
 				(struct atomisp_dis_coefficients32 __user *)
-#ifndef ISP2401
 						(uintptr_t)up->dvs2_coefs))
-#else
-						(uintptr_t)dcp))
-#endif
 				return -EFAULT;
 
 			kp->dvs2_coefs = user_ptr + offset;
@@ -812,18 +776,10 @@ static int get_atomisp_parameters32(struct atomisp_parameters *kp,
 				return -EFAULT;
 		}
 		/* handle dvs 6axis configuration */
-#ifndef ISP2401
 		if (up->dvs_6axis_config != 0) {
-#else
-		if (dscp != 0) {
-#endif
 			if (get_atomisp_dvs_6axis_config32(&karg.dvs_6axis_config,
 				(struct atomisp_dvs_6axis_config32 __user *)
-#ifndef ISP2401
 						(uintptr_t)up->dvs_6axis_config))
-#else
-						(uintptr_t)dscp))
-#endif
 				return -EFAULT;
 
 			kp->dvs_6axis_config = user_ptr + offset;
@@ -1215,10 +1171,6 @@ long atomisp_compat_ioctl32(struct file *file,
 	case ATOMISP_IOC_G_SENSOR_AE_BRACKETING_MODE:
 	case ATOMISP_IOC_G_INVALID_FRAME_NUM:
 	case ATOMISP_IOC_S_ARRAY_RESOLUTION:
-#ifdef ISP2401
-	case ATOMISP_IOC_S_SENSOR_RUNMODE:
-	case ATOMISP_IOC_G_UPDATE_EXPOSURE:
-#endif
 		ret = native_ioctl(file, cmd, arg);
 		break;
 

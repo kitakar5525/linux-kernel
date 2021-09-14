@@ -9754,7 +9754,7 @@ ia_css_pipe_get_isp_pipe_version(const struct ia_css_pipe *pipe) {
 	return (unsigned int)pipe->config.isp_pipe_version;
 }
 
-#define SP_START_TIMEOUT_US 30000000
+#define SP_START_TIMEOUT_US 3000000
 
 enum ia_css_err
 ia_css_start_sp(void) {

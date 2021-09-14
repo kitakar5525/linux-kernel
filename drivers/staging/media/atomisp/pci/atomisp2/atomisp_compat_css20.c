@@ -4563,7 +4563,7 @@ int atomisp_css_isr_thread(struct atomisp_device *isp,
 				current_event.event.fw_assert_line_no);
 			for (i = 0; i < isp->num_of_streams; i++)
 				atomisp_wdt_stop(&isp->asd[i], 0);
-			atomisp_wdt((unsigned long)isp);
+			atomisp_wdt(&isp->asd[0].wdt);
 			return -EINVAL;
 		} else if (current_event.event.type == IA_CSS_EVENT_TYPE_FW_WARNING) {
 			dev_warn(isp->dev, "%s: ISP reports warning, code is %d, exp_id %d\n",

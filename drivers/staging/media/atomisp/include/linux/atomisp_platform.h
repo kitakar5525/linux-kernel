@@ -18,7 +18,6 @@
 #define ATOMISP_PLATFORM_H_
 
 #include <linux/i2c.h>
-#include <linux/sfi.h>
 #include <media/v4l2-subdev.h>
 #include "atomisp.h"
 

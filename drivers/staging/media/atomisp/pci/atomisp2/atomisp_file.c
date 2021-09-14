@@ -81,13 +81,6 @@ static int file_input_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
-static int file_input_s_parm(struct v4l2_subdev *sd,
-		struct v4l2_streamparm *param)
-{
-	/*to fake*/
-	return 0;
-}
-
 static int file_input_get_fmt(struct v4l2_subdev *sd,
 			      struct v4l2_subdev_state *sd_state,
 			      struct v4l2_subdev_format *format)
@@ -163,7 +156,6 @@ static int file_input_enum_frame_ival(struct v4l2_subdev *sd,
 
 static const struct v4l2_subdev_video_ops file_input_video_ops = {
 	.s_stream = file_input_s_stream,
-	.s_parm = file_input_s_parm,
 };
 
 static const struct v4l2_subdev_core_ops file_input_core_ops = {

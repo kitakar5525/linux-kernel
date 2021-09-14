@@ -31,12 +31,6 @@ static int tpg_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
-static int tpg_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param)
-{
-	/*to fake*/
-	return 0;
-}
-
 static int tpg_get_fmt(struct v4l2_subdev *sd,
 		       struct v4l2_subdev_state *sd_state,
 		       struct v4l2_subdev_format *format)
@@ -98,7 +92,6 @@ static int tpg_enum_frame_ival(struct v4l2_subdev *sd,
 
 static const struct v4l2_subdev_video_ops tpg_video_ops = {
 	.s_stream = tpg_s_stream,
-	.s_parm = tpg_s_parm,
 };
 
 static const struct v4l2_subdev_core_ops tpg_core_ops = {

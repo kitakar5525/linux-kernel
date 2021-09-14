@@ -1196,8 +1196,7 @@ int atomisp_create_pads_links(struct atomisp_device *isp)
 {
 	struct atomisp_sub_device *asd;
 	int i, j, ret = 0;
-	isp->num_of_streams = isp->media_dev.driver_version >=
-	    ATOMISP_CSS_VERSION_20 ? 2 : 1;
+	isp->num_of_streams = isp->css_version >= ATOMISP_CSS_VERSION_20 ? 2 : 1;
 	for (i = 0; i < ATOMISP_CAMERA_NR_PORTS; i++) {
 		for (j = 0; j < isp->num_of_streams; j++) {
 			ret =

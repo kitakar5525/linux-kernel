@@ -1254,7 +1254,7 @@ static int atomisp_pci_probe(struct pci_dev *dev,
 	spin_lock_init(&isp->lock);
 
 	/* This is not a true PCI device on SoC, so the delay is not needed. */
-	isp->pdev->d3_delay = 0;
+	isp->pdev->d3hot_delay = 0;
 
 	isp->media_dev.driver_version = ATOMISP_CSS_VERSION_21;
 	switch (id->device & ATOMISP_PCI_DEVICE_SOC_MASK) {

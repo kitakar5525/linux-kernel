@@ -3,4 +3,4 @@
 #
 
 obj-$(CONFIG_INTEL_ATOMISP) += clock/
-obj-$(CONFIG_INTEL_ATOMISP) += intel-mid/
+obj-$(CONFIG_VIDEO_ATOMISP) += intel-mid/

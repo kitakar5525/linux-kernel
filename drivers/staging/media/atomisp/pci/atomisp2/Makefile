@@ -26,10 +26,6 @@ atomisp-objs += \
 	./css2400/runtime/debug/src/ia_css_debug.o \
 	./css2400/runtime/event/src/event.o \
 	./css2400/sh_css_sp.o \
-	./css2400/css_2400_system/spmem_dump.o \
-	./css2400/css_2400_system/hive_isp_css_2400_system_generated/ia_css_isp_states.o \
-	./css2400/css_2400_system/hive_isp_css_2400_system_generated/ia_css_isp_configs.o \
-	./css2400/css_2400_system/hive_isp_css_2400_system_generated/ia_css_isp_params.o \
 	./css2400/sh_css_stream_format.o \
 	./css2400/sh_css_hrt.o \
 	./css2400/sh_css_properties.o \
@@ -176,15 +172,17 @@ extra= \
 	./hmm/hmm.o \
 	./hmm/hmm_bo.o
 
+obj-byt = \
+	./css2400/css_2400_system/spmem_dump.o \
+	./css2400/css_2400_system/hive_isp_css_2400_system_generated/ia_css_isp_states.o \
+	./css2400/css_2400_system/hive_isp_css_2400_system_generated/ia_css_isp_configs.o \
+	./css2400/css_2400_system/hive_isp_css_2400_system_generated/ia_css_isp_params.o \
+
 # These will be needed when clean merge CHT support nicely into the driver
 # Keep them here handy for when we get to that point
 #
 
 obj-cht= \
-	./css2400/css_2401_system/spmem_dump.o \
-	./css2400/css_2401_system/hive_isp_css_2401_system_generated/ia_css_isp_states.o \
-	./css2400/css_2401_system/hive_isp_css_2401_system_generated/ia_css_isp_configs.o \
-	./css2400/css_2401_system/hive_isp_css_2401_system_generated/ia_css_isp_params.o \
 	./css2400/css_2401_csi2p_system/spmem_dump.o \
 	./css2400/css_2401_csi2p_system/host/isys_stream2mmio.o \
 	./css2400/css_2401_csi2p_system/host/ibuf_ctrl.o \
@@ -195,12 +193,10 @@ obj-cht= \
 	./css2400/css_2401_csi2p_system/hive_isp_css_2401_system_csi2p_generated/ia_css_isp_configs.o \
 	./css2400/css_2401_csi2p_system/hive_isp_css_2401_system_csi2p_generated/ia_css_isp_params.o \
 
-#	-I$(atomisp)/css2400/css_2401_csi2p_system/ \
-#	-I$(atomisp)/css2400/css_2401_csi2p_system/hive_isp_css_2401_system_csi2p_generated/ \
-#	-I$(atomisp)/css2400/css_2401_csi2p_system/host/ \
-#	-I$(atomisp)/css2400/css_2401_csi2p_system/hrt/ \
-#	-I$(atomisp)/css2400/css_2401_system/hive_isp_css_2401_system_generated/ \
-#	-I$(atomisp)/css2400/css_2401_system/hrt/ \
+#	./css2400/css_2401_system/spmem_dump.o \
+#	./css2400/css_2401_system/hive_isp_css_2401_system_generated/ia_css_isp_states.o \
+#	./css2400/css_2401_system/hive_isp_css_2401_system_generated/ia_css_isp_configs.o \
+#	./css2400/css_2401_system/hive_isp_css_2401_system_generated/ia_css_isp_params.o \
 
 
 
@@ -219,9 +215,6 @@ INCLUDES += \
 	-I$(atomisp)/css2400/base/refcount/interface/ \
 	-I$(atomisp)/css2400/camera/pipe/interface/ \
 	-I$(atomisp)/css2400/camera/util/interface/ \
-	-I$(atomisp)/css2400/css_2400_system/ \
-	-I$(atomisp)/css2400/css_2400_system/hive_isp_css_2400_system_generated/ \
-	-I$(atomisp)/css2400/css_2400_system/hrt/ \
 	-I$(atomisp)/css2400/hive_isp_css_common/ \
 	-I$(atomisp)/css2400/hive_isp_css_common/host/ \
 	-I$(atomisp)/css2400/hive_isp_css_include/ \
@@ -360,6 +353,20 @@ INCLUDES += \
 	-I$(atomisp)/css2400/runtime/spctrl/interface/ \
 	-I$(atomisp)/css2400/runtime/tagger/interface/
 
+INCLUDES_byt += \
+	-I$(atomisp)/css2400/css_2400_system/ \
+	-I$(atomisp)/css2400/css_2400_system/hive_isp_css_2400_system_generated/ \
+	-I$(atomisp)/css2400/css_2400_system/hrt/ \
+
+INCLUDES_cht += \
+	-I$(atomisp)/css2400/css_2401_csi2p_system/ \
+	-I$(atomisp)/css2400/css_2401_csi2p_system/hive_isp_css_2401_system_csi2p_generated/ \
+	-I$(atomisp)/css2400/css_2401_csi2p_system/host/ \
+	-I$(atomisp)/css2400/css_2401_csi2p_system/hrt/ \
+
+#	-I$(atomisp)/css2400/css_2401_system/hive_isp_css_2401_system_generated/ \
+#	-I$(atomisp)/css2400/css_2401_system/hrt/ \
+
 ifeq ($(CONFIG_ION),y)
 INCLUDES += -I$(srctree)/drivers/staging/android/ion
 endif
@@ -372,8 +379,15 @@ DEFINES += -DUSE_INTERRUPTS
 DEFINES += -DPUNIT_CAMERA_BUSY
 DEFINES += -DUSE_KMEM_CACHE
 
-DEFINES += -DATOMISP_POSTFIX=\"css2400b0_v21\" -DISP2400B0
-DEFINES += -DSYSTEM_hive_isp_css_2400_system -DISP2400
+ifeq ($(CONFIG_VIDEO_ATOMISP_ISP2401),y)
+atomisp-objs += $(obj-cht)
+INCLUDES += $(INCLUDES_cht)
+DEFINES += -DISP2401 -DISP2401_NEW_INPUT_SYSTEM -DSYSTEM_hive_isp_css_2401_system
+else
+atomisp-objs += $(obj-byt)
+INCLUDES += $(INCLUDES_byt)
+DEFINES += -DISP2400 -DSYSTEM_hive_isp_css_2400_system
+endif
 
 ccflags-y += $(INCLUDES) $(DEFINES) -fno-common -Werror
 

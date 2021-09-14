@@ -18,7 +18,8 @@
 /*! \file */
 
 #include <type_support.h>
-#include <stdarg.h>
+/* FIXME */
+// #include <stdarg.h>
 #include "ia_css_types.h"
 #include "ia_css_binary.h"
 #include "ia_css_frame_public.h"

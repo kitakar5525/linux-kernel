@@ -36,6 +36,7 @@
 #include <linux/io.h>
 #include <linux/acpi.h>
 #include <linux/atomisp_platform.h>
+#include "../include/linux/atomisp_gmin_platform.h"
 
 #include "ov8830.h"
 #include "ov8835.h"

@@ -26,6 +26,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/mm.h>
+#include <asm/set_memory.h>
 
 #include "asm/cacheflush.h"
 #include "atomisp_internal.h"

@@ -41,6 +41,8 @@
 #include <asm/current.h>
 #include <linux/sched.h>
 #include <linux/file.h>
+#include <linux/sched/signal.h>
+#include <asm/set_memory.h>
 
 #include "atomisp_internal.h"
 #include "hmm/hmm_common.h"

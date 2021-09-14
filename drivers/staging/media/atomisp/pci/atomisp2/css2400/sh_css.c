@@ -9796,7 +9796,7 @@ ia_css_start_bl(void)
 }
 #endif
 
-#define SP_START_TIMEOUT_US 30000000
+#define SP_START_TIMEOUT_US 3000000
 
 #if defined(HAS_SEC_SP)
 

@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Makefile for sensor drivers
+#
+
+obj-$(CONFIG_VIDEO_ATOMISP_OV5693)     += ov5693/
+obj-$(CONFIG_VIDEO_ATOMISP_MT9M114)    += atomisp-mt9m114.o
+obj-$(CONFIG_VIDEO_ATOMISP_GC2235)     += atomisp-gc2235.o
+obj-$(CONFIG_VIDEO_ATOMISP_OV2722)     += atomisp-ov2722.o
+obj-$(CONFIG_VIDEO_ATOMISP_OV2680)     += atomisp-ov2680.o
+obj-$(CONFIG_VIDEO_ATOMISP_GC0310)     += atomisp-gc0310.o
+obj-y	+= imx/
+obj-$(CONFIG_VIDEO_ATOMISP_OV7251)     += atomisp-ov7251.o
+obj-$(CONFIG_VIDEO_ATOMISP_AR0330)     += atomisp-ar0330.o
+obj-$(CONFIG_VIDEO_ATOMISP_OV883X)     += atomisp-ov883x.o
+obj-y	+= micam/
+
+obj-$(CONFIG_VIDEO_ATOMISP_MSRLIST_HELPER) += atomisp-libmsrlisthelper.o
+
+# Makefile for flash drivers
+#
+
+obj-$(CONFIG_VIDEO_ATOMISP_LM3554) += atomisp-lm3554.o

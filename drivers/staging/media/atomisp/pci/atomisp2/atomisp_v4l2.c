@@ -1171,8 +1171,10 @@ static int init_atomisp_wdts(struct atomisp_device *isp)
 
 	for (i = 0; i < isp->num_of_streams; i++) {
 		struct atomisp_sub_device *asd = &isp->asd[i];
-		asd = &isp->asd[i];
-		setup_timer(&asd->wdt, atomisp_wdt, (unsigned long)isp);
+		timer_setup(&asd->video_out_capture.wdt, atomisp_wdt, 0);
+		timer_setup(&asd->video_out_preview.wdt, atomisp_wdt, 0);
+		timer_setup(&asd->video_out_vf.wdt, atomisp_wdt, 0);
+		timer_setup(&asd->video_out_video_capture.wdt, atomisp_wdt, 0);
 	}
 	return 0;
 alloc_fail:

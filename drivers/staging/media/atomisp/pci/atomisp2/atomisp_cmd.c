@@ -1625,9 +1625,11 @@ void atomisp_css_flush(struct atomisp_device *isp)
 	dev_dbg(isp->dev, "atomisp css flush done\n");
 }
 
-void atomisp_wdt(unsigned long isp_addr)
+void atomisp_wdt(struct timer_list *t)
 {
-	struct atomisp_device *isp = (struct atomisp_device *)isp_addr;
+	struct atomisp_video_pipe *pipe = from_timer(pipe, t, wdt);
+	struct atomisp_sub_device *asd = pipe->asd;
+	struct atomisp_device *isp = asd->isp;
 
 	if (atomic_read(&isp->wdt_work_queued)) {
 		dev_dbg(isp->dev, "ISP watchdog was put into workqueue\n");

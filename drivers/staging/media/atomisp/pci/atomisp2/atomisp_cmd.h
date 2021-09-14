@@ -77,7 +77,7 @@ void atomisp_kernel_free(void *ptr);
 void atomisp_msi_irq_init(struct atomisp_device *isp, struct pci_dev *dev);
 void atomisp_msi_irq_uninit(struct atomisp_device *isp, struct pci_dev *dev);
 void atomisp_wdt_work(struct work_struct *work);
-void atomisp_wdt(unsigned long isp_addr);
+void atomisp_wdt(struct timer_list *t);
 void atomisp_setup_flash(struct atomisp_sub_device *asd);
 irqreturn_t atomisp_isr(int irq, void *dev);
 irqreturn_t atomisp_isr_thread(int irq, void *isp_ptr);

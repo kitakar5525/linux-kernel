@@ -191,8 +191,6 @@ INCLUDES += \
 	-I$(atomisp)/css2400/base/refcount/interface/ \
 	-I$(atomisp)/css2400/camera/pipe/interface/ \
 	-I$(atomisp)/css2400/camera/util/interface/ \
-	-I$(atomisp)/css2400/hive_isp_css_common/ \
-	-I$(atomisp)/css2400/hive_isp_css_common/host/ \
 	-I$(atomisp)/css2400/hive_isp_css_include/ \
 	-I$(atomisp)/css2400/hive_isp_css_include/device_access/ \
 	-I$(atomisp)/css2400/hive_isp_css_include/host/ \
@@ -318,12 +316,16 @@ INCLUDES_byt += \
 	-I$(atomisp)/css2400/css_2400_system/ \
 	-I$(atomisp)/css2400/css_2400_system/hive_isp_css_2400_system_generated/ \
 	-I$(atomisp)/css2400/css_2400_system/hrt/ \
+	-I$(atomisp)/css2400/hive_isp_css_common/ \
+	-I$(atomisp)/css2400/hive_isp_css_common/host/ \
 
 INCLUDES_cht += \
 	-I$(atomisp)/css2400/css_2401_csi2p_system/ \
 	-I$(atomisp)/css2400/css_2401_csi2p_system/hive_isp_css_2401_system_csi2p_generated/ \
 	-I$(atomisp)/css2400/css_2401_csi2p_system/host/ \
 	-I$(atomisp)/css2400/css_2401_csi2p_system/hrt/ \
+	-I$(atomisp)/css2400/hive_isp_css_common/ \
+	-I$(atomisp)/css2400/hive_isp_css_common/host/ \
 
 #	-I$(atomisp)/css2400/css_2401_system/hive_isp_css_2401_system_generated/ \
 #	-I$(atomisp)/css2400/css_2401_system/hrt/ \

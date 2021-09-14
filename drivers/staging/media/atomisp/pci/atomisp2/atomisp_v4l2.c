@@ -1139,9 +1139,6 @@ static int init_atomisp_wdts(struct atomisp_device *isp)
 	for (i = 0; i < isp->num_of_streams; i++) {
 		struct atomisp_sub_device *asd = &isp->asd[i];
 		timer_setup(&asd->wdt, atomisp_wdt, 0);
-		timer_setup(&asd->wdt, atomisp_wdt, 0);
-		timer_setup(&asd->wdt, atomisp_wdt, 0);
-		timer_setup(&asd->wdt, atomisp_wdt, 0);
 	}
 	return 0;
 alloc_fail:

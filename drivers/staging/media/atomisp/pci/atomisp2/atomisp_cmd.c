@@ -1620,8 +1620,7 @@ void atomisp_css_flush(struct atomisp_device *isp)
 
 void atomisp_wdt(struct timer_list *t)
 {
-	struct atomisp_video_pipe *pipe = from_timer(pipe, t, wdt);
-	struct atomisp_sub_device *asd = pipe->asd;
+	struct atomisp_sub_device *asd = from_timer(asd, t, wdt);
 	struct atomisp_device *isp = asd->isp;
 
 	if (atomic_read(&isp->wdt_work_queued)) {

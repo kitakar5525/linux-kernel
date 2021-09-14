@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for OmniVision OV2722 1080p HD camera sensor.
  *
@@ -787,7 +786,6 @@ static struct ov2722_reg const ov2722_1452_1092_30fps[] = {
 	{OV2722_8BIT, 0x3509, 0x00},
 	{OV2722_TOK_TERM, 0, 0}
 };
-
 #if 0
 static struct ov2722_reg const ov2722_1M3_30fps[] = {
 	{OV2722_8BIT, 0x3718, 0x10},
@@ -1154,7 +1152,6 @@ static struct ov2722_resolution ov2722_res_preview[] = {
 		.mipi_freq = 345600,
 	},
 };
-
 #define N_RES_PREVIEW (ARRAY_SIZE(ov2722_res_preview))
 
 /*
@@ -1212,7 +1209,6 @@ struct ov2722_resolution ov2722_res_still[] = {
 		.mipi_freq = 345600,
 	},
 };
-
 #define N_RES_STILL (ARRAY_SIZE(ov2722_res_still))
 
 struct ov2722_resolution ov2722_res_video[] = {
@@ -1264,7 +1260,6 @@ struct ov2722_resolution ov2722_res_video[] = {
 		.mipi_freq = 345600,
 	},
 };
-
 #define N_RES_VIDEO (ARRAY_SIZE(ov2722_res_video))
 #endif
 

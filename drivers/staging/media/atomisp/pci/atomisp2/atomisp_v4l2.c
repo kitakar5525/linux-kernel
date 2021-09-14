@@ -1544,7 +1544,7 @@ static const struct pci_device_id atomisp_pci_tbl[] = {
 	/* Anniedale (Merrifield+ / Moorefield) */
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1478)},
 	/* Cherrytrail */
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x22b8)}
+	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x22b8)},
 #endif
 	{0,}
 };

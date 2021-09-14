@@ -28,7 +28,7 @@
 #include <linux/types.h>
 #include <linux/version.h>
 
-/* struct atomisp_device.driver_version */
+/* struct atomisp_device.css_version */
 #define ATOMISP_CSS_VERSION_MASK	0x00ffffff
 #define ATOMISP_CSS_VERSION_15		KERNEL_VERSION(1, 5, 0)
 #define ATOMISP_CSS_VERSION_20		KERNEL_VERSION(2, 0, 0)

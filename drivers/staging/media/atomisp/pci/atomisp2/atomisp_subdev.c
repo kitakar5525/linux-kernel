@@ -1422,7 +1422,7 @@ int atomisp_subdev_init(struct atomisp_device *isp)
 	 * CSS2.0 running ISP2400 support
 	 * multiple streams
 	 */
-	isp->num_of_streams = isp->driver_version >=
+	isp->num_of_streams = isp->css_version >=
 			      ATOMISP_CSS_VERSION_20 ? 2 : 1;
 	isp->asd = devm_kzalloc(isp->dev, sizeof(struct atomisp_sub_device) *
 			       isp->num_of_streams, GFP_KERNEL);

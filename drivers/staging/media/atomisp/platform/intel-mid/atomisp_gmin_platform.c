@@ -364,6 +364,20 @@ static struct gmin_cfg_var i8880_vars[] = {
 	{},
 };
 
+/* These are guessed values because Surface 3 doesn't describe these
+ * values in DSDT or EFI. */
+static struct gmin_cfg_var surface3_vars[] = {
+	{"APTA0330:00_CsiPort", "0"},
+	{"APTA0330:00_CsiLanes", "1"},
+
+	/* when port=0 and lanes=4 for ov8835, atomisp fails to init saying:
+	 * atomisp_csi_lane_config: could not find the CSI port setting for 0-4-0
+	 * atomisp_register_entities failed (-22) */
+	{"OVTI8835:00_CsiPort", "1"},
+	{"OVTI8835:00_CsiLanes", "4"},
+	{},
+};
+
 static const struct dmi_system_id gmin_vars[] = {
 	{
 		.ident = "BYT-T FFD8",
@@ -400,6 +414,24 @@ static const struct dmi_system_id gmin_vars[] = {
 			DMI_MATCH(DMI_BOARD_NAME, "VTA0803"),
 		},
 		.driver_data = i8880_vars,
+	},
+	{
+		.ident = "Surface 3",
+		.matches = {
+			DMI_MATCH(DMI_BOARD_NAME, "Surface 3"),
+		},
+		.driver_data = surface3_vars,
+	},
+	{
+		.ident = "Surface 3",
+		.matches = {
+			/* DMI info for Surface 3 with broken DMI table */
+			DMI_MATCH(DMI_BIOS_VENDOR, "American Megatrends Inc."),
+			DMI_MATCH(DMI_BOARD_NAME, "OEMB"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "OEMB"),
+			DMI_MATCH(DMI_SYS_VENDOR, "OEMB"),
+		},
+		.driver_data = surface3_vars,
 	},
 	{}
 };

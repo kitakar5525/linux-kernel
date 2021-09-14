@@ -960,7 +960,7 @@ static int atomisp_release(struct file *file)
 	 */
 	if (!isp->sw_contex.file_input && asd->fmt_auto->val) {
 		struct v4l2_mbus_framefmt isp_sink_fmt = { 0 };
-		atomisp_subdev_set_ffmt(&asd->subdev, fh.pad,
+		atomisp_subdev_set_ffmt(&asd->subdev, fh.state,
 					V4L2_SUBDEV_FORMAT_ACTIVE,
 					ATOMISP_SUBDEV_PAD_SINK, &isp_sink_fmt);
 	}
@@ -971,7 +971,7 @@ subdev_uninit:
 	/* clear the sink pad for file input */
 	if (isp->sw_contex.file_input && asd->fmt_auto->val) {
 		struct v4l2_mbus_framefmt isp_sink_fmt = { 0 };
-		atomisp_subdev_set_ffmt(&asd->subdev, fh.pad,
+		atomisp_subdev_set_ffmt(&asd->subdev, fh.state,
 					V4L2_SUBDEV_FORMAT_ACTIVE,
 					ATOMISP_SUBDEV_PAD_SINK, &isp_sink_fmt);
 	}
@@ -1012,11 +1012,11 @@ subdev_uninit:
 
 done:
 	if (!acc_node) {
-		atomisp_subdev_set_selection(&asd->subdev, fh.pad,
-				V4L2_SUBDEV_FORMAT_ACTIVE,
-				atomisp_subdev_source_pad(vdev),
-				V4L2_SEL_TGT_COMPOSE, 0,
-				&clear_compose);
+		atomisp_subdev_set_selection(&asd->subdev, fh.state,
+					     V4L2_SUBDEV_FORMAT_ACTIVE,
+					     atomisp_subdev_source_pad(vdev),
+					     V4L2_SEL_TGT_COMPOSE, 0,
+					     &clear_compose);
 	}
 	rt_mutex_unlock(&isp->mutex);
 	mutex_unlock(&isp->streamoff_mutex);

@@ -30,6 +30,7 @@
 #include <linux/moduleparam.h>
 #include <media/v4l2-device.h>
 #include "../include/linux/atomisp_platform.h"
+#include "../include/linux/atomisp_gmin_platform.h"
 #include <linux/acpi.h>
 #include <linux/io.h>
 

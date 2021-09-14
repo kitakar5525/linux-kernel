@@ -642,6 +642,13 @@ static int atomisp_g_input(struct file *file, void *fh, unsigned int *input)
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_device *isp = video_get_drvdata(vdev);
 	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
+	bool acc_node = false;
+
+	acc_node = !strcmp(vdev->name, "ATOMISP ISP ACC");
+	if (acc_node) {
+		dev_warn(isp->dev, "%s(): skipping ACC node\n", __func__);
+		return -EINVAL;
+	}
 
 	rt_mutex_lock(&isp->mutex);
 	*input = asd->input_curr;
@@ -755,6 +762,13 @@ static int atomisp_enum_fmt_cap(struct file *file, void *fh,
 	struct v4l2_subdev_mbus_code_enum code = { 0 };
 	unsigned int i, fi = 0;
 	int rval;
+	bool acc_node = false;
+
+	acc_node = !strcmp(vdev->name, "ATOMISP ISP ACC");
+	if (acc_node) {
+		dev_warn(isp->dev, "%s(): skipping ACC node\n", __func__);
+		return -EINVAL;
+	}
 
 	rt_mutex_lock(&isp->mutex);
 	rval = v4l2_subdev_call(isp->inputs[asd->input_curr].camera, pad,
@@ -832,6 +846,13 @@ static int atomisp_try_fmt_cap(struct file *file, void *fh,
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_device *isp = video_get_drvdata(vdev);
 	int ret;
+	bool acc_node = false;
+
+	acc_node = !strcmp(vdev->name, "ATOMISP ISP ACC");
+	if (acc_node) {
+		dev_warn(isp->dev, "%s(): skipping ACC node\n", __func__);
+		return -EINVAL;
+	}
 
 	rt_mutex_lock(&isp->mutex);
 	ret = atomisp_try_fmt(vdev, f, NULL);
@@ -845,6 +866,13 @@ static int atomisp_s_fmt_cap(struct file *file, void *fh,
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_device *isp = video_get_drvdata(vdev);
 	int ret;
+	bool acc_node = false;
+
+	acc_node = !strcmp(vdev->name, "ATOMISP ISP ACC");
+	if (acc_node) {
+		dev_warn(isp->dev, "%s(): skipping ACC node\n", __func__);
+		return -EINVAL;
+	}
 
 	rt_mutex_lock(&isp->mutex);
 	if (isp->isp_fatal_error) {
@@ -2511,6 +2539,13 @@ static int atomisp_g_parm(struct file *file, void *fh,
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
 	struct atomisp_device *isp = video_get_drvdata(vdev);
+	bool acc_node = false;
+
+	acc_node = !strcmp(vdev->name, "ATOMISP ISP ACC");
+	if (acc_node) {
+		dev_warn(isp->dev, "%s(): skipping ACC node\n", __func__);
+		return -EINVAL;
+	}
 
 	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		dev_err(isp->dev, "unsupport v4l2 buf type\n");

@@ -33,7 +33,7 @@
  * @brief Get the csi rx fe state.
  * Refer to "csi_rx_public.h" for details.
  */
-static inline void csi_rx_fe_ctrl_get_state(
+inline void csi_rx_fe_ctrl_get_state(
     const csi_rx_frontend_ID_t ID,
     csi_rx_fe_ctrl_state_t *state)
 {
@@ -72,7 +72,7 @@ static inline void csi_rx_fe_ctrl_get_state(
  * @brief Get the state of the csi rx fe dlane process.
  * Refer to "csi_rx_public.h" for details.
  */
-static inline void csi_rx_fe_ctrl_get_dlane_state(
+inline void csi_rx_fe_ctrl_get_dlane_state(
     const csi_rx_frontend_ID_t ID,
     const u32 lane,
     csi_rx_fe_ctrl_lane_t *dlane_state)
@@ -87,7 +87,7 @@ static inline void csi_rx_fe_ctrl_get_dlane_state(
  * @brief dump the csi rx fe state.
  * Refer to "csi_rx_public.h" for details.
  */
-static inline void csi_rx_fe_ctrl_dump_state(
+inline void csi_rx_fe_ctrl_dump_state(
     const csi_rx_frontend_ID_t ID,
     csi_rx_fe_ctrl_state_t *state)
 {
@@ -125,7 +125,7 @@ static inline void csi_rx_fe_ctrl_dump_state(
  * @brief Get the csi rx be state.
  * Refer to "csi_rx_public.h" for details.
  */
-static inline void csi_rx_be_ctrl_get_state(
+inline void csi_rx_be_ctrl_get_state(
     const csi_rx_backend_ID_t ID,
     csi_rx_be_ctrl_state_t *state)
 {
@@ -188,7 +188,7 @@ static inline void csi_rx_be_ctrl_get_state(
  * @brief Dump the csi rx be state.
  * Refer to "csi_rx_public.h" for details.
  */
-static inline void csi_rx_be_ctrl_dump_state(
+inline void csi_rx_be_ctrl_dump_state(
     const csi_rx_backend_ID_t ID,
     csi_rx_be_ctrl_state_t *state)
 {
@@ -243,7 +243,7 @@ static inline void csi_rx_be_ctrl_dump_state(
  * @brief Load the register value.
  * Refer to "csi_rx_public.h" for details.
  */
-static inline hrt_data csi_rx_fe_ctrl_reg_load(
+inline hrt_data csi_rx_fe_ctrl_reg_load(
     const csi_rx_frontend_ID_t ID,
     const hrt_address reg)
 {
@@ -257,7 +257,7 @@ static inline hrt_data csi_rx_fe_ctrl_reg_load(
  * @brief Store a value to the register.
  * Refer to "ibuf_ctrl_public.h" for details.
  */
-static inline void csi_rx_fe_ctrl_reg_store(
+inline void csi_rx_fe_ctrl_reg_store(
     const csi_rx_frontend_ID_t ID,
     const hrt_address reg,
     const hrt_data value)
@@ -273,7 +273,7 @@ static inline void csi_rx_fe_ctrl_reg_store(
  * @brief Load the register value.
  * Refer to "csi_rx_public.h" for details.
  */
-static inline hrt_data csi_rx_be_ctrl_reg_load(
+inline hrt_data csi_rx_be_ctrl_reg_load(
     const csi_rx_backend_ID_t ID,
     const hrt_address reg)
 {
@@ -287,7 +287,7 @@ static inline hrt_data csi_rx_be_ctrl_reg_load(
  * @brief Store a value to the register.
  * Refer to "ibuf_ctrl_public.h" for details.
  */
-static inline void csi_rx_be_ctrl_reg_store(
+inline void csi_rx_be_ctrl_reg_store(
     const csi_rx_backend_ID_t ID,
     const hrt_address reg,
     const hrt_data value)

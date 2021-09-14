@@ -28,6 +28,7 @@
 #include <linux/acpi.h>
 #include "../include/linux/atomisp_platform.h"
 #include "../include/linux/atomisp.h"
+#include "../include/linux/atomisp_gmin_platform.h"
 
 /* Registers */
 

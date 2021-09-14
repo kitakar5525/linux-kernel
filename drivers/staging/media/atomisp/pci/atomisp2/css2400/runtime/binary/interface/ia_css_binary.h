@@ -1,4 +1,3 @@
-#ifndef ISP2401
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -12,21 +11,6 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  */
-#else
-/**
-Support for Intel Camera Imaging ISP subsystem.
-Copyright (c) 2010 - 2015, Intel Corporation.
-
-This program is free software; you can redistribute it and/or modify it
-under the terms and conditions of the GNU General Public License,
-version 2, as published by the Free Software Foundation.
-
-This program is distributed in the hope it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-more details.
-*/
-#endif
 
 #ifndef _IA_CSS_BINARY_H_
 #define _IA_CSS_BINARY_H_
@@ -107,10 +91,6 @@ struct ia_css_binary_descr {
 	bool enable_xnr;
 	bool enable_fractional_ds;
 	bool enable_dpc;
-#ifdef ISP2401
-	bool enable_luma_only;
-	bool enable_tnr;
-#endif
 	bool enable_capture_pp_bli;
 	struct ia_css_resolution dvs_env;
 	enum atomisp_input_format stream_format;
@@ -145,10 +125,6 @@ struct ia_css_binary {
 	int                      sctbl_width_per_color;
 	int                      sctbl_aligned_width_per_color;
 	int                      sctbl_height;
-#ifdef ISP2401
-	int                      sctbl_legacy_width_per_color;
-	int                      sctbl_legacy_height;
-#endif
 	struct ia_css_sdis_info	 dis;
 	struct ia_css_resolution dvs_envelope;
 	bool                     online;
@@ -199,20 +175,9 @@ ia_css_binary_find(struct ia_css_binary_descr *descr,
  * @param[in] type: The shading correction type.
  * @param[in] required_bds_factor: The bayer downscaling factor required in the pipe.
  * @param[in] stream_config: The stream configuration.
-#ifndef ISP2401
  * @param[out] info: The shading information.
-#else
- * @param[out] shading_info: The shading information.
- *		The shading information necessary as API is stored in the shading_info.
-#endif
  *		The driver needs to get this information to generate
-#ifndef ISP2401
  *		the shading table directly required in the isp.
-#else
- *		the shading table directly required from ISP.
- * @param[out] pipe_config: The pipe configuration.
- *		The shading information related to ISP (but, not necessary as API) is stored in the pipe_config.
-#endif
  * @return	IA_CSS_SUCCESS or error code upon error.
  *
  */
@@ -221,12 +186,7 @@ ia_css_binary_get_shading_info(const struct ia_css_binary *binary,
 			enum ia_css_shading_correction_type type,
 			unsigned int required_bds_factor,
 			const struct ia_css_stream_config *stream_config,
-#ifndef ISP2401
 			struct ia_css_shading_info *info);
-#else
-			struct ia_css_shading_info *shading_info,
-			struct ia_css_pipe_config *pipe_config);
-#endif
 
 enum ia_css_err
 ia_css_binary_3a_grid_info(const struct ia_css_binary *binary,

@@ -126,9 +126,6 @@ struct input_system_cfg_s {
 	input_system_input_port_ID_t	input_port_id;
 
 	input_system_source_type_t	mode;
-#ifdef ISP2401
-	input_system_polling_mode_t	polling_mode;
-#endif
 
 	bool online;
 	bool raw_packed;
@@ -181,10 +178,6 @@ struct virtual_input_system_stream_s {
 	uint8_t online;
 	int8_t linked_isys_stream_id;
 	uint8_t valid;
-#ifdef ISP2401
-	input_system_polling_mode_t	polling_mode;
-	int32_t subscr_index;
-#endif
 };
 
 typedef struct virtual_input_system_stream_cfg_s virtual_input_system_stream_cfg_t;

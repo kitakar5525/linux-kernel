@@ -66,12 +66,6 @@ sh_css_sp_init_pipeline(struct ia_css_pipeline *me,
 #if !defined(HAS_NO_INPUT_SYSTEM)
 			const enum mipi_port_id port_id
 #endif
-#ifdef ISP2401
-			,
-			const struct ia_css_coordinate *internal_frame_origin_bqs_on_sctbl, /* Origin of internal frame
-							positioned on shading table at shading correction in ISP. */
-			const struct ia_css_isp_parameters *params
-#endif
 			);
 
 void

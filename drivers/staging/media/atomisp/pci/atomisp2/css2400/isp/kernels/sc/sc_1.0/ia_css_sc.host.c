@@ -16,12 +16,6 @@
 #include "sh_css_defs.h"
 #include "ia_css_debug.h"
 #include "assert_support.h"
-#ifdef ISP2401
-#include "math_support.h"	/* min() */
-
-#define IA_CSS_INCLUDE_CONFIGURATIONS
-#include "ia_css_isp_configs.h"
-#endif
 
 #include "ia_css_sc.host.h"
 
@@ -46,44 +40,6 @@ ia_css_sc_dump(
 			"sc_gain_shift", sc->gain_shift);
 }
 
-#ifdef ISP2401
-void
-ia_css_sc_config(
-	struct sh_css_isp_sc_isp_config *to,
-	const struct ia_css_sc_configuration *from,
-	unsigned size)
-{
-	uint32_t internal_org_x_bqs = from->internal_frame_origin_x_bqs_on_sctbl;
-	uint32_t internal_org_y_bqs = from->internal_frame_origin_y_bqs_on_sctbl;
-	uint32_t slice, rest, i;
-
-	(void)size;
-
-	/* The internal_frame_origin_x_bqs_on_sctbl is separated to 8 times of slice_vec. */
-	rest = internal_org_x_bqs;
-	for (i = 0; i < SH_CSS_SC_INTERPED_GAIN_HOR_SLICE_TIMES; i++) {
-		slice = min(rest, ((uint32_t)ISP_SLICE_NELEMS));
-		rest = rest - slice;
-		to->interped_gain_hor_slice_bqs[i] = slice;
-	}
-
-	to->internal_frame_origin_y_bqs_on_sctbl = internal_org_y_bqs;
-}
-
-void
-ia_css_sc_configure(
-	const struct ia_css_binary *binary,
-	uint32_t internal_frame_origin_x_bqs_on_sctbl,
-	uint32_t internal_frame_origin_y_bqs_on_sctbl)
-{
-	const struct ia_css_sc_configuration config = {
-		internal_frame_origin_x_bqs_on_sctbl,
-		internal_frame_origin_y_bqs_on_sctbl };
-
-	ia_css_configure_sc(binary, &config);
-}
-
-#endif
 /* ------ deprecated(bz675) : from ------ */
 /* It looks like @parameter{} (in *.pipe) is used to generate the process/get/set functions,
    for parameters which should be used in the isp kernels.

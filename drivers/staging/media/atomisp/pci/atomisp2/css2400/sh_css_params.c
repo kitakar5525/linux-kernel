@@ -111,20 +111,11 @@
 	(sizeof(char) * (binary)->in_frame_info.res.height * \
 	 (binary)->in_frame_info.padded_width)
 
-#ifndef ISP2401
 
 #define SCTBL_BYTES(binary) \
 	(sizeof(unsigned short) * (binary)->sctbl_height * \
 	 (binary)->sctbl_aligned_width_per_color * IA_CSS_SC_NUM_COLORS)
 
-#else
-
-#define SCTBL_BYTES(binary) \
-	(sizeof(unsigned short) * max((binary)->sctbl_height, (binary)->sctbl_legacy_height) * \
-			/* height should be the larger height between new api and legacy api */ \
-	 (binary)->sctbl_aligned_width_per_color * IA_CSS_SC_NUM_COLORS)
-
-#endif
 
 #define MORPH_PLANE_BYTES(binary) \
 	(SH_CSS_MORPH_TABLE_ELEM_BYTES * (binary)->morph_tbl_aligned_width * \
@@ -2152,41 +2143,8 @@ ia_css_set_param_exceptions(const struct ia_css_pipe *pipe,
 	params->dp_config.r  = params->wb_config.r;
 	params->dp_config.b  = params->wb_config.b;
 	params->dp_config.gb = params->wb_config.gb;
-#ifdef ISP2401
-	assert(pipe != NULL);
-	assert(pipe->mode < IA_CSS_PIPE_ID_NUM);
-
-	if (pipe->mode < IA_CSS_PIPE_ID_NUM) {
-		params->pipe_dp_config[pipe->mode].gr = params->wb_config.gr;
-		params->pipe_dp_config[pipe->mode].r  = params->wb_config.r;
-		params->pipe_dp_config[pipe->mode].b  = params->wb_config.b;
-		params->pipe_dp_config[pipe->mode].gb = params->wb_config.gb;
-	}
-#endif
 }
 
-#ifdef ISP2401
-static void
-sh_css_set_dp_config(const struct ia_css_pipe *pipe,
-			struct ia_css_isp_parameters *params,
-			const struct ia_css_dp_config *config)
-{
-	if (config == NULL)
-		return;
-
-	assert(params != NULL);
-	assert(pipe != NULL);
-	assert(pipe->mode < IA_CSS_PIPE_ID_NUM);
-
-	IA_CSS_ENTER_PRIVATE("config=%p", config);
-	ia_css_dp_debug_dtrace(config, IA_CSS_DEBUG_TRACE_PRIVATE);
-	if (pipe->mode < IA_CSS_PIPE_ID_NUM) {
-		params->pipe_dp_config[pipe->mode] = *config;
-		params->pipe_dpc_config_changed[pipe->mode] = true;
-	}
-	IA_CSS_LEAVE_PRIVATE("void");
-}
-#endif
 
 static void
 sh_css_get_dp_config(const struct ia_css_pipe *pipe,
@@ -2621,15 +2579,6 @@ sh_css_init_isp_params_from_config(struct ia_css_pipe *pipe,
 
 	params->output_frame = config->output_frame;
 	params->isp_parameters_id = config->isp_config_id;
-#ifdef ISP2401
-	/* Currently we do not offer CSS interface to set different
-	 * configurations for DPC, i.e. depending on DPC being enabled
-	 * before (NORM+OBC) or after. The folllowing code to set the
-	 * DPC configuration should be updated when this interface is made
-	 * available */
-	sh_css_set_dp_config(pipe, params, config->dp_config);
-	ia_css_set_param_exceptions(pipe, params);
-#endif
 
 	if (IA_CSS_SUCCESS ==
 		sh_css_select_dp_10bpp_config(pipe, &is_dp_10bpp)) {
@@ -2645,9 +2594,7 @@ sh_css_init_isp_params_from_config(struct ia_css_pipe *pipe,
 		goto exit;
 	}
 
-#ifndef ISP2401
 	ia_css_set_param_exceptions(pipe, params);
-#endif
 exit:
 	IA_CSS_LEAVE_ERR_PRIVATE(err);
 	return err;
@@ -2697,7 +2644,6 @@ ia_css_pipe_get_isp_config(struct ia_css_pipe *pipe,
 	IA_CSS_LEAVE("void");
 }
 
-#ifndef ISP2401
 /*
  * coding style says the return of "mmgr_NULL" is the error signal
  *
@@ -2763,7 +2709,6 @@ static bool reallocate_buffer(
 	return ret;
 }
 
-#endif
 
 struct ia_css_isp_3a_statistics *
 ia_css_isp_3a_statistics_allocate(const struct ia_css_3a_grid_info *grid)
@@ -3061,30 +3006,7 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 		ia_css_set_tnr_config(params, &default_tnr_config);
 		ia_css_set_ob_config(params, &default_ob_config);
 		ia_css_set_dp_config(params, &default_dp_config);
-#ifndef ISP2401
 		ia_css_set_param_exceptions(pipe_in, params);
-#else
-
-		for (i = 0; i < stream->num_pipes; i++) {
-			if (IA_CSS_SUCCESS == sh_css_select_dp_10bpp_config(stream->pipes[i], &is_dp_10bpp)) {
-				/* set the return value as false if both DPC and
-				 * BDS is enabled by the user. But we do not return
-				 * the value immediately to enable internal firmware
-				 * feature testing. */
-				if(is_dp_10bpp) {
-					sh_css_set_dp_config(stream->pipes[i], params, &default_dp_10bpp_config);
-				} else {
-					sh_css_set_dp_config(stream->pipes[i], params, &default_dp_config);
-				}
-			} else {
-				retval = false;
-				goto exit;
-			}
-
-			ia_css_set_param_exceptions(stream->pipes[i], params);
-		}
-
-#endif
 		ia_css_set_de_config(params, &default_de_config);
 		ia_css_set_gc_config(params, &default_gc_config);
 		ia_css_set_anr_config(params, &default_anr_config);
@@ -3128,9 +3050,6 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 
 		ia_css_sdis_clear_coefficients(&params->dvs_coefs);
 		params->dis_coef_table_changed = true;
-#ifdef ISP2401
-		ia_css_tnr3_set_default_config(&params->tnr3_config);
-#endif
 	}
 	else
 	{
@@ -3184,31 +3103,15 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 				 * BDS is enabled by the user. But we do not return
 				 * the value immediately to enable internal firmware
 				 * feature testing. */
-#ifndef ISP2401
 				retval = !is_dp_10bpp;
-#else
-				if (is_dp_10bpp) {
-					retval = false;
-				}
-			} else {
-				retval = false;
-				goto exit;
-			}
-			if (stream->pipes[i]->mode < IA_CSS_PIPE_ID_NUM) {
-				sh_css_set_dp_config(stream->pipes[i], params,
-					&stream_params->pipe_dp_config[stream->pipes[i]->mode]);
-				ia_css_set_param_exceptions(stream->pipes[i], params);
-#endif
 			} else {
 				retval = false;
 				goto exit;
 			}
 		}
 
-#ifndef ISP2401
 		ia_css_set_param_exceptions(pipe_in, params);
 
-#endif
 		params->fpn_config.data = stream_params->fpn_config.data;
 		params->config_changed[IA_CSS_FPN_ID] = stream_params->config_changed[IA_CSS_FPN_ID];
 		params->fpn_config.enabled = stream_params->fpn_config.enabled;
@@ -3327,11 +3230,7 @@ enum ia_css_err ia_css_pipe_set_bci_scaler_lut(struct ia_css_pipe *pipe,
 	const void *lut)
 {
 	enum ia_css_err err = IA_CSS_SUCCESS;
-#ifndef ISP2401
 	bool store = true;
-#else
-	bool stream_started = false;
-#endif
 	IA_CSS_ENTER("pipe=%p lut=%p", pipe, lut);
 
 	if (lut == NULL || pipe == NULL) {
@@ -3347,11 +3246,7 @@ enum ia_css_err ia_css_pipe_set_bci_scaler_lut(struct ia_css_pipe *pipe,
 	if (pipe->stream && pipe->stream->started) {
 		ia_css_debug_dtrace(IA_CSS_DEBUG_ERROR,
 			"unable to set scaler lut since stream has started\n");
-#ifndef ISP2401
 		store = false;
-#else
-		stream_started = true;
-#endif
 		err = IA_CSS_ERR_NOT_SUPPORTED;
 	}
 
@@ -3359,35 +3254,16 @@ enum ia_css_err ia_css_pipe_set_bci_scaler_lut(struct ia_css_pipe *pipe,
 	sh_css_params_free_gdc_lut(pipe->scaler_pp_lut);
 	pipe->scaler_pp_lut = mmgr_NULL;
 
-#ifndef ISP2401
 	if (store) {
 		pipe->scaler_pp_lut = mmgr_malloc(sizeof(zoom_table));
-#else
-	if (!stream_started) {
-		pipe->scaler_pp_lut = sh_css_params_alloc_gdc_lut();
-#endif
 		if (pipe->scaler_pp_lut == mmgr_NULL) {
-#ifndef ISP2401
 			IA_CSS_LEAVE("lut(%u) err=%d", pipe->scaler_pp_lut, err);
 			return IA_CSS_ERR_CANNOT_ALLOCATE_MEMORY;
-#else
-			ia_css_debug_dtrace(IA_CSS_DEBUG_ERROR,
-				"unable to allocate scaler_pp_lut\n");
-			err = IA_CSS_ERR_CANNOT_ALLOCATE_MEMORY;
-		} else {
-			gdc_lut_convert_to_isp_format((const int(*)[HRT_GDC_N])lut,
-				interleaved_lut_temp);
-			mmgr_store(pipe->scaler_pp_lut,
-				(int *)interleaved_lut_temp,
-				sizeof(zoom_table));
-#endif
 		}
-#ifndef ISP2401
 
 		gdc_lut_convert_to_isp_format((const int(*)[HRT_GDC_N])lut, interleaved_lut_temp);
 		mmgr_store(pipe->scaler_pp_lut, (int *)interleaved_lut_temp,
 			sizeof(zoom_table));
-#endif
 	}
 
 	IA_CSS_LEAVE("lut(%u) err=%d", pipe->scaler_pp_lut, err);
@@ -3417,11 +3293,7 @@ enum ia_css_err sh_css_params_map_and_store_default_gdc_lut(void)
 
 	host_lut_store((void *)zoom_table);
 
-#ifndef ISP2401
 	default_gdc_lut = mmgr_malloc(sizeof(zoom_table));
-#else
-	default_gdc_lut = sh_css_params_alloc_gdc_lut();
-#endif
 	if (default_gdc_lut == mmgr_NULL)
 		return IA_CSS_ERR_CANNOT_ALLOCATE_MEMORY;
 
@@ -3928,9 +3800,6 @@ sh_css_param_update_isp_params(struct ia_css_pipe *curr_pipe,
 			 */
 			g_param_buffer_enqueue_count++;
 			assert(g_param_buffer_enqueue_count < g_param_buffer_dequeue_count+50);
-#ifdef ISP2401
-			ia_css_save_latest_paramset_ptr(pipe, cpy);
-#endif
 			/*
 			 * Tell the SP which queues are not empty,
 			 * by sending the software event.
@@ -4061,12 +3930,7 @@ sh_css_params_write_to_ddr_internal(
 						ia_css_shading_table_free(params->sc_config);
 						params->sc_config = NULL;
 					}
-#ifndef ISP2401
 					sh_css_params_shading_id_table_generate(&params->sc_config, binary);
-#else
-					sh_css_params_shading_id_table_generate(&params->sc_config,
-						binary->sctbl_width_per_color, binary->sctbl_height);
-#endif
 					if (params->sc_config == NULL) {
 						IA_CSS_LEAVE_ERR_PRIVATE(IA_CSS_ERR_CANNOT_ALLOCATE_MEMORY);
 						return IA_CSS_ERR_CANNOT_ALLOCATE_MEMORY;
@@ -4120,26 +3984,7 @@ sh_css_params_write_to_ddr_internal(
 			}
 		}
 	}
-#ifdef ISP2401
-	/* DPC configuration is made pipe specific to allow flexibility in positioning of the
-	 * DPC kernel. The code below sets the pipe specific configuration to
-	 * individual binaries. */
-	if (params->pipe_dpc_config_changed[pipe_id] && binary->info->sp.enable.dpc) {
-		unsigned size   = stage->binary->info->mem_offsets.offsets.param->dmem.dp.size;
 
-		unsigned offset = stage->binary->info->mem_offsets.offsets.param->dmem.dp.offset;
-		if (size) {
-			ia_css_dp_encode((struct sh_css_isp_dp_params *)
-				&binary->mem_params.params[IA_CSS_PARAM_CLASS_PARAM][IA_CSS_ISP_DMEM].address[offset],
-				&params->pipe_dp_config[pipe_id], size);
-#endif
-
-#ifdef ISP2401
-			params->isp_params_changed = true;
-			params->isp_mem_params_changed[pipe_id][stage->stage_num][IA_CSS_ISP_DMEM] = true;
-		}
-	}
-#endif
 	if (params->config_changed[IA_CSS_MACC_ID] && binary->info->sp.enable.macc) {
 		unsigned int i, j, idx;
 		unsigned int idx_map[] = {
@@ -4218,24 +4063,11 @@ sh_css_params_write_to_ddr_internal(
 			/* Generate default DVS unity table on start up*/
 			if (params->pipe_dvs_6axis_config[pipe_id] == NULL) {
 
-#ifndef ISP2401
 				struct ia_css_resolution dvs_offset;
 				dvs_offset.width  =
-#else
-				struct ia_css_resolution dvs_offset = {0, 0};
-				if (binary->dvs_envelope.width || binary->dvs_envelope.height) {
-					dvs_offset.width  =
-#endif
 						(PIX_SHIFT_FILTER_RUN_IN_X + binary->dvs_envelope.width) / 2;
-#ifndef ISP2401
 				dvs_offset.height =
-#else
-					dvs_offset.height =
-#endif
 						(PIX_SHIFT_FILTER_RUN_IN_Y + binary->dvs_envelope.height) / 2;
-#ifdef ISP2401
-				}
-#endif
 
 				params->pipe_dvs_6axis_config[pipe_id] =
 						generate_dvs_6axis_table(&binary->out_frame_info[0].res, &dvs_offset);
@@ -4417,13 +4249,8 @@ struct ia_css_shading_table *ia_css_get_shading_table(struct ia_css_stream *stre
 					ia_css_shading_table_free(params->sc_config);
 					params->sc_config = NULL;
 				}
-#ifndef ISP2401
 				sh_css_params_shading_id_table_generate(&params->sc_config, binary);
 
-#else
-				sh_css_params_shading_id_table_generate(&params->sc_config,
-					binary->sctbl_width_per_color, binary->sctbl_height);
-#endif
 				table = params->sc_config;
 				/* The sc_config will be freed in the
 				 * ia_css_stream_isp_parameters_uninit function. */
@@ -4593,21 +4420,13 @@ free_ia_css_isp_parameter_set_info(
 			continue;
 
 		/* sanity check - ptr must be valid */
-#ifndef ISP2401
 		if (!ia_css_refcount_is_valid(addrs[i])) {
-#else
-		if (ia_css_refcount_is_valid(addrs[i])) {
-			ia_css_refcount_decrement(IA_CSS_REFCOUNT_PARAM_BUFFER, addrs[i]);
-		} else {
-#endif
 			IA_CSS_ERROR("%s: IA_CSS_REFCOUNT_PARAM_BUFFER(0x%x) invalid arg", __func__, ptr);
 			err = IA_CSS_ERR_INVALID_ARGUMENTS;
 			continue;
 		}
-#ifndef ISP2401
 
 		ia_css_refcount_decrement(IA_CSS_REFCOUNT_PARAM_BUFFER, addrs[i]);
-#endif
 	}
 	ia_css_refcount_decrement(IA_CSS_REFCOUNT_PARAM_SET_POOL, ptr);
 

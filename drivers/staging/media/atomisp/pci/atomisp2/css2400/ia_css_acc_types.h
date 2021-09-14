@@ -218,11 +218,6 @@ struct ia_css_binary_info {
 	struct ia_css_isp_param_isp_segments	mem_initializers;
 /* MW: Packing (related) bools in an integer ?? */
 	struct {
-#ifdef ISP2401
-		uint8_t	luma_only;
-		uint8_t	input_yuv;
-		uint8_t	input_raw;
-#endif
 		uint8_t	reduced_pipe;
 		uint8_t	vf_veceven;
 		uint8_t	dis;
@@ -319,9 +314,7 @@ struct ia_css_sp_info {
 	uint32_t host_sp_queues_initialized; /** Polled from the SP */
 	uint32_t sleep_mode;  /** different mode to halt SP */
 	uint32_t invalidate_tlb;		/** inform SP to invalidate mmu TLB */
-#ifndef ISP2401
 	uint32_t stop_copy_preview;       /** suspend copy and preview pipe when capture */
-#endif
 	uint32_t debug_buffer_ddr_address;	/** inform SP the address
 	of DDR debug queue */
 	uint32_t perf_counter_input_system_error; /** input system perf

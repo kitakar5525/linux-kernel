@@ -26,14 +26,6 @@ ia_css_xnr3_encode(
 	const struct ia_css_xnr3_config *from,
 	unsigned size);
 
-#ifdef ISP2401
-void
-ia_css_xnr3_vmem_encode(
-	struct sh_css_isp_xnr3_vmem_params *to,
-	const struct ia_css_xnr3_config *from,
-	unsigned size);
-
-#endif
 void
 ia_css_xnr3_debug_dtrace(
 	const struct ia_css_xnr3_config *config,

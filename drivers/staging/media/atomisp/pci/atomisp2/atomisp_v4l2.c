@@ -1065,9 +1065,8 @@ atomisp_load_firmware(struct atomisp_device *isp)
 	fw_path = ATOMISP_FWNAME;
 #else
 	if (isp->css_version == ATOMISP_CSS_VERSION_21) {
-		if (isp->media_dev.hw_revision ==
-		    ((ATOMISP_HW_REVISION_ISP2401 << ATOMISP_HW_REVISION_SHIFT)
-		     | ATOMISP_HW_STEPPING_A0))
+		if ((isp->media_dev.hw_revision  >> ATOMISP_HW_REVISION_SHIFT)
+		    == ATOMISP_HW_REVISION_ISP2401)
 			fw_path = "shisp_2401a0_v21.bin";
 
 		if (isp->media_dev.hw_revision ==

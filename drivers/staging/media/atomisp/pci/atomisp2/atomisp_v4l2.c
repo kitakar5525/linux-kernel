@@ -1137,14 +1137,7 @@ static int init_atomisp_wdts(struct atomisp_device *isp)
 
 	for (i = 0; i < isp->num_of_streams; i++) {
 		struct atomisp_sub_device *asd = &isp->asd[i];
-#ifndef ISP2401
 		timer_setup(&asd->wdt, atomisp_wdt, 0);
-#else
-		timer_setup(&asd->video_out_capture.wdt, atomisp_wdt, 0);
-		timer_setup(&asd->video_out_preview.wdt, atomisp_wdt, 0);
-		timer_setup(&asd->video_out_vf.wdt, atomisp_wdt, 0);
-		timer_setup(&asd->video_out_video_capture.wdt, atomisp_wdt, 0);
-#endif
 	}
 	return 0;
 alloc_fail:
@@ -1526,11 +1519,6 @@ static const struct pci_device_id atomisp_pci_tbl[] = {
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x117a)},
 	/* Baytrail */
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x0f38)},
-#elif defined(ISP2401)
-	/* Anniedale (Merrifield+ / Moorefield) */
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1478)},
-	/* Cherrytrail */
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x22b8)},
 #endif
 	{0,}
 };

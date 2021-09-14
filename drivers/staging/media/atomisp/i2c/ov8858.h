@@ -22,6 +22,7 @@
 #ifndef __OV8858_H__
 #define __OV8858_H__
 #include "../include/linux/atomisp_platform.h"
+#include "../include/linux/atomisp_gmin_platform.h"
 #include <media/v4l2-ctrls.h>
 
 #define I2C_MSG_LENGTH		0x2

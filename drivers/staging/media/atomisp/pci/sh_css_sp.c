@@ -1179,7 +1179,12 @@ sp_init_sp_stage(struct ia_css_pipeline_stage *stage,
 		break;
 	case IA_CSS_PIPELINE_BIN_COPY:
 		assert(false); /* TBI */
-		break;
+		/*
+		 * NOTE:
+		 *   upstream added break instead. For now, preserve the
+		 *   original behavior.
+		 */
+		fallthrough;
 	case IA_CSS_PIPELINE_ISYS_COPY:
 		sh_css_sp_start_isys_copy(args->out_frame[0],
 					  pipe_num, stage->max_input_width, if_config_index);

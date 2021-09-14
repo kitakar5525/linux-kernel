@@ -2404,7 +2404,7 @@ static int atomisp_camera_s_ext_ctrls(struct file *file, void *fh,
 		case V4L2_CID_EXPOSURE_METERING:
 		case V4L2_CID_IRIS_ABSOLUTE:
 		case V4L2_CID_FNUMBER_ABSOLUTE:
-		case V4L2_CID_VCM_TIMEING:
+		case V4L2_CID_VCM_TIMING:
 		case V4L2_CID_VCM_SLEW:
 		case V4L2_CID_3A_LOCK:
 		case V4L2_CID_TEST_PATTERN:

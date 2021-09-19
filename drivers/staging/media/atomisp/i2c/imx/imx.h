@@ -21,7 +21,7 @@
 
 #ifndef __IMX_H__
 #define __IMX_H__
-#include <linux/atomisp_platform.h>
+#include "../../include/linux/atomisp_platform.h"
 #include <linux/atomisp.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>

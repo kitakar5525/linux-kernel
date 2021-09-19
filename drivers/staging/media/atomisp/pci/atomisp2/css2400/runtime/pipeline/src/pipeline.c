@@ -1,4 +1,3 @@
-#ifndef ISP2401
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -12,21 +11,6 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  */
-#else
-/*
-Support for Intel Camera Imaging ISP subsystem.
-Copyright (c) 2010 - 2015, Intel Corporation.
-
-This program is free software; you can redistribute it and/or modify it
-under the terms and conditions of the GNU General Public License,
-version 2, as published by the Free Software Foundation.
-
-This program is distributed in the hope it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-more details.
-*/
-#endif
 
 #include "ia_css_debug.h"
 #include "sw_event_global.h"		/* encode_sw_event */
@@ -153,23 +137,11 @@ void ia_css_pipeline_start(enum ia_css_pipe_id pipe_id,
 	sh_css_sp_init_pipeline(pipeline, pipe_id, pipe_num,
 				false, false, false, true, SH_CSS_BDS_FACTOR_1_00,
 				SH_CSS_PIPE_CONFIG_OVRD_NO_OVRD,
-#ifndef ISP2401
 				IA_CSS_INPUT_MODE_MEMORY, NULL, NULL
-#else
-				IA_CSS_INPUT_MODE_MEMORY, NULL, NULL,
-#endif
 #if !defined(HAS_NO_INPUT_SYSTEM)
-#ifndef ISP2401
 				, (enum mipi_port_id)0
-#else
-				(enum mipi_port_id)0,
 #endif
-#endif
-#ifndef ISP2401
 			       );
-#else
-				NULL, NULL);
-#endif
 	ia_css_pipeline_get_sp_thread_id(pipe_num, &thread_id);
 	if (!sh_css_sp_is_running()) {
 		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,

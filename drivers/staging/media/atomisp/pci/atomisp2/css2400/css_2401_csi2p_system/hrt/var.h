@@ -1,4 +1,3 @@
-#ifndef ISP2401
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -73,4 +72,3 @@
 
 
 #endif /* _HRT_VAR_H */
-#endif

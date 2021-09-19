@@ -34,7 +34,7 @@
 #include <media/media-entity.h>
 #include <media/v4l2-ctrls.h>
 
-#include <linux/atomisp_platform.h>
+#include "../../include/linux/atomisp_platform.h"
 
 #define OV5693_NAME		"ov5693"
 

@@ -19,7 +19,7 @@
  *
  */
 #include <asm/intel-mid.h>
-#include <linux/atomisp_platform.h>
+#include "../../include/linux/atomisp_platform.h"
 #include <linux/bitops.h>
 #include <linux/device.h>
 #include <linux/delay.h>

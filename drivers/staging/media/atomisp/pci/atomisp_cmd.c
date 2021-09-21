@@ -977,7 +977,6 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
 		break;
 	case CSS_BUFFER_TYPE_VF_OUTPUT_FRAME:
 	case CSS_BUFFER_TYPE_SEC_VF_OUTPUT_FRAME:
-
 		pipe->buffers_in_css--;
 		frame = buffer.css_buffer.data.frame;
 		if (!frame) {
@@ -1030,7 +1029,6 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
 		break;
 	case CSS_BUFFER_TYPE_OUTPUT_FRAME:
 	case CSS_BUFFER_TYPE_SEC_OUTPUT_FRAME:
-
 		pipe->buffers_in_css--;
 		frame = buffer.css_buffer.data.frame;
 		if (!frame) {

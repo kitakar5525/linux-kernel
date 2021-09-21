@@ -1457,14 +1457,12 @@ void atomisp_wdt_work(struct work_struct *work)
 		return;
 	}
 
-	{
-		dev_err(isp->dev, "timeout %d of %d\n",
-			atomic_read(&isp->wdt_count) + 1,
-			ATOMISP_ISP_MAX_TIMEOUT_COUNT);
+	dev_err(isp->dev, "timeout %d of %d\n",
+		atomic_read(&isp->wdt_count) + 1,
+		ATOMISP_ISP_MAX_TIMEOUT_COUNT);
 
-		if (atomic_inc_return(&isp->wdt_count) < ATOMISP_ISP_MAX_TIMEOUT_COUNT)
-			css_recover = true;
-	}
+	if (atomic_inc_return(&isp->wdt_count) < ATOMISP_ISP_MAX_TIMEOUT_COUNT)
+		css_recover = true;
 
 	if (css_recover) {
 		ia_css_debug_dump_sp_sw_debug_info();
@@ -1604,10 +1602,8 @@ void atomisp_wdt(struct timer_list *t)
 	struct atomisp_sub_device *asd;
 	struct atomisp_device *isp;
 
-	{
-		asd = from_timer(asd, t, wdt);
-		isp = asd->isp;
-	}
+	asd = from_timer(asd, t, wdt);
+	isp = asd->isp;
 
 	if (atomic_read(&isp->wdt_work_queued)) {
 		dev_dbg(isp->dev, "ISP watchdog was put into workqueue\n");
@@ -1652,30 +1648,28 @@ void atomisp_wdt_refresh_pipe(struct atomisp_video_pipe *pipe,
 
 void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay)
 {
-	{
-		unsigned long next;
+	unsigned long next;
 
-		if (delay != ATOMISP_WDT_KEEP_CURRENT_DELAY)
-			asd->wdt_duration = delay;
+	if (delay != ATOMISP_WDT_KEEP_CURRENT_DELAY)
+		asd->wdt_duration = delay;
 
-		next = jiffies + asd->wdt_duration;
+	next = jiffies + asd->wdt_duration;
 
-		/* Override next if it has been pushed beyon the "next" time */
-		if (atomisp_is_wdt_running(asd) && time_after(asd->wdt_expires, next))
-			next = asd->wdt_expires;
+	/* Override next if it has been pushed beyon the "next" time */
+	if (atomisp_is_wdt_running(asd) && time_after(asd->wdt_expires, next))
+		next = asd->wdt_expires;
 
-		asd->wdt_expires = next;
+	asd->wdt_expires = next;
 
-		if (atomisp_is_wdt_running(asd))
-			dev_dbg(asd->isp->dev, "WDT will hit after %d ms\n",
-				((int)(next - jiffies) * 1000 / HZ));
-		else
-			dev_dbg(asd->isp->dev, "WDT starts with %d ms period\n",
-				((int)(next - jiffies) * 1000 / HZ));
+	if (atomisp_is_wdt_running(asd))
+		dev_dbg(asd->isp->dev, "WDT will hit after %d ms\n",
+			((int)(next - jiffies) * 1000 / HZ));
+	else
+		dev_dbg(asd->isp->dev, "WDT starts with %d ms period\n",
+			((int)(next - jiffies) * 1000 / HZ));
 
-		mod_timer(&asd->wdt, next);
-		atomic_set(&asd->isp->wdt_count, 0);
-	}
+	mod_timer(&asd->wdt, next);
+	atomic_set(&asd->isp->wdt_count, 0);
 }
 
 /* ISP2401 */
@@ -2919,30 +2913,28 @@ int atomisp_calculate_real_zoom_region(struct atomisp_sub_device *asd,
 	 * map real crop region base on above calculating base max crop region.
 	 */
 
-	{
-		dz_config->zoom_region.origin.x = dz_config->zoom_region.origin.x
+	dz_config->zoom_region.origin.x = dz_config->zoom_region.origin.x
+					  * eff_res.width
+					  / asd->sensor_array_res.width;
+	dz_config->zoom_region.origin.y = dz_config->zoom_region.origin.y
+					  * eff_res.height
+					  / asd->sensor_array_res.height;
+	dz_config->zoom_region.resolution.width = dz_config->zoom_region.resolution.width
 						  * eff_res.width
 						  / asd->sensor_array_res.width;
-		dz_config->zoom_region.origin.y = dz_config->zoom_region.origin.y
+	dz_config->zoom_region.resolution.height = dz_config->zoom_region.resolution.height
 						  * eff_res.height
 						  / asd->sensor_array_res.height;
-		dz_config->zoom_region.resolution.width = dz_config->zoom_region.resolution.width
-							  * eff_res.width
-							  / asd->sensor_array_res.width;
-		dz_config->zoom_region.resolution.height = dz_config->zoom_region.resolution.height
-							  * eff_res.height
-							  / asd->sensor_array_res.height;
-		/*
-		 * Set same ratio of crop region resolution and current pipe output
-		 * resolution
-		 */
-		out_res.width = stream_env->pipe_configs[css_pipe_id].output_info[0].res.width;
-		out_res.height = stream_env->pipe_configs[css_pipe_id].output_info[0].res.height;
-		if (out_res.width == 0 || out_res.height == 0) {
-			dev_err(asd->isp->dev, "%s err current pipe output resolution"
-				, __func__);
-			return -EINVAL;
-		}
+	/*
+	 * Set same ratio of crop region resolution and current pipe output
+	 * resolution
+	 */
+	out_res.width = stream_env->pipe_configs[css_pipe_id].output_info[0].res.width;
+	out_res.height = stream_env->pipe_configs[css_pipe_id].output_info[0].res.height;
+	if (out_res.width == 0 || out_res.height == 0) {
+		dev_err(asd->isp->dev, "%s err current pipe output resolution"
+			, __func__);
+		return -EINVAL;
 	}
 
 	if (out_res.width * dz_config->zoom_region.resolution.height
@@ -3544,55 +3536,53 @@ int atomisp_css_cp_dvs2_coefs(struct atomisp_sub_device *asd,
 	if (!from_user && css_param->update_flag.dvs2_coefs)
 		return 0;
 
-	{
-		if (sizeof(*cur) != sizeof(coefs->grid) ||
-		    memcmp(&coefs->grid, cur, sizeof(coefs->grid))) {
-			dev_err(asd->isp->dev, "dvs grid mis-match!\n");
-			/* If the grid info in the argument differs from the current
-			grid info, we tell the caller to reset the grid size and
-			try again. */
-			return -EAGAIN;
-		}
+	if (sizeof(*cur) != sizeof(coefs->grid) ||
+	    memcmp(&coefs->grid, cur, sizeof(coefs->grid))) {
+		dev_err(asd->isp->dev, "dvs grid mis-match!\n");
+		/* If the grid info in the argument differs from the current
+		grid info, we tell the caller to reset the grid size and
+		try again. */
+		return -EAGAIN;
+	}
 
-		if (!coefs->hor_coefs.odd_real ||
-		    !coefs->hor_coefs.odd_imag ||
-		    !coefs->hor_coefs.even_real ||
-		    !coefs->hor_coefs.even_imag ||
-		    !coefs->ver_coefs.odd_real ||
-		    !coefs->ver_coefs.odd_imag ||
-		    !coefs->ver_coefs.even_real ||
-		    !coefs->ver_coefs.even_imag)
-			return -EINVAL;
+	if (!coefs->hor_coefs.odd_real ||
+	    !coefs->hor_coefs.odd_imag ||
+	    !coefs->hor_coefs.even_real ||
+	    !coefs->hor_coefs.even_imag ||
+	    !coefs->ver_coefs.odd_real ||
+	    !coefs->ver_coefs.odd_imag ||
+	    !coefs->ver_coefs.even_real ||
+	    !coefs->ver_coefs.even_imag)
+		return -EINVAL;
 
-		if (!css_param->dvs2_coeff) {
-			/* DIS coefficients. */
-			css_param->dvs2_coeff = ia_css_dvs2_coefficients_allocate(cur);
-			if (!css_param->dvs2_coeff)
-				return -ENOMEM;
-		}
+	if (!css_param->dvs2_coeff) {
+		/* DIS coefficients. */
+		css_param->dvs2_coeff = ia_css_dvs2_coefficients_allocate(cur);
+		if (!css_param->dvs2_coeff)
+			return -ENOMEM;
+	}
 
-		dvs_hor_coef_bytes = asd->params.dvs_hor_coef_bytes;
-		dvs_ver_coef_bytes = asd->params.dvs_ver_coef_bytes;
-		if (copy_from_compatible(css_param->dvs2_coeff->hor_coefs.odd_real,
-					coefs->hor_coefs.odd_real, dvs_hor_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->hor_coefs.odd_imag,
-					coefs->hor_coefs.odd_imag, dvs_hor_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->hor_coefs.even_real,
-					coefs->hor_coefs.even_real, dvs_hor_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->hor_coefs.even_imag,
-					coefs->hor_coefs.even_imag, dvs_hor_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.odd_real,
-					coefs->ver_coefs.odd_real, dvs_ver_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.odd_imag,
-					coefs->ver_coefs.odd_imag, dvs_ver_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.even_real,
-					coefs->ver_coefs.even_real, dvs_ver_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.even_imag,
-					coefs->ver_coefs.even_imag, dvs_ver_coef_bytes, from_user)) {
-			ia_css_dvs2_coefficients_free(css_param->dvs2_coeff);
-			css_param->dvs2_coeff = NULL;
-			return -EFAULT;
-		}
+	dvs_hor_coef_bytes = asd->params.dvs_hor_coef_bytes;
+	dvs_ver_coef_bytes = asd->params.dvs_ver_coef_bytes;
+	if (copy_from_compatible(css_param->dvs2_coeff->hor_coefs.odd_real,
+				coefs->hor_coefs.odd_real, dvs_hor_coef_bytes, from_user) ||
+	    copy_from_compatible(css_param->dvs2_coeff->hor_coefs.odd_imag,
+				coefs->hor_coefs.odd_imag, dvs_hor_coef_bytes, from_user) ||
+	    copy_from_compatible(css_param->dvs2_coeff->hor_coefs.even_real,
+				coefs->hor_coefs.even_real, dvs_hor_coef_bytes, from_user) ||
+	    copy_from_compatible(css_param->dvs2_coeff->hor_coefs.even_imag,
+				coefs->hor_coefs.even_imag, dvs_hor_coef_bytes, from_user) ||
+	    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.odd_real,
+				coefs->ver_coefs.odd_real, dvs_ver_coef_bytes, from_user) ||
+	    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.odd_imag,
+				coefs->ver_coefs.odd_imag, dvs_ver_coef_bytes, from_user) ||
+	    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.even_real,
+				coefs->ver_coefs.even_real, dvs_ver_coef_bytes, from_user) ||
+	    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.even_imag,
+				coefs->ver_coefs.even_imag, dvs_ver_coef_bytes, from_user)) {
+		ia_css_dvs2_coefficients_free(css_param->dvs2_coeff);
+		css_param->dvs2_coeff = NULL;
+		return -EFAULT;
 	}
 
 	css_param->update_flag.dvs2_coefs =

@@ -2146,32 +2146,30 @@ void ia_css_debug_dump_debug_info(const char *context)
 	ia_css_debug_dump_dma_sp_fifo_state();
 	ia_css_debug_dump_dma_state();
 
-	{
-		struct irq_controller_state state;
+	struct irq_controller_state state;
 
-		ia_css_debug_dump_isys_state();
+	ia_css_debug_dump_isys_state();
 
-		irq_controller_get_state(IRQ2_ID, &state);
+	irq_controller_get_state(IRQ2_ID, &state);
 
-		ia_css_debug_dtrace(2, "\t%-32s:\n",
-				    "Input System IRQ Controller State");
+	ia_css_debug_dtrace(2, "\t%-32s:\n",
+			    "Input System IRQ Controller State");
 
-		ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
-				    "irq_edge", state.irq_edge);
+	ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
+			    "irq_edge", state.irq_edge);
 
-		ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
-				    "irq_mask", state.irq_mask);
+	ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
+			    "irq_mask", state.irq_mask);
 
-		ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
-				    "irq_status", state.irq_status);
+	ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
+			    "irq_status", state.irq_status);
 
-		ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
-				    "irq_enable", state.irq_enable);
+	ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
+			    "irq_enable", state.irq_enable);
 
-		ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
-				    "irq_level_not_pulse",
-				    state.irq_level_not_pulse);
-	}
+	ia_css_debug_dtrace(2, "\t\t%-32s: %d\n",
+			    "irq_level_not_pulse",
+			    state.irq_level_not_pulse);
 
 	ia_css_debug_tagger_state();
 
@@ -3179,14 +3177,11 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 				    "\t\ttraces are not supported for this processor ID - exiting\n");
 		return;
 	}
+	tmp = ia_css_device_load_uint32(start_addr);
+	point_num = (tmp >> 16) & 0xFFFF;
 
-	{
-		tmp = ia_css_device_load_uint32(start_addr);
-		point_num = (tmp >> 16) & 0xFFFF;
-
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, " ver %d %d points\n", tmp & 0xFF,
-				    point_num);
-	}
+	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, " ver %d %d points\n", tmp & 0xFF,
+			    point_num);
 	if ((tmp & 0xFF) != TRACER_VER) {
 		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "\t\tUnknown version - exiting\n");
 		return;
@@ -3221,9 +3216,7 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 	for (i = 0; i < point_num; i++) {
 		j = (limit + i) % point_num;
 		if (trace_read_buf[j]) {
-			{
-				TRACE_DUMP_FORMAT dump_format = FIELD_FORMAT_UNPACK(trace_read_buf[j]);
-			}
+			TRACE_DUMP_FORMAT dump_format = FIELD_FORMAT_UNPACK(trace_read_buf[j]);
 			switch (dump_format) {
 			case TRACE_DUMP_FORMAT_POINT:
 				ia_css_debug_dtrace(

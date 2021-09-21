@@ -1432,39 +1432,13 @@ void atomisp_wdt_work(struct work_struct *work)
 		return;
 	}
 
-	if (!atomisp_hw_is_isp2401) {
+	{
 		dev_err(isp->dev, "timeout %d of %d\n",
 			atomic_read(&isp->wdt_count) + 1,
 			ATOMISP_ISP_MAX_TIMEOUT_COUNT);
 
 		if (atomic_inc_return(&isp->wdt_count) < ATOMISP_ISP_MAX_TIMEOUT_COUNT)
 			css_recover = true;
-	} else {
-		css_recover = true;
-
-		for (i = 0; i < isp->num_of_streams; i++) {
-			struct atomisp_sub_device *asd = &isp->asd[i];
-
-			pipe_wdt_cnt[i][0] +=
-			    atomic_read(&asd->video_out_capture.wdt_count);
-			pipe_wdt_cnt[i][1] +=
-			    atomic_read(&asd->video_out_vf.wdt_count);
-			pipe_wdt_cnt[i][2] +=
-			    atomic_read(&asd->video_out_preview.wdt_count);
-			pipe_wdt_cnt[i][3] +=
-			    atomic_read(&asd->video_out_video_capture.wdt_count);
-			css_recover =
-			    (pipe_wdt_cnt[i][0] <= ATOMISP_ISP_MAX_TIMEOUT_COUNT &&
-			    pipe_wdt_cnt[i][1] <= ATOMISP_ISP_MAX_TIMEOUT_COUNT &&
-			    pipe_wdt_cnt[i][2] <= ATOMISP_ISP_MAX_TIMEOUT_COUNT &&
-			    pipe_wdt_cnt[i][3] <= ATOMISP_ISP_MAX_TIMEOUT_COUNT)
-			    ? true : false;
-			dev_err(isp->dev,
-				"pipe on asd%d timeout cnt: (%d, %d, %d, %d) of %d, recover = %d\n",
-				asd->index, pipe_wdt_cnt[i][0], pipe_wdt_cnt[i][1],
-				pipe_wdt_cnt[i][2], pipe_wdt_cnt[i][3],
-				ATOMISP_ISP_MAX_TIMEOUT_COUNT, css_recover);
-		}
 	}
 
 	if (css_recover) {
@@ -1608,20 +1582,9 @@ void atomisp_wdt(struct timer_list *t)
 	struct atomisp_sub_device *asd;
 	struct atomisp_device *isp;
 
-	if (!atomisp_hw_is_isp2401) {
+	{
 		asd = from_timer(asd, t, wdt);
 		isp = asd->isp;
-	} else {
-		struct atomisp_video_pipe *pipe = from_timer(pipe, t, wdt);
-
-		asd = pipe->asd;
-		isp = asd->isp;
-
-		atomic_inc(&pipe->wdt_count);
-		dev_warn(isp->dev,
-			"[WARNING]asd %d pipe %s ISP timeout %d!\n",
-			asd->index, pipe->vdev.name,
-			atomic_read(&pipe->wdt_count));
 	}
 
 	if (atomic_read(&isp->wdt_work_queued)) {
@@ -1667,7 +1630,7 @@ void atomisp_wdt_refresh_pipe(struct atomisp_video_pipe *pipe,
 
 void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay)
 {
-	if (!atomisp_hw_is_isp2401) {
+	{
 		unsigned long next;
 
 		if (delay != ATOMISP_WDT_KEEP_CURRENT_DELAY)
@@ -1690,16 +1653,6 @@ void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay)
 
 		mod_timer(&asd->wdt, next);
 		atomic_set(&asd->isp->wdt_count, 0);
-	} else {
-		dev_dbg(asd->isp->dev, "WDT refresh all:\n");
-		if (atomisp_is_wdt_running(&asd->video_out_capture))
-			atomisp_wdt_refresh_pipe(&asd->video_out_capture, delay);
-		if (atomisp_is_wdt_running(&asd->video_out_preview))
-			atomisp_wdt_refresh_pipe(&asd->video_out_preview, delay);
-		if (atomisp_is_wdt_running(&asd->video_out_vf))
-			atomisp_wdt_refresh_pipe(&asd->video_out_vf, delay);
-		if (atomisp_is_wdt_running(&asd->video_out_video_capture))
-			atomisp_wdt_refresh_pipe(&asd->video_out_video_capture, delay);
 	}
 }
 
@@ -2944,7 +2897,7 @@ int atomisp_calculate_real_zoom_region(struct atomisp_sub_device *asd,
 	 * map real crop region base on above calculating base max crop region.
 	 */
 
-	if (!atomisp_hw_is_isp2401) {
+	{
 		dz_config->zoom_region.origin.x = dz_config->zoom_region.origin.x
 						  * eff_res.width
 						  / asd->sensor_array_res.width;
@@ -2968,49 +2921,6 @@ int atomisp_calculate_real_zoom_region(struct atomisp_sub_device *asd,
 				, __func__);
 			return -EINVAL;
 		}
-	} else {
-		out_res.width = stream_env->pipe_configs[css_pipe_id].output_info[0].res.width;
-		out_res.height = stream_env->pipe_configs[css_pipe_id].output_info[0].res.height;
-		if (out_res.width == 0 || out_res.height == 0) {
-			dev_err(asd->isp->dev, "%s err current pipe output resolution"
-				, __func__);
-			return -EINVAL;
-		}
-
-		if (asd->sensor_array_res.width * out_res.height
-		    < out_res.width * asd->sensor_array_res.height) {
-			h_offset = asd->sensor_array_res.height
-				   - asd->sensor_array_res.width
-				   * out_res.height / out_res.width;
-			h_offset = h_offset / 2;
-			if (dz_config->zoom_region.origin.y < h_offset)
-				dz_config->zoom_region.origin.y = 0;
-			else
-				dz_config->zoom_region.origin.y = dz_config->zoom_region.origin.y - h_offset;
-			w_offset = 0;
-		} else {
-			w_offset = asd->sensor_array_res.width
-				   - asd->sensor_array_res.height
-				   * out_res.width / out_res.height;
-			w_offset = w_offset / 2;
-			if (dz_config->zoom_region.origin.x < w_offset)
-				dz_config->zoom_region.origin.x = 0;
-			else
-				dz_config->zoom_region.origin.x = dz_config->zoom_region.origin.x - w_offset;
-			h_offset = 0;
-		}
-		dz_config->zoom_region.origin.x = dz_config->zoom_region.origin.x
-						  * eff_res.width
-						  / (asd->sensor_array_res.width - 2 * w_offset);
-		dz_config->zoom_region.origin.y = dz_config->zoom_region.origin.y
-						  * eff_res.height
-						  / (asd->sensor_array_res.height - 2 * h_offset);
-		dz_config->zoom_region.resolution.width = dz_config->zoom_region.resolution.width
-						  * eff_res.width
-						  / (asd->sensor_array_res.width - 2 * w_offset);
-		dz_config->zoom_region.resolution.height = dz_config->zoom_region.resolution.height
-						  * eff_res.height
-						  / (asd->sensor_array_res.height - 2 * h_offset);
 	}
 
 	if (out_res.width * dz_config->zoom_region.resolution.height
@@ -3614,7 +3524,7 @@ int atomisp_css_cp_dvs2_coefs(struct atomisp_sub_device *asd,
 	if (!from_user && css_param->update_flag.dvs2_coefs)
 		return 0;
 
-	if (!atomisp_hw_is_isp2401) {
+	{
 		if (sizeof(*cur) != sizeof(coefs->grid) ||
 		    memcmp(&coefs->grid, cur, sizeof(coefs->grid))) {
 			dev_err(asd->isp->dev, "dvs grid mis-match!\n");
@@ -3659,62 +3569,6 @@ int atomisp_css_cp_dvs2_coefs(struct atomisp_sub_device *asd,
 					coefs->ver_coefs.even_real, dvs_ver_coef_bytes, from_user) ||
 		    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.even_imag,
 					coefs->ver_coefs.even_imag, dvs_ver_coef_bytes, from_user)) {
-			ia_css_dvs2_coefficients_free(css_param->dvs2_coeff);
-			css_param->dvs2_coeff = NULL;
-			return -EFAULT;
-		}
-	} else {
-		if (copy_from_compatible(&dvs2_coefs, coefs,
-					sizeof(struct ia_css_dvs2_coefficients),
-					from_user)) {
-			dev_err(asd->isp->dev, "copy dvs2 coef failed");
-			return -EFAULT;
-		}
-
-		if (sizeof(*cur) != sizeof(dvs2_coefs.grid) ||
-		    memcmp(&dvs2_coefs.grid, cur, sizeof(dvs2_coefs.grid))) {
-			dev_err(asd->isp->dev, "dvs grid mis-match!\n");
-			/* If the grid info in the argument differs from the current
-			grid info, we tell the caller to reset the grid size and
-			try again. */
-			return -EAGAIN;
-		}
-
-		if (!dvs2_coefs.hor_coefs.odd_real ||
-		    !dvs2_coefs.hor_coefs.odd_imag ||
-		    !dvs2_coefs.hor_coefs.even_real ||
-		    !dvs2_coefs.hor_coefs.even_imag ||
-		    !dvs2_coefs.ver_coefs.odd_real ||
-		    !dvs2_coefs.ver_coefs.odd_imag ||
-		    !dvs2_coefs.ver_coefs.even_real ||
-		    !dvs2_coefs.ver_coefs.even_imag)
-			return -EINVAL;
-
-		if (!css_param->dvs2_coeff) {
-			/* DIS coefficients. */
-			css_param->dvs2_coeff = ia_css_dvs2_coefficients_allocate(cur);
-			if (!css_param->dvs2_coeff)
-				return -ENOMEM;
-		}
-
-		dvs_hor_coef_bytes = asd->params.dvs_hor_coef_bytes;
-		dvs_ver_coef_bytes = asd->params.dvs_ver_coef_bytes;
-		if (copy_from_compatible(css_param->dvs2_coeff->hor_coefs.odd_real,
-					dvs2_coefs.hor_coefs.odd_real, dvs_hor_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->hor_coefs.odd_imag,
-					dvs2_coefs.hor_coefs.odd_imag, dvs_hor_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->hor_coefs.even_real,
-					dvs2_coefs.hor_coefs.even_real, dvs_hor_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->hor_coefs.even_imag,
-					dvs2_coefs.hor_coefs.even_imag, dvs_hor_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.odd_real,
-					dvs2_coefs.ver_coefs.odd_real, dvs_ver_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.odd_imag,
-					dvs2_coefs.ver_coefs.odd_imag, dvs_ver_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.even_real,
-					dvs2_coefs.ver_coefs.even_real, dvs_ver_coef_bytes, from_user) ||
-		    copy_from_compatible(css_param->dvs2_coeff->ver_coefs.even_imag,
-					dvs2_coefs.ver_coefs.even_imag, dvs_ver_coef_bytes, from_user)) {
 			ia_css_dvs2_coefficients_free(css_param->dvs2_coeff);
 			css_param->dvs2_coeff = NULL;
 			return -EFAULT;
@@ -4879,10 +4733,7 @@ static int __enable_continuous_mode(struct atomisp_sub_device *asd,
 		enable, asd->continuous_raw_buffer_size->val,
 		!asd->continuous_viewfinder->val);
 
-	if (!atomisp_hw_is_isp2401)
-		atomisp_css_capture_set_mode(asd, CSS_CAPTURE_MODE_PRIMARY);
-	else
-		atomisp_update_capture_mode(asd);
+	atomisp_css_capture_set_mode(asd, CSS_CAPTURE_MODE_PRIMARY);
 
 	/* in case of ANR, force capture pipe to offline mode */
 	atomisp_css_capture_enable_online(asd, ATOMISP_INPUT_STREAM_GENERAL,

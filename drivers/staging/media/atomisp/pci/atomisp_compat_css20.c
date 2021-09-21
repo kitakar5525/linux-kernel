@@ -4186,8 +4186,7 @@ int atomisp_css_isr_thread(struct atomisp_device *isp,
 			atomisp_buf_done(asd, 0, IA_CSS_BUFFER_TYPE_OUTPUT_FRAME,
 					 current_event.pipe, true, stream_id);
 
-			if (!IS_ISP2401)
-				reset_wdt_timer[asd->index] = true; /* ISP running */
+			reset_wdt_timer[asd->index] = true; /* ISP running */
 
 			break;
 		case IA_CSS_EVENT_TYPE_SECOND_OUTPUT_FRAME_DONE:
@@ -4196,8 +4195,7 @@ int atomisp_css_isr_thread(struct atomisp_device *isp,
 			atomisp_buf_done(asd, 0, IA_CSS_BUFFER_TYPE_SEC_OUTPUT_FRAME,
 					 current_event.pipe, true, stream_id);
 
-			if (!IS_ISP2401)
-				reset_wdt_timer[asd->index] = true; /* ISP running */
+			reset_wdt_timer[asd->index] = true; /* ISP running */
 
 			break;
 		case IA_CSS_EVENT_TYPE_3A_STATISTICS_DONE:
@@ -4220,8 +4218,7 @@ int atomisp_css_isr_thread(struct atomisp_device *isp,
 					 IA_CSS_BUFFER_TYPE_VF_OUTPUT_FRAME,
 					 current_event.pipe, true, stream_id);
 
-			if (!IS_ISP2401)
-				reset_wdt_timer[asd->index] = true; /* ISP running */
+			reset_wdt_timer[asd->index] = true; /* ISP running */
 
 			break;
 		case IA_CSS_EVENT_TYPE_SECOND_VF_OUTPUT_FRAME_DONE:
@@ -4229,8 +4226,7 @@ int atomisp_css_isr_thread(struct atomisp_device *isp,
 			atomisp_buf_done(asd, 0,
 					 IA_CSS_BUFFER_TYPE_SEC_VF_OUTPUT_FRAME,
 					 current_event.pipe, true, stream_id);
-			if (!IS_ISP2401)
-				reset_wdt_timer[asd->index] = true; /* ISP running */
+			reset_wdt_timer[asd->index] = true; /* ISP running */
 
 			break;
 		case IA_CSS_EVENT_TYPE_DIS_STATISTICS_DONE:

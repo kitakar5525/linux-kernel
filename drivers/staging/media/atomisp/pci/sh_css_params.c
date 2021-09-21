@@ -2624,8 +2624,7 @@ sh_css_init_isp_params_from_config(struct ia_css_pipe *pipe,
 		goto exit;
 	}
 
-	if (!IS_ISP2401)
-		ia_css_set_param_exceptions(pipe, params);
+	ia_css_set_param_exceptions(pipe, params);
 
 exit:
 	IA_CSS_LEAVE_ERR_PRIVATE(err);
@@ -3149,8 +3148,7 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 			}
 		}
 
-		if (!IS_ISP2401)
-			ia_css_set_param_exceptions(pipe_in, params);
+		ia_css_set_param_exceptions(pipe_in, params);
 
 		params->fpn_config.data = stream_params->fpn_config.data;
 		params->config_changed[IA_CSS_FPN_ID] =

@@ -9373,8 +9373,7 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 			curr_stream->cont_capt = true;
 			curr_stream->disable_cont_vf = curr_stream->config.disable_cont_viewfinder;
 
-			if (!IS_ISP2401)
-				curr_stream->stop_copy_preview = my_css.stop_copy_preview;
+			curr_stream->stop_copy_preview = my_css.stop_copy_preview;
 		}
 
 		/* Create copy pipe here, since it may not be exposed to the driver */
@@ -9433,7 +9432,7 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 		/* set current stream */
 		curr_pipe->stream = curr_stream;
 
-		if (!IS_ISP2401) {
+		{
 			/* take over effective info */
 
 			effective_res = curr_pipe->config.input_effective_res;

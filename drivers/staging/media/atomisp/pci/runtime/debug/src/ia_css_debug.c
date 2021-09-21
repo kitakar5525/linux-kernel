@@ -434,7 +434,7 @@ void ia_css_debug_dump_isp_state(void)
 	debug_print_isp_state(&state, "ISP");
 
 	if (state.is_stalling) {
-		if (!IS_ISP2401) {
+		{
 			ia_css_debug_dtrace(2, "\t%-32s: %d\n",
 					    "[0] if_prim_a_FIFO stalled", stall.fifo0);
 			ia_css_debug_dtrace(2, "\t%-32s: %d\n",
@@ -488,17 +488,15 @@ void ia_css_debug_dump_sp_state(void)
 				    "str_to_mem_FIFO stalled", stall.fifo2);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "dma_FIFO stalled",
 				    stall.fifo3);
-		if (!IS_ISP2401)
-			ia_css_debug_dtrace(2, "\t%-32s: %d\n",
-					    "if_prim_a_FIFO stalled", stall.fifo4);
+		ia_css_debug_dtrace(2, "\t%-32s: %d\n",
+				    "if_prim_a_FIFO stalled", stall.fifo4);
 
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "isp_FIFO stalled",
 				    stall.fifo5);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "gp_FIFO stalled",
 				    stall.fifo6);
-		if (!IS_ISP2401)
-			ia_css_debug_dtrace(2, "\t%-32s: %d\n",
-					    "if_prim_b_FIFO stalled", stall.fifo7);
+		ia_css_debug_dtrace(2, "\t%-32s: %d\n",
+				    "if_prim_b_FIFO stalled", stall.fifo7);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "gdc0_FIFO stalled",
 				    stall.fifo8);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "gdc1_FIFO stalled",
@@ -2127,8 +2125,7 @@ void ia_css_debug_dump_debug_info(const char *context)
 		context = "No Context provided";
 
 	ia_css_debug_dtrace(2, "CSS Debug Info dump [Context = %s]\n", context);
-	if (!IS_ISP2401)
-		ia_css_debug_dump_rx_state();
+	ia_css_debug_dump_rx_state();
 
 	ia_css_debug_dump_if_state();
 	ia_css_debug_dump_isp_state();

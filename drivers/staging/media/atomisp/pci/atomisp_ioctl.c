@@ -731,13 +731,7 @@ static int atomisp_s_input(struct file *file, void *fh, unsigned int input)
 		goto error;
 	}
 
-	if (!IS_ISP2401) {
-		motor = isp->inputs[input].motor;
-	} else {
-		motor = isp->motor;
-		if (motor)
-			ret = v4l2_subdev_call(motor, core, s_power, 1);
-	}
+	motor = isp->inputs[input].motor;
 
 	if (!isp->sw_contex.file_input && motor)
 		ret = v4l2_subdev_call(motor, core, init, 1);
@@ -1263,14 +1257,8 @@ done:
 		} else {
 			atomisp_qbuffers_to_css(asd);
 
-			if (!IS_ISP2401) {
-				if (!atomisp_is_wdt_running(asd) && atomisp_buffers_queued(asd))
-					atomisp_wdt_start(asd);
-			} else {
-				if (!atomisp_is_wdt_running(pipe) &&
-				    atomisp_buffers_queued_pipe(pipe))
-					atomisp_wdt_start_pipe(pipe);
-			}
+			if (!atomisp_is_wdt_running(asd) && atomisp_buffers_queued(asd))
+				atomisp_wdt_start(asd);
 		}
 	}
 
@@ -1854,13 +1842,8 @@ start_sensor:
 		goto out;
 	}
 
-	if (!IS_ISP2401) {
-		if (atomisp_buffers_queued(asd))
-			atomisp_wdt_refresh(asd, wdt_duration);
-	} else {
-		if (atomisp_buffers_queued_pipe(pipe))
-			atomisp_wdt_refresh_pipe(pipe, wdt_duration);
-	}
+	if (atomisp_buffers_queued(asd))
+		atomisp_wdt_refresh(asd, wdt_duration);
 
 start_delay_wq:
 	if (asd->continuous_mode->val) {

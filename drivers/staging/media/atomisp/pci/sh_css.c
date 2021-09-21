@@ -9820,11 +9820,7 @@ ia_css_stream_stop(struct ia_css_stream *stream) {
 	}
 #endif
 
-	if (!IS_ISP2401) {
-		err = ia_css_pipeline_request_stop(&stream->last_pipe->pipeline);
-	} else {
-		err = sh_css_pipes_stop(stream);
-	}
+	err = ia_css_pipeline_request_stop(&stream->last_pipe->pipeline);
 
 	if (err)
 		return err;
@@ -9842,11 +9838,7 @@ ia_css_stream_has_stopped(struct ia_css_stream *stream) {
 
 	assert(stream);
 
-	if (!IS_ISP2401) {
-		stopped = ia_css_pipeline_has_stopped(&stream->last_pipe->pipeline);
-	} else {
-		stopped = sh_css_pipes_have_stopped(stream);
-	}
+	stopped = ia_css_pipeline_has_stopped(&stream->last_pipe->pipeline);
 
 	return stopped;
 }
@@ -10188,16 +10180,7 @@ ia_css_stop_sp(void) {
 	}
 
 	/* For now, stop whole SP */
-	if (!IS_ISP2401) {
-		sh_css_write_host2sp_command(host2sp_cmd_terminate);
-	} else {
-		if (!sh_css_write_host2sp_command(host2sp_cmd_terminate))
-		{
-			IA_CSS_ERROR("Call to 'sh-css_write_host2sp_command()' failed");
-			ia_css_debug_dump_sp_sw_debug_info();
-			ia_css_debug_dump_debug_info(NULL);
-		}
-	}
+	sh_css_write_host2sp_command(host2sp_cmd_terminate);
 
 	sh_css_sp_set_sp_running(false);
 

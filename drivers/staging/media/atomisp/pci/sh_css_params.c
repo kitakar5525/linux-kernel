@@ -3042,29 +3042,7 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 		ia_css_set_ob_config(params, &default_ob_config);
 		ia_css_set_dp_config(params, &default_dp_config);
 
-		if (!IS_ISP2401) {
-			ia_css_set_param_exceptions(pipe_in, params);
-		} else {
-			for (i = 0; i < stream->num_pipes; i++) {
-				if (sh_css_select_dp_10bpp_config(stream->pipes[i],
-								&is_dp_10bpp) == 0) {
-					/* set the return value as false if both DPC and
-					* BDS is enabled by the user. But we do not return
-					* the value immediately to enable internal firmware
-					* feature testing. */
-					if (is_dp_10bpp) {
-						sh_css_set_dp_config(stream->pipes[i], params, &default_dp_10bpp_config);
-					} else {
-						sh_css_set_dp_config(stream->pipes[i], params, &default_dp_config);
-					}
-				} else {
-					retval = false;
-					goto exit;
-				}
-
-				ia_css_set_param_exceptions(stream->pipes[i], params);
-			}
-		}
+		ia_css_set_param_exceptions(pipe_in, params);
 
 		ia_css_set_de_config(params, &default_de_config);
 		ia_css_set_gc_config(params, &default_gc_config);
@@ -4183,13 +4161,7 @@ sh_css_params_write_to_ddr_internal(
 			if (!params->pipe_dvs_6axis_config[pipe_id]) {
 				struct ia_css_resolution dvs_offset = {0};
 
-				if (!IS_ISP2401) {
-					dvs_offset.width = (PIX_SHIFT_FILTER_RUN_IN_X + binary->dvs_envelope.width) / 2;
-				} else {
-					if (binary->dvs_envelope.width || binary->dvs_envelope.height) {
-						dvs_offset.width  = (PIX_SHIFT_FILTER_RUN_IN_X + binary->dvs_envelope.width) / 2;
-					}
-				}
+				dvs_offset.width = (PIX_SHIFT_FILTER_RUN_IN_X + binary->dvs_envelope.width) / 2;
 				dvs_offset.height = (PIX_SHIFT_FILTER_RUN_IN_Y + binary->dvs_envelope.height) / 2;
 
 				params->pipe_dvs_6axis_config[pipe_id] =

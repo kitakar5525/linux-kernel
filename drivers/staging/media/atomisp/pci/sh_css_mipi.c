@@ -391,12 +391,10 @@ calculate_mipi_buff_size(
 
 static bool buffers_needed(struct ia_css_pipe *pipe)
 {
-	if (!IS_ISP2401) {
-		if (pipe->stream->config.mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR)
-			return false;
-		else
-			return true;
-	}
+	if (pipe->stream->config.mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR)
+		return false;
+	else
+		return true;
 
 	if (pipe->stream->config.mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR ||
 	    pipe->stream->config.mode == IA_CSS_INPUT_MODE_TPG ||

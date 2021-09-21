@@ -2704,10 +2704,7 @@ static long atomisp_vidioc_default(struct file *file, void *fh,
 	}
 	switch (cmd) {
 	case ATOMISP_IOC_S_SENSOR_RUNMODE:
-		if (IS_ISP2401)
-			err = atomisp_set_sensor_runmode(asd, arg);
-		else
-			err = -EINVAL;
+		err = -EINVAL;
 		break;
 
 	case ATOMISP_IOC_G_XNR:
@@ -2879,11 +2876,7 @@ static long atomisp_vidioc_default(struct file *file, void *fh,
 				       core, ioctl, cmd, arg);
 		break;
 	case ATOMISP_IOC_G_UPDATE_EXPOSURE:
-		if (IS_ISP2401)
-			err = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
-					       core, ioctl, cmd, arg);
-		else
-			err = -EINVAL;
+		err = -EINVAL;
 		break;
 
 	case ATOMISP_IOC_ACC_LOAD:

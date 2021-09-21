@@ -9432,16 +9432,15 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 		/* set current stream */
 		curr_pipe->stream = curr_stream;
 
-		{
-			/* take over effective info */
+		/* take over effective info */
 
-			effective_res = curr_pipe->config.input_effective_res;
-			err = ia_css_util_check_res(
-				effective_res.width,
-				effective_res.height);
-			if (err)
-				goto ERR;
-		}
+		effective_res = curr_pipe->config.input_effective_res;
+		err = ia_css_util_check_res(
+			effective_res.width,
+			effective_res.height);
+		if (err)
+			goto ERR;
+
 		/* sensor binning per pipe */
 		if (sensor_binning_changed)
 			sh_css_pipe_free_shading_table(curr_pipe);

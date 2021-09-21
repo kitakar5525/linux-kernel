@@ -434,12 +434,10 @@ void ia_css_debug_dump_isp_state(void)
 	debug_print_isp_state(&state, "ISP");
 
 	if (state.is_stalling) {
-		{
-			ia_css_debug_dtrace(2, "\t%-32s: %d\n",
-					    "[0] if_prim_a_FIFO stalled", stall.fifo0);
-			ia_css_debug_dtrace(2, "\t%-32s: %d\n",
-					    "[1] if_prim_b_FIFO stalled", stall.fifo1);
-		}
+		ia_css_debug_dtrace(2, "\t%-32s: %d\n",
+				    "[0] if_prim_a_FIFO stalled", stall.fifo0);
+		ia_css_debug_dtrace(2, "\t%-32s: %d\n",
+				    "[1] if_prim_b_FIFO stalled", stall.fifo1);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "[2] dma_FIFO stalled",
 				    stall.fifo2);
 

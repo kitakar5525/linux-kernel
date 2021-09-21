@@ -4155,10 +4155,7 @@ int atomisp_css_isr_thread(struct atomisp_device *isp,
 			for (i = 0; i < isp->num_of_streams; i++)
 				atomisp_wdt_stop(&isp->asd[i], 0);
 
-			if (!IS_ISP2401)
-				atomisp_wdt(&isp->asd[0].wdt);
-			else
-				queue_work(isp->wdt_work_queue, &isp->wdt_work);
+			atomisp_wdt(&isp->asd[0].wdt);
 
 			return -EINVAL;
 		} else if (current_event.event.type == IA_CSS_EVENT_TYPE_FW_WARNING) {

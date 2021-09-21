@@ -3303,10 +3303,7 @@ int ia_css_pipe_set_bci_scaler_lut(struct ia_css_pipe *pipe,
 	pipe->scaler_pp_lut = mmgr_NULL;
 
 	if (!stream_started) {
-		if (!IS_ISP2401)
-			pipe->scaler_pp_lut = hmm_alloc(sizeof(zoom_table), HMM_BO_PRIVATE, 0, NULL, 0);
-		else
-			pipe->scaler_pp_lut = sh_css_params_alloc_gdc_lut();
+		pipe->scaler_pp_lut = hmm_alloc(sizeof(zoom_table), HMM_BO_PRIVATE, 0, NULL, 0);
 
 		if (pipe->scaler_pp_lut == mmgr_NULL) {
 			ia_css_debug_dtrace(IA_CSS_DEBUG_ERROR,
@@ -3348,10 +3345,7 @@ int sh_css_params_map_and_store_default_gdc_lut(void)
 
 	host_lut_store((void *)zoom_table);
 
-	if (!IS_ISP2401)
-		default_gdc_lut = hmm_alloc(sizeof(zoom_table), HMM_BO_PRIVATE, 0, NULL, 0);
-	else
-		default_gdc_lut = sh_css_params_alloc_gdc_lut();
+	default_gdc_lut = hmm_alloc(sizeof(zoom_table), HMM_BO_PRIVATE, 0, NULL, 0);
 
 	if (default_gdc_lut == mmgr_NULL)
 		return -ENOMEM;
@@ -3961,10 +3955,7 @@ sh_css_params_write_to_ddr_internal(
 		u32 enable_conv;
 		size_t bytes;
 
-		if (!IS_ISP2401)
-			bytes = ISP2400_SCTBL_BYTES(binary);
-		else
-			bytes = ISP2401_SCTBL_BYTES(binary);
+		bytes = ISP2400_SCTBL_BYTES(binary);
 
 		enable_conv = params->shading_settings.enable_shading_table_conversion;
 

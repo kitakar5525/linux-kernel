@@ -1789,12 +1789,8 @@ ia_css_init(struct device *dev, const struct ia_css_env *env,
 #endif
 
 
-	if (!IS_ISP2401)
-		dma_set_max_burst_size(DMA0_ID, HIVE_DMA_BUS_DDR_CONN,
-				       ISP2400_DMA_MAX_BURST_LENGTH);
-	else
-		dma_set_max_burst_size(DMA0_ID, HIVE_DMA_BUS_DDR_CONN,
-				       ISP2401_DMA_MAX_BURST_LENGTH);
+	dma_set_max_burst_size(DMA0_ID, HIVE_DMA_BUS_DDR_CONN,
+			       ISP2400_DMA_MAX_BURST_LENGTH);
 
 	if (ia_css_isys_init() != INPUT_SYSTEM_ERR_NO_ERROR)
 		err = -EINVAL;
@@ -2935,10 +2931,7 @@ load_preview_binaries(struct ia_css_pipe *pipe) {
 	 * where the driver chooses for memory based input frames. In these cases, a copy binary (which typical
 	 * copies sensor data to DDR) does not have much use.
 	 */
-	if (!IS_ISP2401)
-		need_isp_copy_binary = !online && !continuous;
-	else
-		need_isp_copy_binary = !online && !continuous && !(pipe->stream->config.mode == IA_CSS_INPUT_MODE_MEMORY);
+	need_isp_copy_binary = !online && !continuous;
 #endif
 
 	/* Copy */
@@ -6100,10 +6093,7 @@ static int load_primary_binaries(
 	if (need_pp) {
 		struct ia_css_binary_descr capture_pp_descr;
 
-		if (!IS_ISP2401)
-			capt_pp_in_info = need_ldc ? &capt_ldc_out_info : &prim_out_info;
-		else
-			capt_pp_in_info = &prim_out_info;
+		capt_pp_in_info = need_ldc ? &capt_ldc_out_info : &prim_out_info;
 
 		ia_css_pipe_get_capturepp_binarydesc(pipe,
 							&capture_pp_descr, capt_pp_in_info,
@@ -9479,12 +9469,8 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 		}
 
 		if (!spcopyonly) {
-			if (!IS_ISP2401)
-				err = sh_css_pipe_get_shading_info(curr_pipe,
-								    &pipe_info->shading_info, NULL);
-			else
-				err = sh_css_pipe_get_shading_info(curr_pipe,
-								    &pipe_info->shading_info, &curr_pipe->config);
+			err = sh_css_pipe_get_shading_info(curr_pipe,
+							    &pipe_info->shading_info, NULL);
 
 			if (err)
 				goto ERR;
@@ -9698,7 +9684,7 @@ ia_css_stream_get_info(const struct ia_css_stream *stream,
     */
 int
 ia_css_stream_load(struct ia_css_stream *stream) {
-	if (!IS_ISP2401) {
+	{
 		int i;
 		int err;
 
@@ -9736,10 +9722,6 @@ ia_css_stream_load(struct ia_css_stream *stream) {
 		}
 		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,	"ia_css_stream_load() exit,\n");
 		return 0;
-	} else {
-		/* TODO remove function - DEPRECATED */
-		(void)stream;
-		return -ENOTSUPP;
 	}
 }
 

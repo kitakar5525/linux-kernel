@@ -287,6 +287,7 @@ extern struct device *atomisp_dev;
 
 #define atomisp_is_wdt_running(a) timer_pending(&(a)->wdt)
 
+void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay);
 void atomisp_wdt_start(struct atomisp_sub_device *asd);
 void atomisp_wdt_stop(struct atomisp_sub_device *asd, bool sync);
 

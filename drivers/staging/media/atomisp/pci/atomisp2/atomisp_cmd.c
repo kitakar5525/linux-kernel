@@ -1031,8 +1031,6 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
 
 			dev_dbg(isp->dev, "Trigger capture again for new buffer. err=%d\n",
 				err);
-		} else if (atomisp_hw_is_isp2401) {
-			asd->re_trigger_capture = true;
 		}
 		break;
 	case CSS_BUFFER_TYPE_OUTPUT_FRAME:

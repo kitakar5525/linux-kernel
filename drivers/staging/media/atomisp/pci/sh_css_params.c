@@ -4044,29 +4044,6 @@ sh_css_params_write_to_ddr_internal(
 		}
 	}
 
-	/* DPC configuration is made pipe specific to allow flexibility in positioning of the
-	 * DPC kernel. The code below sets the pipe specific configuration to
-	 * individual binaries. */
-	if (IS_ISP2401 &&
-	    params->pipe_dpc_config_changed[pipe_id] && binary->info->sp.enable.dpc)
-	{
-		unsigned int size   =
-		    stage->binary->info->mem_offsets.offsets.param->dmem.dp.size;
-
-		unsigned int offset =
-		    stage->binary->info->mem_offsets.offsets.param->dmem.dp.offset;
-
-		if (size) {
-			ia_css_dp_encode((struct sh_css_isp_dp_params *)
-					 &binary->mem_params.params[IA_CSS_PARAM_CLASS_PARAM][IA_CSS_ISP_DMEM].address[offset],
-					 &params->pipe_dp_config[pipe_id], size);
-
-			params->isp_params_changed = true;
-			params->isp_mem_params_changed[pipe_id][stage->stage_num][IA_CSS_ISP_DMEM] =
-			    true;
-		}
-	}
-
 	if (params->config_changed[IA_CSS_MACC_ID] && binary->info->sp.enable.macc)
 	{
 		unsigned int i, j, idx;

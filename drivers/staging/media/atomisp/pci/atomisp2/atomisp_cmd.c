@@ -5603,7 +5603,7 @@ int atomisp_set_fmt(struct video_device *vdev, struct v4l2_format *f)
 		 * which appears to be related by a hardware
 		 * performance limitation.  It's unclear why this
 		 * particular code triggers the issue. */
-		if (!atomisp_hw_is_isp2401 || crop_needs_override) {
+		if (crop_needs_override) {
 			if (isp_sink_crop.width * main_compose.height >
 			    isp_sink_crop.height * main_compose.width) {
 				sink_crop.height = isp_sink_crop.height;

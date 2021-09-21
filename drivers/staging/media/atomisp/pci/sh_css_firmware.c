@@ -207,7 +207,7 @@ sh_css_check_firmware_version(struct device *dev, const char *fw_data)
 	}
 
 	/* For now, let's just accept a wrong version, even if wrong */
-	return false;
+	return 0;
 }
 
 static const char * const fw_type_name[] = {
@@ -363,8 +363,10 @@ void sh_css_unload_firmware(void)
 		unsigned int i = 0;
 
 		for (i = 0; i < sh_css_num_binaries; i++) {
-			kfree(fw_minibuffer[i].name);
-			kvfree(fw_minibuffer[i].buffer);
+			if (fw_minibuffer[i].name)
+				kfree((void *)fw_minibuffer[i].name);
+			if (fw_minibuffer[i].buffer)
+				vfree((void *)fw_minibuffer[i].buffer);
 		}
 		kfree(fw_minibuffer);
 		fw_minibuffer = NULL;

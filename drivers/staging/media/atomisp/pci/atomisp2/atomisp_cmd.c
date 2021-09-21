@@ -878,7 +878,6 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
 	enum atomisp_metadata_type md_type;
 	struct atomisp_device *isp = asd->isp;
 	struct v4l2_control ctrl;
-	bool reset_wdt_timer = false;
 
 	if (
 	    buf_type != CSS_BUFFER_TYPE_METADATA &&
@@ -1415,7 +1414,6 @@ void atomisp_wdt_work(struct work_struct *work)
 	struct atomisp_device *isp = container_of(work, struct atomisp_device,
 				     wdt_work);
 	int i;
-	unsigned int pipe_wdt_cnt[MAX_STREAM_NUM][4] = { {0} };
 	bool css_recover = false;
 
 	rt_mutex_lock(&isp->mutex);
@@ -2768,7 +2766,6 @@ int atomisp_calculate_real_zoom_region(struct atomisp_sub_device *asd,
 	struct atomisp_stream_env *stream_env =
 		    &asd->stream_env[ATOMISP_INPUT_STREAM_GENERAL];
 	struct atomisp_resolution  eff_res, out_res;
-	int w_offset, h_offset;
 
 	memset(&eff_res, 0, sizeof(eff_res));
 	memset(&out_res, 0, sizeof(out_res));
@@ -3327,7 +3324,7 @@ int atomisp_cp_lsc_table(struct atomisp_sub_device *asd,
 	unsigned int len_table;
 	struct atomisp_css_shading_table *shading_table;
 	struct atomisp_css_shading_table *old_table;
-	struct atomisp_shading_table *st, dest_st;
+	struct atomisp_shading_table *st;
 
 	if (!source_st)
 		return 0;
@@ -3428,7 +3425,6 @@ int atomisp_css_cp_dvs2_coefs(struct atomisp_sub_device *asd,
 	struct atomisp_css_dvs_grid_info *cur =
 	    atomisp_css_get_dvs_grid_info(&asd->params.curr_grid_info);
 	int dvs_hor_coef_bytes, dvs_ver_coef_bytes;
-	struct ia_css_dvs2_coefficients dvs2_coefs;
 
 	if (!coefs || !cur)
 		return 0;

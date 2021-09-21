@@ -5625,27 +5625,7 @@ static int load_video_binaries(struct ia_css_pipe *pipe)
 
 		tnr_info = mycs->video_binary.out_frame_info[0];
 
-		if (IS_ISP2401) {
-			/* Select resolution for TNR. If
-			* output_system_in_resolution(GDC_out_resolution) is
-			* being used, then select that as it will also be in resolution for
-			* TNR. At present, it only make sense for Skycam */
-			if (pipe->config.output_system_in_res.width &&
-			    pipe->config.output_system_in_res.height) {
-				tnr_width = pipe->config.output_system_in_res.width;
-				tnr_height = pipe->config.output_system_in_res.height;
-			} else {
-				tnr_width = tnr_info.res.width;
-				tnr_height = tnr_info.res.height;
-			}
-
-			/* Make tnr reference buffers output block width(in pix) align */
-			tnr_info.res.width  = CEIL_MUL(tnr_width,
-						       (mycs->video_binary.info->sp.block.block_width * ISP_NWAY));
-			tnr_info.padded_width = tnr_info.res.width;
-		} else {
-			tnr_height = tnr_info.res.height;
-		}
+		tnr_height = tnr_info.res.height;
 
 		/* Make tnr reference buffers output block height align */
 		tnr_info.res.height = CEIL_MUL(tnr_height,

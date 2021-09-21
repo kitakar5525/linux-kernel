@@ -3551,17 +3551,7 @@ int atomisp_cp_lsc_table(struct atomisp_sub_device *asd,
 	if (!from_user && css_param->update_flag.shading_table)
 		return 0;
 
-	if (IS_ISP2401) {
-		if (copy_from_compatible(&dest_st, source_st,
-					sizeof(struct atomisp_shading_table),
-					from_user)) {
-			dev_err(asd->isp->dev, "copy shading table failed!");
-			return -EFAULT;
-		}
-		st = &dest_st;
-	} else {
-		st = source_st;
-	}
+	st = source_st;
 
 	old_table = css_param->shading_table;
 

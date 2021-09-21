@@ -6070,23 +6070,6 @@ static int load_primary_binaries(
 
 	/* TODO Do we disable ldc for skycam */
 	need_ldc = need_capt_ldc(pipe);
-	if (IS_ISP2401 && need_ldc) {
-		/* ldc and capt_pp are not supported in the same pipeline */
-		struct ia_css_binary_descr capt_ldc_descr;
-
-		ia_css_pipe_get_ldc_binarydesc(pipe,
-					       &capt_ldc_descr, &prim_out_info,
-					       &capt_pp_out_info);
-
-		err = ia_css_binary_find(&capt_ldc_descr,
-					 &mycs->capture_ldc_binary);
-		if (err) {
-			IA_CSS_LEAVE_ERR_PRIVATE(err);
-			return err;
-		}
-		need_pp = 0;
-		need_ldc = 0;
-	}
 
 	/* we build up the pipeline starting at the end */
 	/* Capture post-processing */

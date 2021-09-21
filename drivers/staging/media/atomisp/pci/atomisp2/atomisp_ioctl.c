@@ -1287,10 +1287,8 @@ done:
 	    pipe->capq.streaming &&
 	    !asd->enable_raw_buffer_lock->val &&
 	    asd->params.offline_parm.num_captures == 1) {
-		{
-			asd->pending_capture_request++;
-			dev_dbg(isp->dev, "Add one pending capture request.\n");
-		}
+		asd->pending_capture_request++;
+		dev_dbg(isp->dev, "Add one pending capture request.\n");
 	}
 	rt_mutex_unlock(&isp->mutex);
 

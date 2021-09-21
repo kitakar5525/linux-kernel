@@ -742,13 +742,7 @@ static int atomisp_s_input(struct file *file, void *fh, unsigned int input)
 		goto error;
 	}
 
-	if (!atomisp_hw_is_isp2401) {
-		motor = isp->inputs[input].motor;
-	} else {
-		motor = isp->motor;
-		if (motor)
-			ret = v4l2_subdev_call(motor, core, s_power, 1);
-	}
+	motor = isp->inputs[input].motor;
 
 	if (!isp->sw_contex.file_input && motor)
 		ret = v4l2_subdev_call(motor, core, init, 1);
@@ -1216,38 +1210,8 @@ static int atomisp_qbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 		attributes.pgnr = pgnr;
 		attributes.type = HRT_USR_PTR;
 #ifdef CONFIG_ION
-		if (!atomisp_hw_is_isp2401) {
-			if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_ION)
-					attributes.type = HRT_USR_ION;
-		} else {
-			if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_ION) {
-				attributes.type = HRT_USR_ION;
-				if (asd->ion_dev_fd->val !=  ION_FD_UNSET) {
-					dev_dbg(isp->dev, "ION buffer queued, share_fd=%lddev_fd=%d.\n",
-						buf->m.userptr, asd->ion_dev_fd->val);
-					/*
-					* Make sure the shared fd we just got
-					* from user space isn't larger than
-					* the space we have for it.
-					*/
-					if ((buf->m.userptr &
-					    (ATOMISP_ION_DEVICE_FD_MASK)) != 0) {
-						dev_err(isp->dev,
-							"Error: v4l2 buffer fd:0X%0lX > 0XFFFF.\n",
-							buf->m.userptr);
-						ret = -EINVAL;
-						goto error;
-					}
-					buf->m.userptr |= asd->ion_dev_fd->val <<
-							ATOMISP_ION_DEVICE_FD_OFFSET;
-				} else {
-					dev_err(isp->dev, "v4l2 buffer type is ION, \
-							but no dev fd set from userspace.\n");
-					ret = -EINVAL;
-					goto error;
-				}
-			}
-		}
+		if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_ION)
+			attributes.type = HRT_USR_ION;
 #endif
 		ret = atomisp_css_frame_map(&handle, &frame_info,
 					    (void __user *)buf->m.userptr,
@@ -1308,14 +1272,8 @@ done:
 		} else {
 			atomisp_qbuffers_to_css(asd);
 
-			if (!atomisp_hw_is_isp2401) {
-				if (!atomisp_is_wdt_running(asd) && atomisp_buffers_queued(asd))
-					atomisp_wdt_start(asd);
-			} else {
-				if (!atomisp_is_wdt_running(pipe) &&
-				    atomisp_buffers_queued_pipe(pipe))
-					atomisp_wdt_start_pipe(pipe);
-			}
+			if (!atomisp_is_wdt_running(asd) && atomisp_buffers_queued(asd))
+				atomisp_wdt_start(asd);
 		}
 	}
 
@@ -1870,11 +1828,7 @@ start_sensor:
 			dev_err(isp->dev, "master slave sensor stream on failed!\n");
 			goto out;
 		}
-		if (!atomisp_hw_is_isp2401) {
-			__wdt_on_master_slave_sensor(isp, wdt_duration);
-		} else {
-			__wdt_on_master_slave_sensor_pipe(pipe, wdt_duration, true);
-		}
+		__wdt_on_master_slave_sensor(isp, wdt_duration);
 		goto start_delay_wq;
 	} else if (asd->depth_mode->val && (atomisp_streaming_count(isp) <
 					    ATOMISP_DEPTH_SENSOR_STREAMON_COUNT)) {
@@ -1898,13 +1852,8 @@ start_sensor:
 		goto out;
 	}
 
-	if (!atomisp_hw_is_isp2401) {
-		if (atomisp_buffers_queued(asd))
-			atomisp_wdt_refresh(asd, wdt_duration);
-	} else {
-		if (atomisp_buffers_queued_pipe(pipe))
-			atomisp_wdt_refresh_pipe(pipe, wdt_duration);
-	}
+	if (atomisp_buffers_queued(asd))
+		atomisp_wdt_refresh(asd, wdt_duration);
 
 start_delay_wq:
 	if (asd->continuous_mode->val) {

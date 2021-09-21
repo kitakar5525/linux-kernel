@@ -1560,15 +1560,7 @@ void atomisp_wdt_work(struct work_struct *work)
 			}
 		}
 
-		if (!atomisp_hw_is_isp2401) {
-			atomic_set(&isp->wdt_count, 0);
-		} else {
-			isp->isp_fatal_error = true;
-			atomic_set(&isp->wdt_work_queued, 0);
-
-			rt_mutex_unlock(&isp->mutex);
-			return;
-		}
+		atomic_set(&isp->wdt_count, 0);
 	}
 
 	__atomisp_css_recover(isp, true);
@@ -1738,18 +1730,11 @@ void atomisp_wdt_stop(struct atomisp_sub_device *asd, bool sync)
 {
 	dev_dbg(asd->isp->dev, "WDT stop:\n");
 
-	if (!atomisp_hw_is_isp2401) {
-		if (sync) {
-			del_timer_sync(&asd->wdt);
-			cancel_work_sync(&asd->isp->wdt_work);
-		} else {
-			del_timer(&asd->wdt);
-		}
+	if (sync) {
+		del_timer_sync(&asd->wdt);
+		cancel_work_sync(&asd->isp->wdt_work);
 	} else {
-		atomisp_wdt_stop_pipe(&asd->video_out_capture, sync);
-		atomisp_wdt_stop_pipe(&asd->video_out_preview, sync);
-		atomisp_wdt_stop_pipe(&asd->video_out_vf, sync);
-		atomisp_wdt_stop_pipe(&asd->video_out_video_capture, sync);
+		del_timer(&asd->wdt);
 	}
 }
 
@@ -4097,18 +4082,8 @@ void atomisp_handle_parameter_and_buffer(struct atomisp_video_pipe *pipe)
 
 	atomisp_qbuffers_to_css(asd);
 
-	if (!atomisp_hw_is_isp2401) {
-		if (!atomisp_is_wdt_running(asd) && atomisp_buffers_queued(asd))
-			atomisp_wdt_start(asd);
-	} else {
-		if (atomisp_buffers_queued_pipe(pipe)) {
-			if (!atomisp_is_wdt_running(pipe))
-				atomisp_wdt_start_pipe(pipe);
-			else
-				atomisp_wdt_refresh_pipe(pipe,
-							ATOMISP_WDT_KEEP_CURRENT_DELAY);
-		}
-	}
+	if (!atomisp_is_wdt_running(asd) && atomisp_buffers_queued(asd))
+		atomisp_wdt_start(asd);
 }
 
 /*

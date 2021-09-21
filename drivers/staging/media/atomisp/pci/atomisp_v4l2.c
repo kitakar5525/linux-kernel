@@ -105,21 +105,6 @@ int pad_h = 16;
 module_param(pad_h, int, 0644);
 MODULE_PARM_DESC(pad_h, "extra data for ISP processing");
 
-/*
- * FIXME: this is a hack to make easier to support ISP2401 variant.
- * As a given system will either be ISP2401 or not, we can just use
- * a boolean, in order to replace existing #ifdef ISP2401 everywhere.
- *
- * Once this driver gets into a better shape, however, the best would
- * be to replace this to something stored inside atomisp allocated
- * structures.
- */
-bool atomisp_hw_is_isp2401;
-
-/* Types of atomisp hardware */
-#define HW_IS_ISP2400 0
-#define HW_IS_ISP2401 1
-
 struct device *atomisp_dev;
 
 void __iomem *atomisp_io_base;
@@ -1547,11 +1532,6 @@ static int atomisp_pci_probe(struct pci_dev *dev,
 	/* Pointer to struct device. */
 	atomisp_dev = &dev->dev;
 
-	if (id->driver_data == HW_IS_ISP2401)
-		atomisp_hw_is_isp2401 = true;
-	else
-		atomisp_hw_is_isp2401 = false;
-
 	pdata = atomisp_get_platform_data();
 	if (!pdata)
 		dev_warn(&dev->dev, "no platform data available\n");
@@ -1910,16 +1890,16 @@ static const struct pci_device_id atomisp_pci_tbl[] = {
  */
 #if defined(ISP2400)
 	/* Merrifield */
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1178), .driver_data = HW_IS_ISP2400},
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1179), .driver_data = HW_IS_ISP2400},
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x117a), .driver_data = HW_IS_ISP2400},
+	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1178)},
+	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1179)},
+	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x117a)},
 	/* Baytrail */
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x0f38), .driver_data = HW_IS_ISP2400},
+	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x0f38)},
 #elif defined(ISP2401)
 	/* Anniedale (Merrifield+ / Moorefield) */
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1478), .driver_data = HW_IS_ISP2401},
+	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1478)},
 	/* Cherrytrail */
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x22b8), .driver_data = HW_IS_ISP2401},
+	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x22b8)},
 #endif
 	{0,}
 };

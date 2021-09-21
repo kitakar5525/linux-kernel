@@ -998,8 +998,6 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
 		break;
 	case IA_CSS_BUFFER_TYPE_VF_OUTPUT_FRAME:
 	case IA_CSS_BUFFER_TYPE_SEC_VF_OUTPUT_FRAME:
-		if (IS_ISP2401)
-			reset_wdt_timer = true;
 
 		pipe->buffers_in_css--;
 		frame = buffer.css_buffer.data.frame;
@@ -1047,17 +1045,12 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
 
 			asd->pending_capture_request--;
 
-			if (IS_ISP2401)
-				asd->re_trigger_capture = false;
-
 			dev_dbg(isp->dev, "Trigger capture again for new buffer. err=%d\n",
 				err);
 		}
 		break;
 	case IA_CSS_BUFFER_TYPE_OUTPUT_FRAME:
 	case IA_CSS_BUFFER_TYPE_SEC_OUTPUT_FRAME:
-		if (IS_ISP2401)
-			reset_wdt_timer = true;
 
 		pipe->buffers_in_css--;
 		frame = buffer.css_buffer.data.frame;
@@ -1225,8 +1218,6 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
 		 */
 		wake_up(&vb->done);
 	}
-	if (IS_ISP2401)
-		atomic_set(&pipe->wdt_count, 0);
 
 	/*
 	 * Requeue should only be done for 3a and dis buffers.
@@ -1243,19 +1234,6 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
 	}
 	if (!error && q_buffers)
 		atomisp_qbuffers_to_css(asd);
-
-	if (IS_ISP2401) {
-		/* If there are no buffers queued then
-		* delete wdt timer. */
-		if (asd->streaming != ATOMISP_DEVICE_STREAMING_ENABLED)
-			return;
-		if (!atomisp_buffers_queued_pipe(pipe))
-			atomisp_wdt_stop_pipe(pipe, false);
-		else if (reset_wdt_timer)
-			/* SOF irq should not reset wdt timer. */
-			atomisp_wdt_refresh_pipe(pipe,
-						ATOMISP_WDT_KEEP_CURRENT_DELAY);
-	}
 }
 
 void atomisp_delayed_init_work(struct work_struct *work)
@@ -1604,8 +1582,6 @@ void atomisp_wdt_work(struct work_struct *work)
 				atomisp_flush_bufs_and_wakeup(asd);
 				complete(&asd->init_done);
 			}
-			if (IS_ISP2401)
-				atomisp_wdt_stop(asd, false);
 		}
 
 		if (!IS_ISP2401) {
@@ -1620,19 +1596,6 @@ void atomisp_wdt_work(struct work_struct *work)
 	}
 
 	__atomisp_css_recover(isp, true);
-	if (IS_ISP2401) {
-		for (i = 0; i < isp->num_of_streams; i++) {
-			struct atomisp_sub_device *asd = &isp->asd[i];
-
-			if (asd->streaming != ATOMISP_DEVICE_STREAMING_ENABLED)
-				continue;
-
-			atomisp_wdt_refresh(asd,
-					    isp->sw_contex.file_input ?
-					    ATOMISP_ISP_FILE_TIMEOUT_DURATION :
-					    ATOMISP_ISP_TIMEOUT_DURATION);
-		}
-	}
 
 	dev_err(isp->dev, "timeout recovery handling done\n");
 	atomic_set(&isp->wdt_work_queued, 0);
@@ -4209,14 +4172,6 @@ int atomisp_set_parameters(struct video_device *vdev,
 		"%s: set parameter(per_frame_setting %d) for asd%d with isp_config_id %d of %s\n",
 		__func__, arg->per_frame_setting, asd->index,
 		arg->isp_config_id, vdev->name);
-
-	if (IS_ISP2401) {
-		if (atomisp_is_vf_pipe(pipe) && arg->per_frame_setting) {
-			dev_err(asd->isp->dev, "%s: vf pipe not support per_frame_setting",
-				__func__);
-			return -EINVAL;
-		}
-	}
 
 	if (arg->per_frame_setting && !atomisp_is_vf_pipe(pipe)) {
 		/*

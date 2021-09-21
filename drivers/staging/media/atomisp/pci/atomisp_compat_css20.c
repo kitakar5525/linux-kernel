@@ -617,14 +617,6 @@ static void __apply_additional_pipe_config(
 		    default_capture_config.mode == IA_CSS_CAPTURE_MODE_RAW)
 			stream_env->pipe_configs[pipe_id].enable_dz = false;
 
-		if (IS_ISP2401) {
-			/* the isp default to use ISP2.2 and the camera hal will
-			* control whether use isp2.7 */
-			if (asd->select_isp_version->val == ATOMISP_CSS_ISP_PIPE_VERSION_2_7)
-				stream_env->pipe_configs[pipe_id].isp_pipe_version =  SH_CSS_ISP_PIPE_VERSION_2_7;
-			else
-				stream_env->pipe_configs[pipe_id].isp_pipe_version = SH_CSS_ISP_PIPE_VERSION_2_2;
-		}
 		break;
 	case IA_CSS_PIPE_ID_VIDEO:
 		/* enable reduced pipe to have binary
@@ -4265,9 +4257,6 @@ int atomisp_css_isr_thread(struct atomisp_device *isp,
 			break;
 		}
 	}
-
-	if (IS_ISP2401)
-		return 0;
 
 	/* ISP2400: If there are no buffers queued then delete wdt timer. */
 	for (i = 0; i < isp->num_of_streams; i++) {

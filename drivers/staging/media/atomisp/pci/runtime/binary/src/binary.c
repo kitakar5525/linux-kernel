@@ -954,10 +954,6 @@ ia_css_binary_fill_info(const struct ia_css_binary_xinfo *xinfo,
 		binary->sctbl_width_per_color         = 0;
 		binary->sctbl_aligned_width_per_color = 0;
 		binary->sctbl_height                  = 0;
-		if (IS_ISP2401) {
-			binary->sctbl_legacy_width_per_color  = 0;
-			binary->sctbl_legacy_height	      = 0;
-		}
 	}
 	ia_css_sdis_init_info(&binary->dis,
 			      sc_3a_dis_width,

@@ -1011,20 +1011,6 @@ static bool sh_css_translate_stream_cfg_to_isys_stream_descr(
 	isys_stream_descr->raw_packed = stream_cfg->pack_raw_pixels;
 	isys_stream_descr->linked_isys_stream_id = (int8_t)
 		stream_cfg->isys_config[isys_stream_idx].linked_isys_stream_id;
-	/*
-	 * Early polling is required for timestamp accuracy in certain case.
-	 * The ISYS HW polling is started on
-	 * ia_css_isys_stream_capture_indication() instead of
-	 * ia_css_pipeline_sp_wait_for_isys_stream_N() as isp processing of
-	 * capture takes longer than getting an ISYS frame
-	 */
-	if (IS_ISP2401) {
-		isys_stream_descr->polling_mode
-		    = early_polling ? INPUT_SYSTEM_POLL_ON_CAPTURE_REQUEST
-		      : INPUT_SYSTEM_POLL_ON_WAIT_FOR_FRAME;
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
-				    "sh_css_translate_stream_cfg_to_isys_stream_descr() leave:\n");
-	}
 
 	return rc;
 }
@@ -2889,17 +2875,6 @@ load_preview_binaries(struct ia_css_pipe *pipe) {
 	if (err)
 		return err;
 
-	if (IS_ISP2401) {
-		/* The delay latency determines the number of invalid frames after
-		* a stream is started. */
-		pipe->num_invalid_frames = pipe->dvs_frame_delay;
-		pipe->info.num_invalid_frames = pipe->num_invalid_frames;
-
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-				    "load_preview_binaries() num_invalid_frames=%d dvs_frame_delay=%d\n",
-				    pipe->num_invalid_frames, pipe->dvs_frame_delay);
-	}
-
 	/* The vf_pp binary is needed when (further) YUV downscaling is required */
 	need_vf_pp |= mycs->preview_binary.out_frame_info[0].res.width != pipe_out_info->res.width;
 	need_vf_pp |= mycs->preview_binary.out_frame_info[0].res.height != pipe_out_info->res.height;
@@ -3968,11 +3943,6 @@ preview_start(struct ia_css_pipe *pipe) {
 							 &thread_id);
 			copy_ovrd |= 1 << thread_id;
 		}
-	}
-
-	if (IS_ISP2401) {
-		coord = &pipe->config.internal_frame_origin_bqs_on_sctbl;
-		params = pipe->stream->isp_params_configs;
 	}
 
 	/* Construct and load the copy pipe */
@@ -5776,11 +5746,6 @@ static int video_start(struct ia_css_pipe *pipe)
 		}
 	}
 
-	if (IS_ISP2401) {
-		coord = &pipe->config.internal_frame_origin_bqs_on_sctbl;
-		params = pipe->stream->isp_params_configs;
-	}
-
 	/* Construct and load the copy pipe */
 	if (pipe->stream->config.continuous) {
 		sh_css_sp_init_pipeline(&copy_pipe->pipeline,
@@ -5929,12 +5894,6 @@ static bool need_capture_pp(
 	IA_CSS_ENTER_LEAVE_PRIVATE("");
 	assert(pipe);
 	assert(pipe->mode == IA_CSS_PIPE_ID_CAPTURE);
-
-	if (IS_ISP2401) {
-		/* ldc and capture_pp are not supported in the same pipeline */
-		if (need_capt_ldc(pipe) == true)
-			return false;
-	}
 
 	/* determine whether we need to use the capture_pp binary.
 	 * This is needed for:
@@ -9402,18 +9361,6 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 			    effective_res.height);
 	}
 
-	if (IS_ISP2401) {
-		for (i = 0; i < num_pipes; i++) {
-			if (pipes[i]->config.mode != IA_CSS_PIPE_MODE_ACC &&
-			    pipes[i]->config.mode != IA_CSS_PIPE_MODE_COPY) {
-				err = check_pipe_resolutions(pipes[i]);
-				if (err) {
-					goto ERR;
-				}
-			}
-		}
-	}
-
 	err = ia_css_stream_isp_parameters_init(curr_stream);
 	if (err)
 		goto ERR;
@@ -9551,9 +9498,6 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 				goto ERR;
 		}
 
-		if (IS_ISP2401)
-			pipe_info->output_system_in_res_info = curr_pipe->config.output_system_in_res;
-
 		if (!spcopyonly) {
 			if (!IS_ISP2401)
 				err = sh_css_pipe_get_shading_info(curr_pipe,
@@ -9680,10 +9624,6 @@ ia_css_stream_destroy(struct ia_css_stream *stream) {
 			}
 		}
 		free_mpi = stream->config.mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR;
-		if (IS_ISP2401) {
-			free_mpi |= stream->config.mode == IA_CSS_INPUT_MODE_TPG;
-			free_mpi |= stream->config.mode == IA_CSS_INPUT_MODE_PRBS;
-		}
 
 		if (free_mpi) {
 			for (i = 0; i < stream->num_pipes; i++) {

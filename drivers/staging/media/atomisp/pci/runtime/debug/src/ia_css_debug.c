@@ -2376,9 +2376,6 @@ void ia_css_debug_dump_perf_counters(void)
 	/* N_MIPI_PORT_ID + 1: 3 Capture Units and 1 Acquire Unit. */
 	s32 ia_css_sp_input_system_error_cnt[N_MIPI_PORT_ID + 1];
 
-	if (IS_ISP2401)
-		return;
-
 	ia_css_debug_dtrace(IA_CSS_DEBUG_VERBOSE, "Input System Error Counters:\n");
 
 	fw = &sh_css_sp_fw;
@@ -2967,10 +2964,6 @@ ia_css_debug_dump_pipe_config(
 				     "capt_pp_in_res");
 	ia_css_debug_dump_resolution(&config->vf_pp_in_res, "vf_pp_in_res");
 
-	if (IS_ISP2401) {
-		ia_css_debug_dump_resolution(&config->output_system_in_res,
-					    "output_system_in_res");
-	}
 	ia_css_debug_dump_resolution(&config->dvs_crop_out_res,
 				     "dvs_crop_out_res");
 	for (i = 0; i < IA_CSS_PIPE_MAX_OUTPUT_STAGE; i++) {
@@ -3222,20 +3215,6 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 				    (i * item_size));
 		if ((limit == (-1)) && (trace_read_buf[i] == 0))
 			limit = i;
-	}
-	if (IS_ISP2401) {
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "Status:\n");
-		for (i = 0; i < SH_CSS_MAX_SP_THREADS; i++)
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-					    "\tT%d: %3d (%02x)  %6d (%04x)  %10d (%08x)\n", i,
-					    header.thr_status_byte[i], header.thr_status_byte[i],
-					    header.thr_status_word[i], header.thr_status_word[i],
-					    header.thr_status_dword[i], header.thr_status_dword[i]);
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "Scratch:\n");
-		for (i = 0; i < MAX_SCRATCH_DATA; i++)
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "%10d (%08x)  ",
-					    header.scratch_debug[i], header.scratch_debug[i]);
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "\n");
 	}
 	/* two 0s in the beginning: empty buffer */
 	if ((trace_read_buf[0] == 0) && (trace_read_buf[1] == 0)) {

@@ -2155,18 +2155,6 @@ ia_css_set_param_exceptions(const struct ia_css_pipe *pipe,
 	params->dp_config.r  = params->wb_config.r;
 	params->dp_config.b  = params->wb_config.b;
 	params->dp_config.gb = params->wb_config.gb;
-
-	if (IS_ISP2401) {
-		assert(pipe);
-		assert(pipe->mode < IA_CSS_PIPE_ID_NUM);
-
-		if (pipe->mode < IA_CSS_PIPE_ID_NUM) {
-			params->pipe_dp_config[pipe->mode].gr = params->wb_config.gr;
-			params->pipe_dp_config[pipe->mode].r  = params->wb_config.r;
-			params->pipe_dp_config[pipe->mode].b  = params->wb_config.b;
-			params->pipe_dp_config[pipe->mode].gb = params->wb_config.gb;
-		}
-	}
 }
 
 /* ISP2401 */
@@ -2619,16 +2607,6 @@ sh_css_init_isp_params_from_config(struct ia_css_pipe *pipe,
 
 	params->output_frame = config->output_frame;
 	params->isp_parameters_id = config->isp_config_id;
-
-	/* Currently we do not offer CSS interface to set different
-	 * configurations for DPC, i.e. depending on DPC being enabled
-	 * before (NORM+OBC) or after. The folllowing code to set the
-	 * DPC configuration should be updated when this interface is made
-	 * available */
-	if (IS_ISP2401) {
-		sh_css_set_dp_config(pipe, params, config->dp_config);
-		ia_css_set_param_exceptions(pipe, params);
-	}
 
 	if (0 ==
 	    sh_css_select_dp_10bpp_config(pipe, &is_dp_10bpp))
@@ -3190,16 +3168,6 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 			} else {
 				retval = false;
 				goto exit;
-			}
-			if (IS_ISP2401) {
-				if (stream->pipes[i]->mode < IA_CSS_PIPE_ID_NUM) {
-					sh_css_set_dp_config(stream->pipes[i], params,
-							    &stream_params->pipe_dp_config[stream->pipes[i]->mode]);
-					ia_css_set_param_exceptions(stream->pipes[i], params);
-				} else {
-					retval = false;
-					goto exit;
-				}
 			}
 		}
 

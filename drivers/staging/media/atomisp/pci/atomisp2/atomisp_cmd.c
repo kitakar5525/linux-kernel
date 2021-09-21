@@ -3757,64 +3757,7 @@ int atomisp_cp_dvs_6axis_config(struct atomisp_sub_device *asd,
 	old_6axis_config = css_param->dvs_6axis;
 	dvs_6axis_config = old_6axis_config;
 
-	if (atomisp_hw_is_isp2401) {
-		struct atomisp_css_dvs_6axis_config t_6axis_config;
-
-		if (copy_from_compatible(&t_6axis_config, source_6axis_config,
-					sizeof(struct atomisp_dvs_6axis_config),
-					from_user)) {
-			dev_err(asd->isp->dev, "copy morph table failed!");
-			return -EFAULT;
-		}
-
-		if (old_6axis_config &&
-		    (old_6axis_config->width_y != t_6axis_config.width_y ||
-		    old_6axis_config->height_y != t_6axis_config.height_y ||
-		    old_6axis_config->width_uv != t_6axis_config.width_uv ||
-		    old_6axis_config->height_uv != t_6axis_config.height_uv)) {
-			ia_css_dvs2_6axis_config_free(css_param->dvs_6axis);
-			css_param->dvs_6axis = NULL;
-
-			dvs_6axis_config = ia_css_dvs2_6axis_config_allocate(stream);
-			if (!dvs_6axis_config)
-				return -ENOMEM;
-		} else if (!dvs_6axis_config) {
-			dvs_6axis_config = ia_css_dvs2_6axis_config_allocate(stream);
-			if (!dvs_6axis_config)
-				return -ENOMEM;
-		}
-
-		dvs_6axis_config->exp_id = t_6axis_config.exp_id;
-
-		if (copy_from_compatible(dvs_6axis_config->xcoords_y,
-					t_6axis_config.xcoords_y,
-					t_6axis_config.width_y *
-					t_6axis_config.height_y *
-					sizeof(*dvs_6axis_config->xcoords_y),
-					from_user))
-			goto error;
-		if (copy_from_compatible(dvs_6axis_config->ycoords_y,
-					t_6axis_config.ycoords_y,
-					t_6axis_config.width_y *
-					t_6axis_config.height_y *
-					sizeof(*dvs_6axis_config->ycoords_y),
-					from_user))
-			goto error;
-		if (copy_from_compatible(dvs_6axis_config->xcoords_uv,
-					t_6axis_config.xcoords_uv,
-					t_6axis_config.width_uv *
-					t_6axis_config.height_uv *
-					sizeof(*dvs_6axis_config->xcoords_uv),
-					from_user))
-			goto error;
-		if (copy_from_compatible(dvs_6axis_config->ycoords_uv,
-					t_6axis_config.ycoords_uv,
-					t_6axis_config.width_uv *
-					t_6axis_config.height_uv *
-					sizeof(*dvs_6axis_config->ycoords_uv),
-					from_user))
-			goto error;
-	} else {
+	{
 		if (old_6axis_config &&
 		    (old_6axis_config->width_y != source_6axis_config->width_y ||
 		    old_6axis_config->height_y != source_6axis_config->height_y ||
@@ -3892,38 +3835,7 @@ int atomisp_cp_morph_table(struct atomisp_sub_device *asd,
 
 	old_morph_table = css_param->morph_table;
 
-	if (atomisp_hw_is_isp2401) {
-		struct atomisp_css_morph_table mtbl;
-
-		if (copy_from_compatible(&mtbl, source_morph_table,
-				sizeof(struct atomisp_morph_table),
-				from_user)) {
-			dev_err(asd->isp->dev, "copy morph table failed!");
-			return -EFAULT;
-		}
-
-		morph_table = atomisp_css_morph_table_allocate(
-				mtbl.width,
-				mtbl.height);
-		if (!morph_table)
-			return -ENOMEM;
-
-		for (i = 0; i < CSS_MORPH_TABLE_NUM_PLANES; i++) {
-			if (copy_from_compatible(morph_table->coordinates_x[i],
-						(__force void *)source_morph_table->coordinates_x[i],
-						mtbl.height * mtbl.width *
-						sizeof(*morph_table->coordinates_x[i]),
-						from_user))
-				goto error;
-
-			if (copy_from_compatible(morph_table->coordinates_y[i],
-						(__force void *)source_morph_table->coordinates_y[i],
-						mtbl.height * mtbl.width *
-						sizeof(*morph_table->coordinates_y[i]),
-						from_user))
-				goto error;
-		}
-	} else {
+	{
 		morph_table = atomisp_css_morph_table_allocate(
 				source_morph_table->width,
 				source_morph_table->height);

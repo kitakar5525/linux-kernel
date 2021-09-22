@@ -448,8 +448,6 @@ ia_css_pipe_get_qos_ext_state(struct ia_css_pipe *pipe,
 			      u32 fw_handle,
 			      bool *enable);
 
-				      struct ia_css_isp_param_isp_segments *isp_seg);
-
 /* @brief Get selected configuration settings
  * @param[in]	pipe	The pipe.
  * @param[out]	config	Configuration settings.

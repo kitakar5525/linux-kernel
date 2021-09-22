@@ -68,6 +68,4 @@ struct sh_css_isp_xnr3_params {
 	struct sh_css_xnr3_blending_params blending;
 };
 
-};
-
 #endif  /*__IA_CSS_XNR3_PARAM_H */

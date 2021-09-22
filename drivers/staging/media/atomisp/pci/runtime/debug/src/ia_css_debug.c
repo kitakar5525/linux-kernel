@@ -3231,6 +3231,33 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
 				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
 				break;
+			case TRACE_DUMP_FORMAT_VALUE24_TIMING:
+				ia_css_debug_dtrace(
+				    IA_CSS_DEBUG_TRACE, "\t\t%d, %d, timing %x\n",
+				    j,
+				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
+				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
+				break;
+			case TRACE_DUMP_FORMAT_VALUE24_TIMING_DELTA:
+				ia_css_debug_dtrace(
+				    IA_CSS_DEBUG_TRACE, "\t\t%d, %d, timing delta %x\n",
+				    j,
+				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
+				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
+				break;
+			default:
+				ia_css_debug_dtrace(
+				    IA_CSS_DEBUG_TRACE,
+				    "no such trace dump format %d",
+				    dump_format);
+				break;
+			}
+		}
+	}
+#else
+	(void)proc_id;
+#endif /* HAS_TRACER_V2 */
+}
 #endif /* TRACE_ENABLE_SP0 || TRACE_ENABLE_SP1 || TRACE_ENABLE_ISP */
 
 void ia_css_debug_dump_trace(void)

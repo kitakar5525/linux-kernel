@@ -118,10 +118,4 @@ struct ia_css_shading_settings {
 
 /* ------ deprecated(bz675) : to ------ */
 
-/* Shading Correction configuration.
- *
- *  NOTE: The shading table size is larger than or equal to the internal frame size.
- */
-};
-
 #endif /* __IA_CSS_SC_TYPES_H */

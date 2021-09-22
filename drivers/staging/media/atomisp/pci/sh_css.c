@@ -4943,8 +4943,6 @@ ia_css_stream_set_buffer_depth(struct ia_css_stream *stream, int buffer_depth) {
 	return 0;
 }
 
-}
-
 /*
  * @brief Stop all "ia_css_pipe" instances in the target
  * "ia_css_stream" instance.
@@ -5089,37 +5087,6 @@ sh_css_pipe_get_grid_info(struct ia_css_pipe *pipe,
 ERR :
 	IA_CSS_LEAVE_ERR_PRIVATE(err);
 	return err;
-}
-
-	IA_CSS_ENTER_PRIVATE("");
-
-	if (NULL == pipe || NULL == pipe->pipe_settings.video.video_binary.info)
-	{
-		IA_CSS_ERROR("Pipe or binary info is not set");
-		IA_CSS_LEAVE_ERR_PRIVATE(-EINVAL);
-		return -EINVAL;
-	}
-
-	supported_formats = pipe->pipe_settings.video.video_binary.info->output_formats;
-	number_of_formats = sizeof(pipe->pipe_settings.video.video_binary.info->output_formats) / sizeof(enum ia_css_frame_format);
-
-	for (i = 0; i < number_of_formats && !found; i++)
-	{
-		if (supported_formats[i] == format) {
-			found = 1;
-			break;
-		}
-	}
-	if (!found)
-	{
-		IA_CSS_ERROR("Requested format is not supported by binary");
-		IA_CSS_LEAVE_ERR_PRIVATE(-EINVAL);
-		return -EINVAL;
-	} else
-	{
-		IA_CSS_LEAVE_ERR_PRIVATE(0);
-		return 0;
-	}
 }
 
 static int load_video_binaries(struct ia_css_pipe *pipe)
@@ -10191,71 +10158,6 @@ ia_css_pipe_get_qos_ext_state(struct ia_css_pipe *pipe, uint32_t fw_handle,
 		}
 	}
 	IA_CSS_LEAVE("err:%d handle:%u enable:%d", err, fw_handle, *enable);
-	return err;
-}
-
-	IA_CSS_ENTER("");
-
-	fw = &sh_css_sp_fw;
-
-	/* Parameter Check */
-	if (!pipe || !pipe->stream)
-	{
-		IA_CSS_ERROR("Invalid Pipe.");
-		err = -EINVAL;
-	} else if (!(pipe->config.acc_extension))
-	{
-		IA_CSS_ERROR("Invalid Pipe (No Extension Firmware).");
-		err = -EINVAL;
-	} else if (!sh_css_sp_is_running())
-	{
-		IA_CSS_ERROR("Leaving: queue unavailable.");
-		err = -EBUSY;
-	} else
-	{
-		/* Query the thread_id and stage_num corresponding to the Extension firmware */
-		ia_css_pipeline_get_sp_thread_id(ia_css_pipe_get_pipe_num(pipe), &thread_id);
-		err = ia_css_pipeline_get_stage_from_fw(&pipe->pipeline, fw_handle, &stage);
-		if (!err) {
-			/* Get the Extension State */
-			enabled = (SH_CSS_QOS_STAGE_IS_ENABLED(&sh_css_sp_group.pipe[thread_id],
-								stage->stage_num)) ? true : false;
-			/* Update mapped arg only when extension stage is not enabled */
-			if (enabled) {
-				IA_CSS_ERROR("Leaving: cannot update when stage is enabled.");
-				err = -EBUSY;
-			} else {
-				stage_num = stage->stage_num;
-
-				HIVE_ADDR_sp_group = fw->info.sp.group;
-				sp_dmem_load(SP0_ID,
-						(unsigned int)sp_address_of(sp_group),
-						&sp_group, sizeof(struct sh_css_sp_group));
-				hmm_load(sp_group.pipe[thread_id].sp_stage_addr[stage_num],
-					    &sp_stage, sizeof(struct sh_css_sp_stage));
-
-				hmm_load(sp_stage.isp_stage_addr,
-					    &isp_stage, sizeof(struct sh_css_isp_stage));
-
-				for (mem = 0; mem < N_IA_CSS_ISP_MEMORIES; mem++) {
-					isp_stage.mem_initializers.params[IA_CSS_PARAM_CLASS_PARAM][mem].address =
-					    css_seg->params[IA_CSS_PARAM_CLASS_PARAM][mem].address;
-					isp_stage.mem_initializers.params[IA_CSS_PARAM_CLASS_PARAM][mem].size =
-					    css_seg->params[IA_CSS_PARAM_CLASS_PARAM][mem].size;
-					isp_stage.binary_info.mem_initializers.params[IA_CSS_PARAM_CLASS_PARAM][mem].address
-					    =
-						isp_seg->params[IA_CSS_PARAM_CLASS_PARAM][mem].address;
-					isp_stage.binary_info.mem_initializers.params[IA_CSS_PARAM_CLASS_PARAM][mem].size
-					    =
-						isp_seg->params[IA_CSS_PARAM_CLASS_PARAM][mem].size;
-				}
-
-				hmm_store(sp_stage.isp_stage_addr,
-					    &isp_stage, sizeof(struct sh_css_isp_stage));
-			}
-		}
-	}
-	IA_CSS_LEAVE("err:%d handle:%u", err, fw_handle);
 	return err;
 }
 

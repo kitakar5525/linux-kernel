@@ -287,8 +287,6 @@ struct ia_css_shading_info {
 		struct {
 			u32 enable;	/** Shading correction enabled.
 						     0:disabled, 1:enabled */
-
-			/* ISP2401 */
 			u32 num_hor_grids;	/** Number of data points per line per color on shading table. */
 			u32 num_ver_grids;	/** Number of lines of data points per color on shading table. */
 			u32 bqs_per_grid_cell; /** Grid cell size in BQ unit.

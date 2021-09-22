@@ -118,11 +118,11 @@ struct ia_css_shading_settings {
 
 /* ------ deprecated(bz675) : to ------ */
 
+/* ISP2401 */
 /* Shading Correction configuration.
  *
  *  NOTE: The shading table size is larger than or equal to the internal frame size.
  */
-/* ISP2401 */
 struct ia_css_sc_configuration {
 	u32 internal_frame_origin_x_bqs_on_sctbl; /** Origin X (in bqs) of internal frame on shading table. */
 	u32 internal_frame_origin_y_bqs_on_sctbl; /** Origin Y (in bqs) of internal frame on shading table. */

@@ -107,10 +107,10 @@ struct atomisp_video_pipe {
 	unsigned int frame_request_config_id[VIDEO_MAX_FRAME];
 	struct atomisp_css_params_with_list *frame_params[VIDEO_MAX_FRAME];
 
+	/* ISP2401 */
 	/*
 	* move wdt from asd struct to create wdt for each pipe
 	*/
-	/* ISP2401 */
 	struct timer_list wdt;
 	unsigned int wdt_duration;	/* in jiffies */
 	unsigned long wdt_expires;

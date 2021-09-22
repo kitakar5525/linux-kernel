@@ -122,24 +122,6 @@ struct ia_css_memory_offsets {
 		struct ia_css_isp_parameter sdis2_horicoef;
 		struct ia_css_isp_parameter sdis2_vertcoef;
 
-		/* ISP2401 */
-		struct ia_css_isp_parameter xnr3;
-	} vmem;
-	struct {
-		struct ia_css_isp_parameter bh;
-	} hmem0;
-	struct {
-		struct ia_css_isp_parameter gc;
-		struct ia_css_isp_parameter g_gamma;
-		struct ia_css_isp_parameter xnr_table;
-	} vamem1;
-	struct {
-		struct ia_css_isp_parameter r_gamma;
-		struct ia_css_isp_parameter ctc;
-	} vamem0;
-	struct {
-		struct ia_css_isp_parameter b_gamma;
-	} vamem2;
 };
 
 #if defined(IA_CSS_INCLUDE_PARAMETERS)

@@ -21,9 +21,6 @@
 
 extern const struct ia_css_dp_config default_dp_config;
 
-/* ISP2401 */
-extern const struct ia_css_dp_config default_dp_10bpp_config;
-
 void
 ia_css_dp_encode(
     struct sh_css_isp_dp_params *to,

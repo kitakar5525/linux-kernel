@@ -184,27 +184,6 @@ allocate_delay_frames(struct ia_css_pipe *pipe);
 static int
 sh_css_pipe_start(struct ia_css_stream *stream);
 
-/* ISP2401 */
-/*
- * @brief Stop all "ia_css_pipe" instances in the target
- * "ia_css_stream" instance.
- *
- * @param[in] stream	Point to the target "ia_css_stream" instance.
- *
- * @return
- * - 0, if the "stop" requests have been successfully sent out.
- * - CSS error code, otherwise.
- *
- *
- * NOTE
- * This API sends the "stop" requests to the "ia_css_pipe"
- * instances in the same "ia_css_stream" instance. It will
- * return without waiting for all "ia_css_pipe" instatnces
- * being stopped.
- */
-static int
-sh_css_pipes_stop(struct ia_css_stream *stream);
-
 /*
  * @brief Check if all "ia_css_pipe" instances in the target
  * "ia_css_stream" instance have stopped.
@@ -216,19 +195,6 @@ sh_css_pipes_stop(struct ia_css_stream *stream);
  *   instance have ben stopped.
  * - false, otherwise.
  */
-/* ISP2401 */
-static bool
-sh_css_pipes_have_stopped(struct ia_css_stream *stream);
-
-/* ISP2401 */
-static int
-ia_css_pipe_check_format(struct ia_css_pipe *pipe,
-			 enum ia_css_frame_format format);
-
-/* ISP2401 */
-static int
-check_pipe_resolutions(const struct ia_css_pipe *pipe);
-
 static int
 ia_css_pipe_load_extension(struct ia_css_pipe *pipe,
 			   struct ia_css_fw_info *firmware);
@@ -4977,16 +4943,6 @@ ia_css_stream_set_buffer_depth(struct ia_css_stream *stream, int buffer_depth) {
 	return 0;
 }
 
-/* ISP2401 */
-int
-ia_css_stream_get_buffer_depth(struct ia_css_stream *stream,
-			       int *buffer_depth) {
-	if (!buffer_depth)
-		return -EINVAL;
-	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "ia_css_stream_get_buffer_depth() enter: void\n");
-	(void)stream;
-	*buffer_depth = stream->config.target_num_cont_raw_buf;
-	return 0;
 }
 
 /*
@@ -4995,190 +4951,12 @@ ia_css_stream_get_buffer_depth(struct ia_css_stream *stream,
  *
  * Refer to "Local prototypes" for more info.
  */
-/* ISP2401 */
-static int
-sh_css_pipes_stop(struct ia_css_stream *stream)
-{
-	int err = 0;
-	struct ia_css_pipe *main_pipe;
-	enum ia_css_pipe_id main_pipe_id;
-	int i;
-
-	assert(stream);
-	if (!stream)
-	{
-		IA_CSS_LOG("stream does NOT exist!");
-		err = -EINVAL;
-		goto ERR;
-	}
-
-	main_pipe = stream->last_pipe;
-	assert(main_pipe);
-	if (!main_pipe)
-	{
-		IA_CSS_LOG("main_pipe does NOT exist!");
-		err = -EINVAL;
-		goto ERR;
-	}
-
-	main_pipe_id = main_pipe->mode;
-	IA_CSS_ENTER_PRIVATE("main_pipe_id=%d", main_pipe_id);
-
-	/*
-	 * Stop all "ia_css_pipe" instances in this target
-	 * "ia_css_stream" instance.
-	 */
-	for (i = 0; i < stream->num_pipes; i++)
-	{
-		/* send the "stop" request to the "ia_css_pipe" instance */
-		IA_CSS_LOG("Send the stop-request to the pipe: pipe_id=%d",
-			stream->pipes[i]->pipeline.pipe_id);
-		err = ia_css_pipeline_request_stop(&stream->pipes[i]->pipeline);
-
-	/*
-	 * Exit this loop if "ia_css_pipeline_request_stop()"
-	 * returns the error code.
-	 *
-	 * The error code would be generated in the following
-	 * two cases:
-	 * (1) The Scalar Processor has already been stopped.
-	 * (2) The "Host->SP" event queue is full.
-	 *
-	 * As the convention of using CSS API 2.0/2.1, such CSS
-	 * error code would be propogated from the CSS-internal
-	 * API returned value to the CSS API returned value. Then
-	 * the CSS driver should capture these error code and
-	 * handle it in the driver exception handling mechanism.
-	 */
-	if (err) {
-		goto ERR;
-	}
-	}
-
-	/*
-	 * In the CSS firmware use scenario "Continuous Preview"
-	 * as well as "Continuous Video", the "ia_css_pipe" instance
-	 * "Copy Pipe" is activated. This "Copy Pipe" is private to
-	 * the CSS firmware so that it is not listed in the target
-	 * "ia_css_stream" instance.
-	 *
-	 * We need to stop this "Copy Pipe", as well.
-	 */
-	if (main_pipe->stream->config.continuous)
-	{
-		struct ia_css_pipe *copy_pipe = NULL;
-
-		/* get the reference to "Copy Pipe" */
-		if (main_pipe_id == IA_CSS_PIPE_ID_PREVIEW)
-			copy_pipe = main_pipe->pipe_settings.preview.copy_pipe;
-		else if (main_pipe_id == IA_CSS_PIPE_ID_VIDEO)
-			copy_pipe = main_pipe->pipe_settings.video.copy_pipe;
-
-		/* return the error code if "Copy Pipe" does NOT exist */
-		assert(copy_pipe);
-		if (!copy_pipe) {
-			IA_CSS_LOG("Copy Pipe does NOT exist!");
-			err = -EINVAL;
-			goto ERR;
-		}
-
-		/* send the "stop" request to "Copy Pipe" */
-		IA_CSS_LOG("Send the stop-request to the pipe: pipe_id=%d",
-			copy_pipe->pipeline.pipe_id);
-		err = ia_css_pipeline_request_stop(&copy_pipe->pipeline);
-	}
-
-ERR:
-	IA_CSS_LEAVE_ERR_PRIVATE(err);
-	return err;
-}
-
 /*
  * @brief Check if all "ia_css_pipe" instances in the target
  * "ia_css_stream" instance have stopped.
  *
  * Refer to "Local prototypes" for more info.
  */
-/* ISP2401 */
-static bool
-sh_css_pipes_have_stopped(struct ia_css_stream *stream)
-{
-	bool rval = true;
-
-	struct ia_css_pipe *main_pipe;
-	enum ia_css_pipe_id main_pipe_id;
-
-	int i;
-
-	assert(stream);
-	if (!stream) {
-		IA_CSS_LOG("stream does NOT exist!");
-		rval = false;
-		goto RET;
-	}
-
-	main_pipe = stream->last_pipe;
-	assert(main_pipe);
-
-	if (!main_pipe) {
-		IA_CSS_LOG("main_pipe does NOT exist!");
-		rval = false;
-		goto RET;
-	}
-
-	main_pipe_id = main_pipe->mode;
-	IA_CSS_ENTER_PRIVATE("main_pipe_id=%d", main_pipe_id);
-
-	/*
-	 * Check if every "ia_css_pipe" instance in this target
-	 * "ia_css_stream" instance has stopped.
-	 */
-	for (i = 0; i < stream->num_pipes; i++) {
-		rval = rval && ia_css_pipeline_has_stopped(&stream->pipes[i]->pipeline);
-		IA_CSS_LOG("Pipe has stopped: pipe_id=%d, stopped=%d",
-			   stream->pipes[i]->pipeline.pipe_id,
-			   rval);
-	}
-
-	/*
-	 * In the CSS firmware use scenario "Continuous Preview"
-	 * as well as "Continuous Video", the "ia_css_pipe" instance
-	 * "Copy Pipe" is activated. This "Copy Pipe" is private to
-	 * the CSS firmware so that it is not listed in the target
-	 * "ia_css_stream" instance.
-	 *
-	 * We need to check if this "Copy Pipe" has stopped, as well.
-	 */
-	if (main_pipe->stream->config.continuous) {
-		struct ia_css_pipe *copy_pipe = NULL;
-
-		/* get the reference to "Copy Pipe" */
-		if (main_pipe_id == IA_CSS_PIPE_ID_PREVIEW)
-			copy_pipe = main_pipe->pipe_settings.preview.copy_pipe;
-		else if (main_pipe_id == IA_CSS_PIPE_ID_VIDEO)
-			copy_pipe = main_pipe->pipe_settings.video.copy_pipe;
-
-		/* return if "Copy Pipe" does NOT exist */
-		assert(copy_pipe);
-		if (!copy_pipe) {
-			IA_CSS_LOG("Copy Pipe does NOT exist!");
-
-			rval = false;
-			goto RET;
-		}
-
-		/* check if "Copy Pipe" has stopped or not */
-		rval = rval && ia_css_pipeline_has_stopped(&copy_pipe->pipeline);
-		IA_CSS_LOG("Pipe has stopped: pipe_id=%d, stopped=%d",
-			   copy_pipe->pipeline.pipe_id,
-			   rval);
-	}
-
-RET:
-	IA_CSS_LEAVE_PRIVATE("rval=%d", rval);
-	return rval;
-}
-
 #if defined(USE_INPUT_SYSTEM_VERSION_2)
 unsigned int
 sh_css_get_mipi_sizes_for_check(const unsigned int port, const unsigned int idx)
@@ -5312,19 +5090,6 @@ ERR :
 	IA_CSS_LEAVE_ERR_PRIVATE(err);
 	return err;
 }
-
-/* ISP2401 */
-/*
- * @brief Check if a format is supported by the pipe.
- *
- */
-static int
-ia_css_pipe_check_format(struct ia_css_pipe *pipe,
-			 enum ia_css_frame_format format) {
-	const enum ia_css_frame_format *supported_formats;
-	int number_of_formats;
-	int found = 0;
-	int i;
 
 	IA_CSS_ENTER_PRIVATE("");
 
@@ -9023,49 +8788,6 @@ metadata_info_init(const struct ia_css_metadata_config *mdc,
 	return 0;
 }
 
-/* ISP2401 */
-static int check_pipe_resolutions(const struct ia_css_pipe *pipe)
-{
-	int err = 0;
-
-	IA_CSS_ENTER_PRIVATE("");
-
-	if (!pipe || !pipe->stream) {
-		IA_CSS_ERROR("null arguments");
-		err = -EINVAL;
-		goto EXIT;
-	}
-
-	if (ia_css_util_check_res(pipe->config.input_effective_res.width,
-				    pipe->config.input_effective_res.height) != 0) {
-		IA_CSS_ERROR("effective resolution not supported");
-		err = -EINVAL;
-		goto EXIT;
-	}
-	if (!ia_css_util_resolution_is_zero(
-		pipe->stream->config.input_config.input_res)) {
-		if (!ia_css_util_res_leq(pipe->config.input_effective_res,
-					    pipe->stream->config.input_config.input_res)) {
-			IA_CSS_ERROR("effective resolution is larger than input resolution");
-			err = -EINVAL;
-			goto EXIT;
-		}
-	}
-	if (!ia_css_util_resolution_is_even(pipe->config.output_info[0].res)) {
-		IA_CSS_ERROR("output resolution must be even");
-		err = -EINVAL;
-		goto EXIT;
-	}
-	if (!ia_css_util_resolution_is_even(pipe->config.vf_output_info[0].res)) {
-		IA_CSS_ERROR("VF resolution must be even");
-		err = -EINVAL;
-		goto EXIT;
-	}
-EXIT:
-	IA_CSS_LEAVE_ERR_PRIVATE(err);
-	return err;
-}
-
 int
 ia_css_stream_create(const struct ia_css_stream_config *stream_config,
 			int num_pipes,
@@ -10471,24 +10193,6 @@ ia_css_pipe_get_qos_ext_state(struct ia_css_pipe *pipe, uint32_t fw_handle,
 	IA_CSS_LEAVE("err:%d handle:%u enable:%d", err, fw_handle, *enable);
 	return err;
 }
-
-/* ISP2401 */
-int
-ia_css_pipe_update_qos_ext_mapped_arg(struct ia_css_pipe *pipe,
-					u32 fw_handle,
-					struct ia_css_isp_param_css_segments *css_seg,
-					struct ia_css_isp_param_isp_segments *isp_seg) {
-	unsigned int HIVE_ADDR_sp_group;
-	static struct sh_css_sp_group sp_group;
-	static struct sh_css_sp_stage sp_stage;
-	static struct sh_css_isp_stage isp_stage;
-	const struct ia_css_fw_info *fw;
-	unsigned int thread_id;
-	struct ia_css_pipeline_stage *stage;
-	int err = 0;
-	int stage_num = 0;
-	enum ia_css_isp_memories mem;
-	bool enabled;
 
 	IA_CSS_ENTER("");
 

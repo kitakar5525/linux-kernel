@@ -925,14 +925,6 @@ void ia_css_resolution_to_sp_resolution(
 	to->height = (uint16_t)from->height;
 }
 
-/* ISP2401 */
-int
-ia_css_frame_find_crop_resolution(const struct ia_css_resolution *in_res,
-				  const struct ia_css_resolution *out_res,
-				  struct ia_css_resolution *crop_res) {
-	u32 wd_even_ceil, ht_even_ceil;
-	u32 in_ratio, out_ratio;
-
 	if ((!in_res) || (!out_res) || (!crop_res))
 		return -EINVAL;
 

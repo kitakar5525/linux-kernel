@@ -110,11 +110,6 @@ struct atomisp_video_pipe {
 	/*
 	* move wdt from asd struct to create wdt for each pipe
 	*/
-	/* ISP2401 */
-	struct timer_list wdt;
-	unsigned int wdt_duration;	/* in jiffies */
-	unsigned long wdt_expires;
-	atomic_t wdt_count;
 };
 
 struct atomisp_acc_pipe {
@@ -314,10 +309,6 @@ struct atomisp_sub_device {
 	struct v4l2_ctrl *continuous_viewfinder;
 	struct v4l2_ctrl *enable_raw_buffer_lock;
 
-	/* ISP2401 */
-	struct v4l2_ctrl *ion_dev_fd;
-	struct v4l2_ctrl *select_isp_version;
-
 	struct v4l2_ctrl *disable_dz;
 
 	struct {
@@ -402,9 +393,6 @@ struct atomisp_sub_device {
 	unsigned int wdt_duration;	/* in jiffies */
 	unsigned long wdt_expires;
 
-	/* ISP2401 */
-	bool re_trigger_capture;
-
 	struct atomisp_resolution sensor_array_res;
 	bool high_speed_mode; /* Indicate whether now is a high speed mode */
 	int pending_capture_request; /* Indicates the number of pending capture requests. */
@@ -421,11 +409,6 @@ const struct atomisp_in_fmt_conv *atomisp_find_in_fmt_conv(u32 code);
 
 const struct atomisp_in_fmt_conv *atomisp_find_in_fmt_conv_by_atomisp_in_fmt(
     enum atomisp_input_format atomisp_in_fmt);
-
-/* ISP2401 */
-const struct atomisp_in_fmt_conv
-*atomisp_find_in_fmt_conv_by_atomisp_in_fmt(enum atomisp_input_format
-	atomisp_in_fmt);
 
 const struct atomisp_in_fmt_conv *atomisp_find_in_fmt_conv_compressed(u32 code);
 bool atomisp_subdev_format_conversion(struct atomisp_sub_device *asd,

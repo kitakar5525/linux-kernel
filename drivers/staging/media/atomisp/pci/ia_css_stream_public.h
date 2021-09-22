@@ -109,35 +109,6 @@ struct ia_css_stream_config {
 	 * macro USE_WINDOWS_BINNING_FACTOR. This is for backward compatibility only
 	 * and will be deprecated. In the future,all platforms will use the N*N method
 	 */
-	/* ISP2401 */
-	unsigned int sensor_binning_factor; /** Binning factor used by sensor
-						 to produce image data. This is
-						 used for shading correction. */
-	unsigned int pixels_per_clock; /** Number of pixels per clock, which can be
-					    1, 2 or 4. */
-	bool online; /** offline will activate RAW copy on SP, use this for
-			  continuous capture. */
-	/* ISYS2401 usage: ISP receives data directly from sensor, no copy. */
-	unsigned int init_num_cont_raw_buf; /** initial number of raw buffers to
-					     allocate */
-	unsigned int target_num_cont_raw_buf; /** total number of raw buffers to
-					     allocate */
-	bool pack_raw_pixels; /** Pack pixels in the raw buffers */
-	bool continuous; /** Use SP copy feature to continuously capture frames
-			      to system memory and run pipes in offline mode */
-	bool disable_cont_viewfinder; /** disable continuous viewfinder for ZSL use case */
-	s32 flash_gpio_pin; /** pin on which the flash is connected, -1 for no flash */
-	int left_padding; /** The number of input-formatter left-paddings, -1 for default from binary.*/
-	struct ia_css_mipi_buffer_config
-		mipi_buffer_config; /** mipi buffer configuration */
-	struct ia_css_metadata_config
-		metadata_config;     /** Metadata configuration. */
-	bool ia_css_enable_raw_buffer_locking; /** Enable Raw Buffer Locking for HALv3 Support */
-	bool lock_all;
-	/** Lock all RAW buffers (true) or lock only buffers processed by
-	     video or preview pipe (false).
-	     This setting needs to be enabled to allow raw buffer locking
-	     without continuous viewfinder. */
 };
 
 struct ia_css_stream;

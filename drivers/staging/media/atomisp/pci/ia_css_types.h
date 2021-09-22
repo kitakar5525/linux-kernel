@@ -284,15 +284,16 @@ struct ia_css_shading_info {
 		 *  ISP2: SC1 is used.
 		 */
 		struct {
-			u32 enable;	/** Shading correction enabled.
+			uint32_t enable;	/** Shading correction enabled.
 						     0:disabled, 1:enabled */
-			u32 num_hor_grids;	/** Number of data points per line per color on shading table. */
-			u32 num_ver_grids;	/** Number of lines of data points per color on shading table. */
-			u32 bqs_per_grid_cell; /** Grid cell size in BQ unit.
-							 NOTE: bqs = size in BQ(Bayer Quad) unit.
-							       1BQ means {Gr,R,B,Gb} (2x2 pixels).
-							       Horizontal 1 bqs corresponds to horizontal 2 pixels.
-							       Vertical 1 bqs corresponds to vertical 2 pixels. */
+			uint32_t num_hor_grids;	/** Number of data points per line
+						     per color on shading table. */
+			uint32_t num_ver_grids;	/** Number of lines of data points
+						     per color on shading table. */
+			uint32_t bqs_per_grid_cell; /** Grid cell size
+						in BQ(Bayer Quad) unit.
+						(1BQ means {Gr,R,B,Gb}(2x2 pixels).)
+						Valid values are 8,16,32,64. */
 			u32 bayer_scale_hor_ratio_in;
 			u32 bayer_scale_hor_ratio_out;
 

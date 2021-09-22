@@ -2583,7 +2583,9 @@ static int atomisp_s_parm(struct file *file, void *fh,
 				asd->high_speed_mode = true;
 		}
 
-		goto out;
+		dev_warn(isp->dev, "assuming run_mode is PREVIEW\n");
+		mode = ATOMISP_RUN_MODE_PREVIEW;
+		break;
 	}
 	case CI_MODE_VIDEO:
 		mode = ATOMISP_RUN_MODE_VIDEO;

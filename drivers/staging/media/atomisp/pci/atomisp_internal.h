@@ -292,8 +292,8 @@ extern struct device *atomisp_dev;
 /* ISP2401 */
 void atomisp_wdt_refresh_pipe(struct atomisp_video_pipe *pipe,
 			      unsigned int delay);
-void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay);
 
+void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay);
 void atomisp_wdt_start(struct atomisp_sub_device *asd);
 
 /* ISP2401 */

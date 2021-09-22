@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -23,6 +22,7 @@
 #include "ia_css_debug.h"		/* ia_css_debug_dtrace*/
 #include "sh_css_internal.h"		/* sh_css_queue_type */
 #include "sp_local.h"			/* sp_address_of */
+#include "ia_css_util.h"		/* ia_css_convert_errno()*/
 #include "sh_css_firmware.h"		/* sh_css_sp_fw*/
 
 #define BUFQ_DUMP_FILE_NAME_PREFIX_SIZE 256
@@ -32,6 +32,8 @@ static char prefix[BUFQ_DUMP_FILE_NAME_PREFIX_SIZE] = {0};
 /*********************************************************/
 /* Global Queue objects used by CSS                      */
 /*********************************************************/
+
+#ifndef ISP2401
 
 struct sh_css_queues {
 	/* Host2SP buffer queue */
@@ -47,14 +49,46 @@ struct sh_css_queues {
 	/* SP2Host event queue */
 	ia_css_queue_t sp2host_psys_event_queue_handle;
 
+#if !defined(HAS_NO_INPUT_SYSTEM)
 	/* Host2SP ISYS event queue */
 	ia_css_queue_t host2sp_isys_event_queue_handle;
 
 	/* SP2Host ISYS event queue */
 	ia_css_queue_t sp2host_isys_event_queue_handle;
+#endif
 	/* Tagger command queue */
 	ia_css_queue_t host2sp_tag_cmd_queue_handle;
 };
+
+#else
+
+struct sh_css_queues {
+	/* Host2SP buffer queue */
+	ia_css_queue_t host2sp_buffer_queue_handles
+	[SH_CSS_MAX_SP_THREADS][SH_CSS_MAX_NUM_QUEUES];
+	/* SP2Host buffer queue */
+	ia_css_queue_t sp2host_buffer_queue_handles
+	[SH_CSS_MAX_NUM_QUEUES];
+
+	/* Host2SP event queue */
+	ia_css_queue_t host2sp_psys_event_queue_handle;
+
+	/* SP2Host event queue */
+	ia_css_queue_t sp2host_psys_event_queue_handle;
+
+#if !defined(HAS_NO_INPUT_SYSTEM)
+	/* Host2SP ISYS event queue */
+	ia_css_queue_t host2sp_isys_event_queue_handle;
+
+	/* SP2Host ISYS event queue */
+	ia_css_queue_t sp2host_isys_event_queue_handle;
+
+	/* Tagger command queue */
+	ia_css_queue_t host2sp_tag_cmd_queue_handle;
+#endif
+};
+
+#endif
 
 /*******************************************************
 *** Static variables
@@ -229,12 +263,14 @@ static ia_css_queue_t *bufq_get_qhandle(
 	case sh_css_sp2host_psys_event_queue:
 		q = &css_queues.sp2host_psys_event_queue_handle;
 		break;
+#if !defined(HAS_NO_INPUT_SYSTEM)
 	case sh_css_host2sp_isys_event_queue:
 		q = &css_queues.host2sp_isys_event_queue_handle;
 		break;
 	case sh_css_sp2host_isys_event_queue:
 		q = &css_queues.sp2host_isys_event_queue_handle;
 		break;
+#endif
 	case sh_css_host2sp_tag_cmd_queue:
 		q = &css_queues.host2sp_tag_cmd_queue_handle;
 		break;
@@ -303,6 +339,7 @@ void ia_css_bufq_init(void)
 		  (uint32_t)offsetof(struct host_sp_queues, sp2host_psys_event_queue_elems),
 		  &css_queues.sp2host_psys_event_queue_handle);
 
+#if !defined(HAS_NO_INPUT_SYSTEM)
 	/* Host2SP ISYS event queue */
 	init_bufq((uint32_t)offsetof(struct host_sp_queues,
 				     host2sp_isys_event_queue_desc),
@@ -319,22 +356,24 @@ void ia_css_bufq_init(void)
 	init_bufq((uint32_t)offsetof(struct host_sp_queues, host2sp_tag_cmd_queue_desc),
 		  (uint32_t)offsetof(struct host_sp_queues, host2sp_tag_cmd_queue_elems),
 		  &css_queues.host2sp_tag_cmd_queue_handle);
+#endif
 
 	IA_CSS_LEAVE_PRIVATE("");
 }
 
-int ia_css_bufq_enqueue_buffer(
+enum ia_css_err ia_css_bufq_enqueue_buffer(
     int thread_index,
     int queue_id,
     uint32_t item)
 {
+	enum ia_css_err return_err = IA_CSS_SUCCESS;
 	ia_css_queue_t *q;
 	int error;
 
 	IA_CSS_ENTER_PRIVATE("queue_id=%d", queue_id);
 	if ((thread_index >= SH_CSS_MAX_SP_THREADS) || (thread_index < 0) ||
 	    (queue_id == SH_CSS_INVALID_QUEUE_ID))
-		return -EINVAL;
+		return IA_CSS_ERR_INVALID_ARGUMENTS;
 
 	/* Get the queue for communication */
 	q = bufq_get_qhandle(sh_css_host2sp_buffer_queue,
@@ -342,20 +381,22 @@ int ia_css_bufq_enqueue_buffer(
 			     thread_index);
 	if (q) {
 		error = ia_css_queue_enqueue(q, item);
+		return_err = ia_css_convert_errno(error);
 	} else {
 		IA_CSS_ERROR("queue is not initialized");
-		error = -EBUSY;
+		return_err = IA_CSS_ERR_RESOURCE_NOT_AVAILABLE;
 	}
 
-	IA_CSS_LEAVE_ERR_PRIVATE(error);
-	return error;
+	IA_CSS_LEAVE_ERR_PRIVATE(return_err);
+	return return_err;
 }
 
-int ia_css_bufq_dequeue_buffer(
+enum ia_css_err ia_css_bufq_dequeue_buffer(
     int queue_id,
     uint32_t *item)
 {
-	int error;
+	enum ia_css_err return_err;
+	int error = 0;
 	ia_css_queue_t *q;
 
 	IA_CSS_ENTER_PRIVATE("queue_id=%d", queue_id);
@@ -363,28 +404,30 @@ int ia_css_bufq_dequeue_buffer(
 	    (queue_id <= SH_CSS_INVALID_QUEUE_ID) ||
 	    (queue_id >= SH_CSS_MAX_NUM_QUEUES)
 	   )
-		return -EINVAL;
+		return IA_CSS_ERR_INVALID_ARGUMENTS;
 
 	q = bufq_get_qhandle(sh_css_sp2host_buffer_queue,
 			     queue_id,
 			     -1);
 	if (q) {
 		error = ia_css_queue_dequeue(q, item);
+		return_err = ia_css_convert_errno(error);
 	} else {
 		IA_CSS_ERROR("queue is not initialized");
-		error = -EBUSY;
+		return_err = IA_CSS_ERR_RESOURCE_NOT_AVAILABLE;
 	}
 
-	IA_CSS_LEAVE_ERR_PRIVATE(error);
-	return error;
+	IA_CSS_LEAVE_ERR_PRIVATE(return_err);
+	return return_err;
 }
 
-int ia_css_bufq_enqueue_psys_event(
+enum ia_css_err ia_css_bufq_enqueue_psys_event(
     u8 evt_id,
     u8 evt_payload_0,
     u8 evt_payload_1,
     uint8_t evt_payload_2)
 {
+	enum ia_css_err return_err;
 	int error = 0;
 	ia_css_queue_t *q;
 
@@ -392,19 +435,21 @@ int ia_css_bufq_enqueue_psys_event(
 	q = bufq_get_qhandle(sh_css_host2sp_psys_event_queue, -1, -1);
 	if (!q) {
 		IA_CSS_ERROR("queue is not initialized");
-		return -EBUSY;
+		return IA_CSS_ERR_RESOURCE_NOT_AVAILABLE;
 	}
 
 	error = ia_css_eventq_send(q,
 				   evt_id, evt_payload_0, evt_payload_1, evt_payload_2);
 
-	IA_CSS_LEAVE_ERR_PRIVATE(error);
-	return error;
+	return_err = ia_css_convert_errno(error);
+	IA_CSS_LEAVE_ERR_PRIVATE(return_err);
+	return return_err;
 }
 
-int ia_css_bufq_dequeue_psys_event(
+enum  ia_css_err ia_css_bufq_dequeue_psys_event(
     u8 item[BUFQ_EVENT_SIZE])
 {
+	enum ia_css_err;
 	int error = 0;
 	ia_css_queue_t *q;
 
@@ -412,21 +457,23 @@ int ia_css_bufq_dequeue_psys_event(
 	 * by some test apps. Enablign logging here floods the log
 	 * files which may cause timeouts. */
 	if (!item)
-		return -EINVAL;
+		return IA_CSS_ERR_INVALID_ARGUMENTS;
 
 	q = bufq_get_qhandle(sh_css_sp2host_psys_event_queue, -1, -1);
 	if (!q) {
 		IA_CSS_ERROR("queue is not initialized");
-		return -EBUSY;
+		return IA_CSS_ERR_RESOURCE_NOT_AVAILABLE;
 	}
 	error = ia_css_eventq_recv(q, item);
 
-	return error;
+	return ia_css_convert_errno(error);
 }
 
-int ia_css_bufq_dequeue_isys_event(
+enum  ia_css_err ia_css_bufq_dequeue_isys_event(
     u8 item[BUFQ_EVENT_SIZE])
 {
+#if !defined(HAS_NO_INPUT_SYSTEM)
+	enum ia_css_err;
 	int error = 0;
 	ia_css_queue_t *q;
 
@@ -434,19 +481,25 @@ int ia_css_bufq_dequeue_isys_event(
 	 * by some test apps. Enablign logging here floods the log
 	 * files which may cause timeouts. */
 	if (!item)
-		return -EINVAL;
+		return IA_CSS_ERR_INVALID_ARGUMENTS;
 
 	q = bufq_get_qhandle(sh_css_sp2host_isys_event_queue, -1, -1);
 	if (!q) {
 		IA_CSS_ERROR("queue is not initialized");
-		return -EBUSY;
+		return IA_CSS_ERR_RESOURCE_NOT_AVAILABLE;
 	}
 	error = ia_css_eventq_recv(q, item);
-	return error;
+	return ia_css_convert_errno(error);
+#else
+	(void)item;
+	return IA_CSS_ERR_RESOURCE_NOT_AVAILABLE;
+#endif
 }
 
-int ia_css_bufq_enqueue_isys_event(uint8_t evt_id)
+enum ia_css_err ia_css_bufq_enqueue_isys_event(uint8_t evt_id)
 {
+#if !defined(HAS_NO_INPUT_SYSTEM)
+	enum ia_css_err return_err;
 	int error = 0;
 	ia_css_queue_t *q;
 
@@ -454,36 +507,47 @@ int ia_css_bufq_enqueue_isys_event(uint8_t evt_id)
 	q = bufq_get_qhandle(sh_css_host2sp_isys_event_queue, -1, -1);
 	if (!q) {
 		IA_CSS_ERROR("queue is not initialized");
-		return -EBUSY;
+		return IA_CSS_ERR_RESOURCE_NOT_AVAILABLE;
 	}
 
 	error = ia_css_eventq_send(q, evt_id, 0, 0, 0);
-
-	IA_CSS_LEAVE_ERR_PRIVATE(error);
-	return error;
+	return_err = ia_css_convert_errno(error);
+	IA_CSS_LEAVE_ERR_PRIVATE(return_err);
+	return return_err;
+#else
+	(void)evt_id;
+	return IA_CSS_ERR_RESOURCE_NOT_AVAILABLE;
+#endif
 }
 
-int ia_css_bufq_enqueue_tag_cmd(
+enum ia_css_err ia_css_bufq_enqueue_tag_cmd(
     uint32_t item)
 {
-	int error;
+#if !defined(HAS_NO_INPUT_SYSTEM)
+	enum ia_css_err return_err;
+	int error = 0;
 	ia_css_queue_t *q;
 
 	IA_CSS_ENTER_PRIVATE("item=%d", item);
 	q = bufq_get_qhandle(sh_css_host2sp_tag_cmd_queue, -1, -1);
 	if (!q) {
 		IA_CSS_ERROR("queue is not initialized");
-		return -EBUSY;
+		return IA_CSS_ERR_RESOURCE_NOT_AVAILABLE;
 	}
 	error = ia_css_queue_enqueue(q, item);
 
-	IA_CSS_LEAVE_ERR_PRIVATE(error);
-	return error;
+	return_err = ia_css_convert_errno(error);
+	IA_CSS_LEAVE_ERR_PRIVATE(return_err);
+	return return_err;
+#else
+	(void)item;
+	return IA_CSS_ERR_RESOURCE_NOT_AVAILABLE;
+#endif
 }
 
-int ia_css_bufq_deinit(void)
+enum ia_css_err ia_css_bufq_deinit(void)
 {
-	return 0;
+	return IA_CSS_SUCCESS;
 }
 
 static void bufq_dump_queue_info(const char *prefix, ia_css_queue_t *qhandle)
@@ -523,10 +587,12 @@ void ia_css_bufq_dump_queue_info(void)
 	bufq_dump_queue_info("sp2host_psys_event",
 			     &css_queues.sp2host_psys_event_queue_handle);
 
+#if !defined(HAS_NO_INPUT_SYSTEM)
 	bufq_dump_queue_info("host2sp_isys_event",
 			     &css_queues.host2sp_isys_event_queue_handle);
 	bufq_dump_queue_info("sp2host_isys_event",
 			     &css_queues.sp2host_isys_event_queue_handle);
 	bufq_dump_queue_info("host2sp_tag_cmd",
 			     &css_queues.host2sp_tag_cmd_queue_handle);
+#endif
 }

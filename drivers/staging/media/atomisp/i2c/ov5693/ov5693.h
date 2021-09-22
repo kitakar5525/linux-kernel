@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for OmniVision OV5693 5M camera sensor.
  *

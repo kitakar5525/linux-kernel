@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
+#ifndef ISP2401
 /*
  * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2015, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -12,10 +12,25 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  */
+#else
+/*
+Support for Intel Camera Imaging ISP subsystem.
+Copyright (c) 2010 - 2015, Intel Corporation.
+
+This program is free software; you can redistribute it and/or modify it
+under the terms and conditions of the GNU General Public License,
+version 2, as published by the Free Software Foundation.
+
+This program is distributed in the hope it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+more details.
+*/
+#endif
 
 #include "system_global.h"
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 
 #include "assert_support.h"
 #include "platform_support.h"
@@ -127,11 +142,11 @@ void ia_css_isys_csi_rx_lut_rmgr_release(
 	}
 }
 
-int ia_css_isys_csi_rx_register_stream(
+enum ia_css_err ia_css_isys_csi_rx_register_stream(
     enum mipi_port_id port,
     uint32_t isys_stream_id)
 {
-	int retval = -EINVAL;
+	enum ia_css_err retval = IA_CSS_ERR_INTERNAL_ERROR;
 
 	if ((port < N_INPUT_SYSTEM_CSI_PORT) &&
 	    (isys_stream_id < SH_CSS_MAX_ISYS_CHANNEL_NODES)) {
@@ -141,17 +156,17 @@ int ia_css_isys_csi_rx_register_stream(
 		if (bitop_getbit(pipe_io_status->active[port], isys_stream_id) == 0) {
 			bitop_setbit(pipe_io_status->active[port], isys_stream_id);
 			pipe_io_status->running[port] = 0;
-			retval = 0;
+			retval = IA_CSS_SUCCESS;
 		}
 	}
 	return retval;
 }
 
-int ia_css_isys_csi_rx_unregister_stream(
+enum ia_css_err ia_css_isys_csi_rx_unregister_stream(
     enum mipi_port_id port,
     uint32_t isys_stream_id)
 {
-	int retval = -EINVAL;
+	enum ia_css_err retval = IA_CSS_ERR_INTERNAL_ERROR;
 
 	if ((port < N_INPUT_SYSTEM_CSI_PORT) &&
 	    (isys_stream_id < SH_CSS_MAX_ISYS_CHANNEL_NODES)) {
@@ -160,7 +175,7 @@ int ia_css_isys_csi_rx_unregister_stream(
 		pipe_io_status = ia_css_pipeline_get_pipe_io_status();
 		if (bitop_getbit(pipe_io_status->active[port], isys_stream_id) == 1) {
 			bitop_clearbit(pipe_io_status->active[port], isys_stream_id);
-			retval = 0;
+			retval = IA_CSS_SUCCESS;
 		}
 	}
 	return retval;

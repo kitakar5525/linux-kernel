@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
+#ifndef ISP2401
 /*
  * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2015, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -12,13 +12,27 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  */
+#else
+/*
+Support for Intel Camera Imaging ISP subsystem.
+Copyright (c) 2010 - 2015, Intel Corporation.
 
-#include "hmm.h"
+This program is free software; you can redistribute it and/or modify it
+under the terms and conditions of the GNU General Public License,
+version 2, as published by the Free Software Foundation.
+
+This program is distributed in the hope it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+more details.
+*/
+#endif
 
 #include "type_support.h"
 #include "queue_access.h"
 #include "ia_css_circbuf.h"
 #include "sp.h"
+#include "memory_access.h"
 #include "assert_support.h"
 
 int ia_css_queue_load(
@@ -27,7 +41,7 @@ int ia_css_queue_load(
     uint32_t ignore_desc_flags)
 {
 	if (!rdesc || !cb_desc)
-		return -EINVAL;
+		return EINVAL;
 
 	if (rdesc->location == IA_CSS_QUEUE_LOC_SP) {
 		assert(ignore_desc_flags <= QUEUE_IGNORE_DESC_FLAGS_MAX);
@@ -44,7 +58,7 @@ int ia_css_queue_load(
 				   the value as zero. This causes division by 0
 				   exception as the size is used in a modular
 				   division operation. */
-				return -EDOM;
+				return EDOM;
 			}
 		}
 
@@ -65,12 +79,12 @@ int ia_css_queue_load(
 
 	} else if (rdesc->location == IA_CSS_QUEUE_LOC_HOST) {
 		/* doing DMA transfer of entire structure */
-		hmm_load(rdesc->desc.remote.cb_desc_addr,
+		mmgr_load(rdesc->desc.remote.cb_desc_addr,
 			  (void *)cb_desc,
 			  sizeof(ia_css_circbuf_desc_t));
 	} else if (rdesc->location == IA_CSS_QUEUE_LOC_ISP) {
 		/* Not supported yet */
-		return -ENOTSUPP;
+		return ENOTSUP;
 	}
 
 	return 0;
@@ -82,7 +96,7 @@ int ia_css_queue_store(
     uint32_t ignore_desc_flags)
 {
 	if (!rdesc || !cb_desc)
-		return -EINVAL;
+		return EINVAL;
 
 	if (rdesc->location == IA_CSS_QUEUE_LOC_SP) {
 		assert(ignore_desc_flags <= QUEUE_IGNORE_DESC_FLAGS_MAX);
@@ -112,12 +126,12 @@ int ia_css_queue_store(
 					    cb_desc->step);
 	} else if (rdesc->location == IA_CSS_QUEUE_LOC_HOST) {
 		/* doing DMA transfer of entire structure */
-		hmm_store(rdesc->desc.remote.cb_desc_addr,
+		mmgr_store(rdesc->desc.remote.cb_desc_addr,
 			   (void *)cb_desc,
 			   sizeof(ia_css_circbuf_desc_t));
 	} else if (rdesc->location == IA_CSS_QUEUE_LOC_ISP) {
 		/* Not supported yet */
-		return -ENOTSUPP;
+		return ENOTSUP;
 	}
 
 	return 0;
@@ -129,7 +143,7 @@ int ia_css_queue_item_load(
     ia_css_circbuf_elem_t *item)
 {
 	if (!rdesc || !item)
-		return -EINVAL;
+		return EINVAL;
 
 	if (rdesc->location == IA_CSS_QUEUE_LOC_SP) {
 		sp_dmem_load(rdesc->proc_id,
@@ -138,13 +152,13 @@ int ia_css_queue_item_load(
 			     item,
 			     sizeof(ia_css_circbuf_elem_t));
 	} else if (rdesc->location == IA_CSS_QUEUE_LOC_HOST) {
-		hmm_load(rdesc->desc.remote.cb_elems_addr
+		mmgr_load(rdesc->desc.remote.cb_elems_addr
 			  + position * sizeof(ia_css_circbuf_elem_t),
 			  (void *)item,
 			  sizeof(ia_css_circbuf_elem_t));
 	} else if (rdesc->location == IA_CSS_QUEUE_LOC_ISP) {
 		/* Not supported yet */
-		return -ENOTSUPP;
+		return ENOTSUP;
 	}
 
 	return 0;
@@ -156,7 +170,7 @@ int ia_css_queue_item_store(
     ia_css_circbuf_elem_t *item)
 {
 	if (!rdesc || !item)
-		return -EINVAL;
+		return EINVAL;
 
 	if (rdesc->location == IA_CSS_QUEUE_LOC_SP) {
 		sp_dmem_store(rdesc->proc_id,
@@ -165,13 +179,13 @@ int ia_css_queue_item_store(
 			      item,
 			      sizeof(ia_css_circbuf_elem_t));
 	} else if (rdesc->location == IA_CSS_QUEUE_LOC_HOST) {
-		hmm_store(rdesc->desc.remote.cb_elems_addr
+		mmgr_store(rdesc->desc.remote.cb_elems_addr
 			   + position * sizeof(ia_css_circbuf_elem_t),
 			   (void *)item,
 			   sizeof(ia_css_circbuf_elem_t));
 	} else if (rdesc->location == IA_CSS_QUEUE_LOC_ISP) {
 		/* Not supported yet */
-		return -ENOTSUPP;
+		return ENOTSUP;
 	}
 
 	return 0;

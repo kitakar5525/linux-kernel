@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010-2015, Intel Corporation.
@@ -113,6 +112,10 @@ struct input_formatter_bin_state_s {
 	u32	readpostwrite_synch;
 	u32	is_2ppc;
 	u32	en_status_update;
+};
+
+static const unsigned int input_formatter_alignment[N_INPUT_FORMATTER_ID] = {
+	ISP_VEC_ALIGN, ISP_VEC_ALIGN, HIVE_ISP_CTRL_DATA_BYTES
 };
 
 #endif /* __INPUT_FORMATTER_LOCAL_H_INCLUDED__ */

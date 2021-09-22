@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -16,7 +15,7 @@
 #ifndef __GP_TIMER_PUBLIC_H_INCLUDED__
 #define __GP_TIMER_PUBLIC_H_INCLUDED__
 
-#include "system_local.h"
+#include "system_types.h"
 
 /*! initialize mentioned timer
 param ID		timer_id

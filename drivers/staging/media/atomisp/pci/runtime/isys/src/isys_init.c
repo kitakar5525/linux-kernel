@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
+#ifndef ISP2401
 /*
  * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2015, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -12,19 +12,35 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  */
+#else
+/*
+Support for Intel Camera Imaging ISP subsystem.
+Copyright (c) 2010 - 2015, Intel Corporation.
+
+This program is free software; you can redistribute it and/or modify it
+under the terms and conditions of the GNU General Public License,
+version 2, as published by the Free Software Foundation.
+
+This program is distributed in the hope it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+more details.
+*/
+#endif
 
 #include "input_system.h"
 
+#ifdef HAS_INPUT_SYSTEM_VERSION_2
 #include "ia_css_isys.h"
 #include "platform_support.h"
 
-#ifdef ISP2401
-#include "isys_dma_public.h"	/* isys2401_dma_set_max_burst_size() */
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
+#include "isys_dma.h"		/* isys2401_dma_set_max_burst_size() */
 #include "isys_irq.h"
 #endif
 
-#if !defined(ISP2401)
-input_system_err_t ia_css_isys_init(void)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
+input_system_error_t ia_css_isys_init(void)
 {
 	backend_channel_cfg_t backend_ch0;
 	backend_channel_cfg_t backend_ch1;
@@ -32,7 +48,7 @@ input_system_err_t ia_css_isys_init(void)
 	target_cfg2400_t targetC;
 	u32 acq_mem_region_size = 24;
 	u32 acq_nof_mem_regions = 2;
-	input_system_err_t error = INPUT_SYSTEM_ERR_NO_ERROR;
+	input_system_error_t error = INPUT_SYSTEM_ERR_NO_ERROR;
 
 	memset(&backend_ch0, 0, sizeof(backend_channel_cfg_t));
 	memset(&backend_ch1, 0, sizeof(backend_channel_cfg_t));
@@ -86,8 +102,8 @@ input_system_err_t ia_css_isys_init(void)
 
 	return error;
 }
-#elif defined(ISP2401)
-input_system_err_t ia_css_isys_init(void)
+#elif defined(USE_INPUT_SYSTEM_VERSION_2401)
+input_system_error_t ia_css_isys_init(void)
 {
 	ia_css_isys_csi_rx_lut_rmgr_init();
 	ia_css_isys_ibuf_rmgr_init();
@@ -106,11 +122,11 @@ input_system_err_t ia_css_isys_init(void)
 }
 #endif
 
-#if !defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 void ia_css_isys_uninit(void)
 {
 }
-#elif defined(ISP2401)
+#elif defined(USE_INPUT_SYSTEM_VERSION_2401)
 void ia_css_isys_uninit(void)
 {
 	ia_css_isys_csi_rx_lut_rmgr_uninit();
@@ -120,3 +136,4 @@ void ia_css_isys_uninit(void)
 }
 #endif
 
+#endif

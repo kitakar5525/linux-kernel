@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -20,7 +19,6 @@
  * This file contains firmware loading/unloading support functionality
  */
 
-#include <linux/device.h>
 #include "ia_css_err.h"
 #include "ia_css_env.h"
 
@@ -31,8 +29,6 @@ struct ia_css_fw {
 	unsigned int bytes; /** length in bytes of firmware data */
 };
 
-struct device;
-
 /* @brief Loads the firmware
  * @param[in]	env		Environment, provides functions to access the
  *				environment in which the CSS code runs. This is
@@ -40,8 +36,8 @@ struct device;
  *				printing.
  * @param[in]	fw		Firmware package containing the firmware for all
  *				predefined ISP binaries.
- * @return			Returns -EINVAL in case of any
- *				errors and 0 otherwise.
+ * @return			Returns IA_CSS_ERR_INTERNAL_ERROR in case of any
+ *				errors and IA_CSS_SUCCESS otherwise.
  *
  * This function interprets the firmware package. All
  * contents of this firmware package are copied into local data structures, so
@@ -51,8 +47,8 @@ struct device;
  * speeds up ia_css_init (ia_css_init is called each time a stream is created but the
  * firmware only needs to be loaded once).
  */
-int
-ia_css_load_firmware(struct device *dev, const struct ia_css_env *env,
+enum ia_css_err
+ia_css_load_firmware(const struct ia_css_env *env,
 		     const struct ia_css_fw  *fw);
 
 /* @brief Unloads the firmware
@@ -64,5 +60,15 @@ ia_css_load_firmware(struct device *dev, const struct ia_css_env *env,
  */
 void
 ia_css_unload_firmware(void);
+
+/* @brief Checks firmware version
+ * @param[in]	fw	Firmware package containing the firmware for all
+ *			predefined ISP binaries.
+ * @return		Returns true when the firmware version matches with the CSS
+ *			host code version and returns false otherwise.
+ * This function checks if the firmware package version matches with the CSS host code version.
+ */
+bool
+ia_css_check_firmware_version(const struct ia_css_fw  *fw);
 
 #endif /* __IA_CSS_FIRMWARE_H */

@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
+#ifndef ISP2401
 /*
  * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2015, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -12,6 +12,21 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  */
+#else
+/*
+Support for Intel Camera Imaging ISP subsystem.
+Copyright (c) 2010 - 2015, Intel Corporation.
+
+This program is free software; you can redistribute it and/or modify it
+under the terms and conditions of the GNU General Public License,
+version 2, as published by the Free Software Foundation.
+
+This program is distributed in the hope it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+more details.
+*/
+#endif
 
 #include "platform_support.h"
 
@@ -32,18 +47,24 @@
 #include "event_fifo.h"
 #define __INLINE_SP__
 
+#if !defined(HAS_NO_INPUT_SYSTEM)
 #include "input_system.h"	/* MIPI_PREDICTOR_NONE,... */
+#endif
 
 #include "assert_support.h"
 
 /* System independent */
 #include "sh_css_internal.h"
+#if !defined(HAS_NO_INPUT_SYSTEM)
 #include "ia_css_isys.h"
+#endif
 
 #define HBLANK_CYCLES (187)
 #define MARKER_CYCLES (6)
 
+#if !defined(HAS_NO_INPUT_SYSTEM)
 #include <hive_isp_css_streaming_to_mipi_types_hrt.h>
+#endif
 
 /* The data type is used to send special cases:
  * yuv420: odd lines (1, 3 etc) are twice as wide as even
@@ -61,7 +82,9 @@ enum inputfifo_mipi_data_type {
 	inputfifo_mipi_data_type_rgb,
 };
 
+#if !defined(HAS_NO_INPUT_SYSTEM)
 static unsigned int inputfifo_curr_ch_id, inputfifo_curr_fmt_type;
+#endif
 struct inputfifo_instance {
 	unsigned int				ch_id;
 	enum atomisp_input_format	input_format;
@@ -73,6 +96,7 @@ struct inputfifo_instance {
 	enum inputfifo_mipi_data_type	type;
 };
 
+#if !defined(HAS_NO_INPUT_SYSTEM)
 /*
  * Maintain a basic streaming to Mipi administration with ch_id as index
  * ch_id maps on the "Mipi virtual channel ID" and can have value 0..3
@@ -95,7 +119,7 @@ static inline void
 _sh_css_fifo_snd(unsigned int token)
 {
 	while (!can_event_send_token(STR2MIPI_EVENT_ID))
-		udelay(1);
+		hrt_sleep();
 	event_send_token(STR2MIPI_EVENT_ID, token);
 	return;
 }
@@ -170,6 +194,38 @@ static void inputfifo_send_eof(void)
 	_sh_css_fifo_snd(token);
 	return;
 }
+
+#ifdef __ON__
+static void inputfifo_send_ch_id(
+    /* static inline void inputfifo_send_ch_id( */
+    unsigned int ch_id)
+{
+	hrt_data	token;
+
+	inputfifo_curr_ch_id = ch_id & _HIVE_ISP_CH_ID_MASK;
+	/* we send an zero marker, this will wrap the ch_id and
+	 * fmt_type automatically.
+	 */
+	token = inputfifo_wrap_marker(0);
+	_sh_css_fifo_snd(token);
+	return;
+}
+
+static void inputfifo_send_fmt_type(
+    /* static inline void inputfifo_send_fmt_type( */
+    unsigned int fmt_type)
+{
+	hrt_data	token;
+
+	inputfifo_curr_fmt_type = fmt_type & _HIVE_ISP_FMT_TYPE_MASK;
+	/* we send an zero marker, this will wrap the ch_id and
+	 * fmt_type automatically.
+	 */
+	token = inputfifo_wrap_marker(0);
+	_sh_css_fifo_snd(token);
+	return;
+}
+#endif /*  __ON__ */
 
 static void inputfifo_send_ch_id_and_fmt_type(
     /* static inline
@@ -527,3 +583,4 @@ void ia_css_inputfifo_end_frame(
 	s2mi->streaming = false;
 	return;
 }
+#endif /* #if !defined(HAS_NO_INPUT_SYSTEM) */

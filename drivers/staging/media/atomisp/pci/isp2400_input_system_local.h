@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010-2015, Intel Corporation.
@@ -21,17 +20,26 @@
 #include "input_system_global.h"
 
 #include "input_system_defs.h"		/* HIVE_ISYS_GPREG_MULTICAST_A_IDX,... */
-
-/*
- * _HRT_CSS_RECEIVER_2400_TWO_PIXEL_EN_REG_IDX,
- * _HRT_CSS_RECEIVER_2400_CSI2_FUNC_PROG_REG_IDX,...
- */
-#include "css_receiver_2400_defs.h"
-
+#include "css_receiver_2400_defs.h"	/* _HRT_CSS_RECEIVER_2400_TWO_PIXEL_EN_REG_IDX, _HRT_CSS_RECEIVER_2400_CSI2_FUNC_PROG_REG_IDX,... */
+#if defined(IS_ISP_2400_MAMOIADA_SYSTEM)
 #include "isp_capture_defs.h"
-
+#elif defined(IS_ISP_2401_MAMOIADA_SYSTEM)
+/* Same name, but keep the distinction,it is a different device */
+#include "isp_capture_defs.h"
+#else
+#error "input_system_local.h: 2400_SYSTEM must be one of {2400, 2401 }"
+#endif
 #include "isp_acquisition_defs.h"
 #include "input_system_ctrl_defs.h"
+
+typedef enum {
+	INPUT_SYSTEM_ERR_NO_ERROR = 0,
+	INPUT_SYSTEM_ERR_GENERIC,
+	INPUT_SYSTEM_ERR_CHANNEL_ALREADY_SET,
+	INPUT_SYSTEM_ERR_CONFLICT_ON_RESOURCE,
+	INPUT_SYSTEM_ERR_PARAMETER_NOT_SUPPORTED,
+	N_INPUT_SYSTEM_ERR
+} input_system_error_t;
 
 typedef enum {
 	INPUT_SYSTEM_PORT_A = 0,
@@ -52,8 +60,8 @@ typedef struct input_switch_cfg_channel_s	input_switch_cfg_channel_t;
 typedef struct input_switch_cfg_s		input_switch_cfg_t;
 
 struct ctrl_unit_cfg_s {
-	isp2400_ib_buffer_t		buffer_mipi[N_CAPTURE_UNIT_ID];
-	isp2400_ib_buffer_t		buffer_acquire[N_ACQUISITION_UNIT_ID];
+	ib_buffer_t		buffer_mipi[N_CAPTURE_UNIT_ID];
+	ib_buffer_t		buffer_acquire[N_ACQUISITION_UNIT_ID];
 };
 
 struct input_system_network_cfg_s {
@@ -128,9 +136,9 @@ struct input_system_cfg2400_s {
 
 	// Possible another struct for ib.
 	// This buffers set at the end, based on the all configurations.
-	isp2400_ib_buffer_t			csi_buffer[N_CSI_PORTS];
+	ib_buffer_t			csi_buffer[N_CSI_PORTS];
 	input_system_config_flags_t	csi_buffer_flags[N_CSI_PORTS];
-	isp2400_ib_buffer_t			acquisition_buffer_unique;
+	ib_buffer_t			acquisition_buffer_unique;
 	input_system_config_flags_t	acquisition_buffer_unique_flags;
 	u32			unallocated_ib_mem_words; // Used for check.DEFAULT = IB_CAPACITY_IN_WORDS.
 	//uint32_t			acq_allocated_ib_mem_words;
@@ -356,13 +364,41 @@ struct rx_cfg_s {
 };
 
 /* NOTE: The base has already an offset of 0x0100 */
-static const hrt_address __maybe_unused MIPI_PORT_OFFSET[N_MIPI_PORT_ID] = {
+static const hrt_address MIPI_PORT_OFFSET[N_MIPI_PORT_ID] = {
 	0x00000000UL,
 	0x00000100UL,
 	0x00000200UL
 };
 
-static const hrt_address __maybe_unused SUB_SYSTEM_OFFSET[N_SUB_SYSTEM_ID] = {
+static const mipi_lane_cfg_t MIPI_PORT_MAXLANES[N_MIPI_PORT_ID] = {
+	MIPI_4LANE_CFG,
+	MIPI_1LANE_CFG,
+	MIPI_2LANE_CFG
+};
+
+static const bool MIPI_PORT_ACTIVE[N_RX_MODE][N_MIPI_PORT_ID] = {
+	{true, true, false},
+	{true, true, false},
+	{true, true, false},
+	{true, true, false},
+	{true, true, true},
+	{true, true, true},
+	{true, true, true},
+	{true, true, true}
+};
+
+static const mipi_lane_cfg_t MIPI_PORT_LANES[N_RX_MODE][N_MIPI_PORT_ID] = {
+	{MIPI_4LANE_CFG, MIPI_1LANE_CFG, MIPI_0LANE_CFG},
+	{MIPI_3LANE_CFG, MIPI_1LANE_CFG, MIPI_0LANE_CFG},
+	{MIPI_2LANE_CFG, MIPI_1LANE_CFG, MIPI_0LANE_CFG},
+	{MIPI_1LANE_CFG, MIPI_1LANE_CFG, MIPI_0LANE_CFG},
+	{MIPI_2LANE_CFG, MIPI_1LANE_CFG, MIPI_2LANE_CFG},
+	{MIPI_3LANE_CFG, MIPI_1LANE_CFG, MIPI_1LANE_CFG},
+	{MIPI_2LANE_CFG, MIPI_1LANE_CFG, MIPI_1LANE_CFG},
+	{MIPI_1LANE_CFG, MIPI_1LANE_CFG, MIPI_1LANE_CFG}
+};
+
+static const hrt_address SUB_SYSTEM_OFFSET[N_SUB_SYSTEM_ID] = {
 	0x00001000UL,
 	0x00002000UL,
 	0x00003000UL,

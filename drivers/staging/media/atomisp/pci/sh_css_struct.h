@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -25,7 +24,7 @@
 */
 
 #include <type_support.h>
-#include <system_local.h>
+#include <system_types.h>
 #include "ia_css_pipeline.h"
 #include "ia_css_pipe_public.h"
 #include "ia_css_frame_public.h"
@@ -55,6 +54,7 @@ struct sh_css {
 
 	bool                           check_system_idle;
 	unsigned int                   num_cont_raw_frames;
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 	unsigned int                   num_mipi_frames[N_CSI_PORTS];
 	struct ia_css_frame
 		*mipi_frames[N_CSI_PORTS][NUM_MIPI_FRAMES_PER_STREAM];
@@ -63,9 +63,9 @@ struct sh_css {
 	unsigned int
 	mipi_sizes_for_check[N_CSI_PORTS][IA_CSS_MIPI_SIZE_CHECK_MAX_NOF_ENTRIES_PER_PORT];
 	unsigned int                   mipi_frame_size[N_CSI_PORTS];
-	ia_css_ptr                   sp_bin_addr;
+#endif
+	hrt_vaddress                   sp_bin_addr;
 	hrt_data                       page_table_base_index;
-
 	unsigned int
 	size_mem_words; /* \deprecated{Use ia_css_mipi_buffer_config instead.}*/
 	enum ia_css_irq_type           irq_type;

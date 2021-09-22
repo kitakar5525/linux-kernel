@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -35,7 +34,7 @@
  * This function generates and returns the version string. If FW is loaded, it
  * attaches the FW version.
  */
-int
+enum ia_css_err
 ia_css_get_version(char *version, int max_size);
 
 #endif /* __IA_CSS_VERSION_H */

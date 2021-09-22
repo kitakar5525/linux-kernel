@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -20,9 +19,9 @@
 #include <math_support.h>
 #include <type_support.h>
 #include <platform_support.h>
-#include <linux/stdarg.h>
+#include <stdarg.h>
 
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_FORMATTER)
 #include "input_formatter.h"
 #endif
 #include "input_system.h"
@@ -76,7 +75,11 @@
 #define SH_CSS_REF_BIT_DEPTH 8
 
 /* keep next up to date with the definition for MAX_CB_ELEMS_FOR_TAGGER in tagger.sp.c */
+#if defined(HAS_SP_2400)
 #define NUM_CONTINUOUS_FRAMES	15
+#else
+#define NUM_CONTINUOUS_FRAMES	10
+#endif
 #define NUM_MIPI_FRAMES_PER_STREAM		2
 
 #define NUM_ONLINE_INIT_CONTINUOUS_FRAMES      2
@@ -86,9 +89,11 @@
 #define SH_CSS_MAX_IF_CONFIGS	3 /* Must match with IA_CSS_NR_OF_CONFIGS (not defined yet).*/
 #define SH_CSS_IF_CONFIG_NOT_NEEDED	0xFF
 
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 #define SH_CSS_ENABLE_METADATA
+#endif
 
-#if defined(SH_CSS_ENABLE_METADATA) && !defined(ISP2401)
+#if defined(SH_CSS_ENABLE_METADATA) && !defined(USE_INPUT_SYSTEM_VERSION_2401)
 #define SH_CSS_ENABLE_METADATA_THREAD
 #endif
 
@@ -204,28 +209,28 @@ enum sh_css_sp_event_type {
 };
 
 /* xmem address map allocation per pipeline, css pointers */
-/* Note that the struct below should only consist of ia_css_ptr-es
+/* Note that the struct below should only consist of hrt_vaddress-es
    Otherwise this will cause a fail in the function ref_sh_css_ddr_address_map
  */
 struct sh_css_ddr_address_map {
-	ia_css_ptr isp_param;
-	ia_css_ptr isp_mem_param[SH_CSS_MAX_STAGES][IA_CSS_NUM_MEMORIES];
-	ia_css_ptr macc_tbl;
-	ia_css_ptr fpn_tbl;
-	ia_css_ptr sc_tbl;
-	ia_css_ptr tetra_r_x;
-	ia_css_ptr tetra_r_y;
-	ia_css_ptr tetra_gr_x;
-	ia_css_ptr tetra_gr_y;
-	ia_css_ptr tetra_gb_x;
-	ia_css_ptr tetra_gb_y;
-	ia_css_ptr tetra_b_x;
-	ia_css_ptr tetra_b_y;
-	ia_css_ptr tetra_ratb_x;
-	ia_css_ptr tetra_ratb_y;
-	ia_css_ptr tetra_batr_x;
-	ia_css_ptr tetra_batr_y;
-	ia_css_ptr dvs_6axis_params_y;
+	hrt_vaddress isp_param;
+	hrt_vaddress isp_mem_param[SH_CSS_MAX_STAGES][IA_CSS_NUM_MEMORIES];
+	hrt_vaddress macc_tbl;
+	hrt_vaddress fpn_tbl;
+	hrt_vaddress sc_tbl;
+	hrt_vaddress tetra_r_x;
+	hrt_vaddress tetra_r_y;
+	hrt_vaddress tetra_gr_x;
+	hrt_vaddress tetra_gr_y;
+	hrt_vaddress tetra_gb_x;
+	hrt_vaddress tetra_gb_y;
+	hrt_vaddress tetra_b_x;
+	hrt_vaddress tetra_b_y;
+	hrt_vaddress tetra_ratb_x;
+	hrt_vaddress tetra_ratb_y;
+	hrt_vaddress tetra_batr_x;
+	hrt_vaddress tetra_batr_y;
+	hrt_vaddress dvs_6axis_params_y;
 };
 
 #define SIZE_OF_SH_CSS_DDR_ADDRESS_MAP_STRUCT					\
@@ -274,9 +279,9 @@ struct ia_css_isp_parameter_set_info {
    a binary. It depends on the binary which ones are used. */
 struct sh_css_binary_args {
 	struct ia_css_frame *in_frame;	     /* input frame */
-	const struct ia_css_frame
+	struct ia_css_frame
 		*delay_frames[MAX_NUM_VIDEO_DELAY_FRAMES];   /* reference input frame */
-	const struct ia_css_frame *tnr_frames[NUM_TNR_FRAMES];   /* tnr frames */
+	struct ia_css_frame *tnr_frames[NUM_TNR_FRAMES];   /* tnr frames */
 	struct ia_css_frame
 		*out_frame[IA_CSS_BINARY_MAX_OUTPUT_PORTS];      /* output frame */
 	struct ia_css_frame *out_vf_frame;   /* viewfinder output frame */
@@ -318,9 +323,15 @@ struct sh_css_sp_debug_state {
 
 #elif SP_DEBUG == SP_DEBUG_TRACE
 
+#if 1
 /* Example of just one global trace */
 #define SH_CSS_SP_DBG_NR_OF_TRACES	(1)
 #define SH_CSS_SP_DBG_TRACE_DEPTH	(40)
+#else
+/* E.g. if you like separate traces for 4 threads */
+#define SH_CSS_SP_DBG_NR_OF_TRACES	(4)
+#define SH_CSS_SP_DBG_TRACE_DEPTH	(10)
+#endif
 
 #define SH_CSS_SP_DBG_TRACE_FILE_ID_BIT_POS (13)
 
@@ -363,7 +374,7 @@ struct sh_css_sp_debug_command {
 	u32 dma_sw_reg;
 };
 
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_FORMATTER)
 /* SP input formatter configuration.*/
 struct sh_css_sp_input_formatter_set {
 	u32				stream_format;
@@ -383,7 +394,7 @@ struct sh_css_sp_config {
 	     frames are locked when their EOF event is successfully sent to the
 	     host (true) or when they are passed to the preview/video pipe
 	     (false). */
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_FORMATTER)
 	struct {
 		u8					a_changed;
 		u8					b_changed;
@@ -392,7 +403,7 @@ struct sh_css_sp_config {
 			set[SH_CSS_MAX_IF_CONFIGS]; /* CSI-2 port is used as index. */
 	} input_formatter;
 #endif
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_SYSTEM) && defined(USE_INPUT_SYSTEM_VERSION_2)
 	sync_generator_cfg_t	sync_gen;
 	tpg_cfg_t		tpg;
 	prbs_cfg_t		prbs;
@@ -415,7 +426,7 @@ enum sh_css_stage_type {
 #define SH_CSS_PIPE_CONFIG_SAMPLE_PARAMS_MASK \
 	((SH_CSS_PIPE_CONFIG_SAMPLE_PARAMS << SH_CSS_MAX_SP_THREADS) - 1)
 
-#if defined(ISP2401)
+#if !defined(HAS_NO_INPUT_SYSTEM) && defined(USE_INPUT_SYSTEM_VERSION_2401)
 struct sh_css_sp_pipeline_terminal {
 	union {
 		/* Input System 2401 */
@@ -520,8 +531,8 @@ struct sh_css_sp_pipeline {
 	u32	port_id;	/* port_id for input system */
 	u32	num_stages;		/* the pipe config */
 	u32	running;	/* needed for pipe termination */
-	ia_css_ptr	sp_stage_addr[SH_CSS_MAX_STAGES];
-	ia_css_ptr	scaler_pp_lut; /* Early bound LUT */
+	hrt_vaddress	sp_stage_addr[SH_CSS_MAX_STAGES];
+	hrt_vaddress	scaler_pp_lut; /* Early bound LUT */
 	u32	dummy; /* stage ptr is only used on sp but lives in
 				  this struct; needs cleanup */
 	s32 num_execs; /* number of times to run if this is
@@ -533,7 +544,7 @@ struct sh_css_sp_pipeline {
 		u32        height;   /* Number of lines */
 		u32        stride;   /* Stride (in bytes) per line */
 		u32        size;     /* Total size (in bytes) */
-		ia_css_ptr    cont_buf; /* Address of continuous buffer */
+		hrt_vaddress    cont_buf; /* Address of continuous buffer */
 	} metadata;
 #endif
 #if defined(SH_CSS_ENABLE_PER_FRAME_PARAMS)
@@ -646,9 +657,9 @@ struct sh_css_sp_stage {
 	struct ia_css_frames_sp		frames;
 	struct ia_css_resolution	dvs_envelope;
 	struct sh_css_uds_info		uds;
-	ia_css_ptr			isp_stage_addr;
-	ia_css_ptr			xmem_bin_addr;
-	ia_css_ptr			xmem_map_addr;
+	hrt_vaddress			isp_stage_addr;
+	hrt_vaddress			xmem_bin_addr;
+	hrt_vaddress			xmem_map_addr;
 
 	u16		top_cropping;
 	u16		row_stripes_height;
@@ -671,7 +682,7 @@ struct sh_css_sp_stage {
 struct sh_css_sp_group {
 	struct sh_css_sp_config		config;
 	struct sh_css_sp_pipeline	pipe[SH_CSS_MAX_SP_THREADS];
-#if defined(ISP2401)
+#if !defined(HAS_NO_INPUT_SYSTEM) && defined(USE_INPUT_SYSTEM_VERSION_2401)
 	struct sh_css_sp_pipeline_io	pipe_io[SH_CSS_MAX_SP_THREADS];
 	struct sh_css_sp_pipeline_io_status	pipe_io_status;
 #endif
@@ -681,7 +692,7 @@ struct sh_css_sp_group {
 /* Data in SP dmem that is set from the host every stage. */
 struct sh_css_sp_per_frame_data {
 	/* ddr address of sp_group and sp_stage */
-	ia_css_ptr			sp_group_addr;
+	hrt_vaddress			sp_group_addr;
 };
 
 #define SH_CSS_NUM_SDW_IRQS 3
@@ -717,19 +728,25 @@ struct sh_css_sp_output {
  * separate SP thread for this. */
 #define  IA_CSS_NUM_ELEMS_HOST2SP_ISYS_EVENT_QUEUE (2 * N_CSI_PORTS)
 
+#if defined(HAS_SP_2400)
 #define  IA_CSS_NUM_ELEMS_HOST2SP_PSYS_EVENT_QUEUE    13
 #define  IA_CSS_NUM_ELEMS_SP2HOST_BUFFER_QUEUE        19
 #define  IA_CSS_NUM_ELEMS_SP2HOST_PSYS_EVENT_QUEUE    26 /* holds events for all type of buffers, hence deeper */
+#else
+#define  IA_CSS_NUM_ELEMS_HOST2SP_PSYS_EVENT_QUEUE    6
+#define  IA_CSS_NUM_ELEMS_SP2HOST_BUFFER_QUEUE        6
+#define  IA_CSS_NUM_ELEMS_SP2HOST_PSYS_EVENT_QUEUE    6
+#endif
 
 struct sh_css_hmm_buffer {
 	union {
 		struct ia_css_isp_3a_statistics  s3a;
 		struct ia_css_isp_dvs_statistics dis;
-		ia_css_ptr skc_dvs_statistics;
-		ia_css_ptr lace_stat;
+		hrt_vaddress skc_dvs_statistics;
+		hrt_vaddress lace_stat;
 		struct ia_css_metadata	metadata;
 		struct frame_data_wrapper {
-			ia_css_ptr	frame_data;
+			hrt_vaddress	frame_data;
 			u32	flashed;
 			u32	exp_id;
 			u32	isp_parameters_id; /** Unique ID to track which config was
@@ -738,7 +755,7 @@ struct sh_css_hmm_buffer {
 			struct sh_css_config_on_frame_enqueue config_on_frame_enqueue;
 #endif
 		} frame;
-		ia_css_ptr ddr_ptrs;
+		hrt_vaddress ddr_ptrs;
 	} payload;
 	/*
 	 * kernel_ptr is present for host administration purposes only.
@@ -817,12 +834,14 @@ struct host_sp_communication {
 	 * TODO:
 	 *   Remove it when the Host and the SP is decoupled.
 	 */
-	ia_css_ptr host2sp_offline_frames[NUM_CONTINUOUS_FRAMES];
-	ia_css_ptr host2sp_offline_metadata[NUM_CONTINUOUS_FRAMES];
+	hrt_vaddress host2sp_offline_frames[NUM_CONTINUOUS_FRAMES];
+	hrt_vaddress host2sp_offline_metadata[NUM_CONTINUOUS_FRAMES];
 
-	ia_css_ptr host2sp_mipi_frames[N_CSI_PORTS][NUM_MIPI_FRAMES_PER_STREAM];
-	ia_css_ptr host2sp_mipi_metadata[N_CSI_PORTS][NUM_MIPI_FRAMES_PER_STREAM];
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
+	hrt_vaddress host2sp_mipi_frames[N_CSI_PORTS][NUM_MIPI_FRAMES_PER_STREAM];
+	hrt_vaddress host2sp_mipi_metadata[N_CSI_PORTS][NUM_MIPI_FRAMES_PER_STREAM];
 	u32 host2sp_num_mipi_frames[N_CSI_PORTS];
+#endif
 	u32 host2sp_cont_avail_num_raw_frames;
 	u32 host2sp_cont_extra_num_raw_frames;
 	u32 host2sp_cont_target_num_raw_frames;
@@ -830,12 +849,20 @@ struct host_sp_communication {
 
 };
 
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 #define SIZE_OF_HOST_SP_COMMUNICATION_STRUCT				\
 	(sizeof(uint32_t) +						\
 	(NUM_CONTINUOUS_FRAMES * SIZE_OF_HRT_VADDRESS * 2) +		\
 	(N_CSI_PORTS * NUM_MIPI_FRAMES_PER_STREAM * SIZE_OF_HRT_VADDRESS * 2) +			\
 	((3 + N_CSI_PORTS) * sizeof(uint32_t)) +						\
 	(NR_OF_PIPELINES * SIZE_OF_SH_CSS_EVENT_IRQ_MASK_STRUCT))
+#else
+#define SIZE_OF_HOST_SP_COMMUNICATION_STRUCT				\
+	(sizeof(uint32_t) +						\
+	(NUM_CONTINUOUS_FRAMES * SIZE_OF_HRT_VADDRESS * 2) +		\
+	(3 * sizeof(uint32_t)) +						\
+	(NR_OF_PIPELINES * SIZE_OF_SH_CSS_EVENT_IRQ_MASK_STRUCT))
+#endif
 
 struct host_sp_queues {
 	/*
@@ -907,9 +934,10 @@ struct host_sp_queues {
 #define SIZE_OF_HOST_SP_QUEUES_STRUCT		\
 	(SIZE_OF_QUEUES_ELEMS + SIZE_OF_QUEUES_DESC)
 
-extern int  __printf(1, 0) (*sh_css_printf)(const char *fmt, va_list args);
+extern int (*sh_css_printf)(const char *fmt, va_list args);
 
-static inline void  __printf(1, 2) sh_css_print(const char *fmt, ...)
+static inline void
+sh_css_print(const char *fmt, ...)
 {
 	va_list ap;
 
@@ -920,7 +948,8 @@ static inline void  __printf(1, 2) sh_css_print(const char *fmt, ...)
 	}
 }
 
-static inline void  __printf(1, 0) sh_css_vprint(const char *fmt, va_list args)
+static inline void
+sh_css_vprint(const char *fmt, va_list args)
 {
 	if (sh_css_printf)
 		sh_css_printf(fmt, args);
@@ -931,13 +960,19 @@ static inline void  __printf(1, 0) sh_css_vprint(const char *fmt, va_list args)
    issue with the firmware struct/union's.
    More permanent solution will be to refactor this include.
 */
-ia_css_ptr sh_css_params_ddr_address_map(void);
+hrt_vaddress sh_css_params_ddr_address_map(void);
 
-int
+enum ia_css_err
 sh_css_params_init(void);
 
 void
 sh_css_params_uninit(void);
+
+void *sh_css_malloc(size_t size);
+
+void *sh_css_calloc(size_t N, size_t size);
+
+void sh_css_free(void *ptr);
 
 /* For Acceleration API: Flush FW (shared buffer pointer) arguments */
 void sh_css_flush(struct ia_css_acc_fw *fw);
@@ -967,7 +1002,7 @@ sh_css_frame_info_set_width(struct ia_css_frame_info *info,
 			    unsigned int width,
 			    unsigned int aligned);
 
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_SYSTEM) && defined(USE_INPUT_SYSTEM_VERSION_2)
 
 unsigned int
 sh_css_get_mipi_sizes_for_check(const unsigned int port,
@@ -975,13 +1010,13 @@ sh_css_get_mipi_sizes_for_check(const unsigned int port,
 
 #endif
 
-ia_css_ptr
+hrt_vaddress
 sh_css_store_sp_group_to_ddr(void);
 
-ia_css_ptr
+hrt_vaddress
 sh_css_store_sp_stage_to_ddr(unsigned int pipe, unsigned int stage);
 
-ia_css_ptr
+hrt_vaddress
 sh_css_store_isp_stage_to_ddr(unsigned int pipe, unsigned int stage);
 
 void
@@ -1016,7 +1051,7 @@ sh_css_continuous_is_enabled(uint8_t pipe_num);
 struct ia_css_pipe *
 find_pipe_by_num(uint32_t pipe_num);
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 void
 ia_css_get_crop_offsets(
     struct ia_css_pipe *pipe,

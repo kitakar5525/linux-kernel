@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -20,6 +19,7 @@
 
 #include "ia_css_dp.host.h"
 
+#ifdef ISP2401
 /* We use a different set of DPC configuration parameters when
  * DPC is used before OBC and NORM. Currently these parameters
  * are used in usecases which selects both BDS and DPC.
@@ -32,7 +32,7 @@ const struct ia_css_dp_config default_dp_10bpp_config = {
 	32768,
 	32768
 };
-
+#endif
 const struct ia_css_dp_config default_dp_config = {
 	8192,
 	2048,

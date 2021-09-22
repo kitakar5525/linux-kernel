@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
@@ -35,11 +34,11 @@ typedef struct {
 } ia_css_spctrl_cfg;
 
 /* Get the code addr in DDR of SP */
-ia_css_ptr get_sp_code_addr(sp_ID_t  sp_id);
+hrt_vaddress get_sp_code_addr(sp_ID_t  sp_id);
 
 /* ! Load firmware on to specfied SP
 */
-int ia_css_spctrl_load_fw(sp_ID_t sp_id,
+enum ia_css_err ia_css_spctrl_load_fw(sp_ID_t sp_id,
 				      ia_css_spctrl_cfg *spctrl_cfg);
 
 /* ISP2401 */
@@ -48,15 +47,15 @@ void sh_css_spctrl_reload_fw(sp_ID_t sp_id);
 
 /*!  Unload/release any memory allocated to hold the firmware
 */
-int ia_css_spctrl_unload_fw(sp_ID_t sp_id);
+enum ia_css_err ia_css_spctrl_unload_fw(sp_ID_t sp_id);
 
 /*! Intilaize dmem_cfg in SP dmem  and  start SP program
 */
-int ia_css_spctrl_start(sp_ID_t sp_id);
+enum ia_css_err ia_css_spctrl_start(sp_ID_t sp_id);
 
 /*! stop spctrl
 */
-int ia_css_spctrl_stop(sp_ID_t sp_id);
+enum ia_css_err ia_css_spctrl_stop(sp_ID_t sp_id);
 
 /*! Query the state of SP
 */

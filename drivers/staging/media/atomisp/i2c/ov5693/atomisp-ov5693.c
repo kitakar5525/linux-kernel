@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for OmniVision OV5693 1080p HD camera sensor.
  *
@@ -932,7 +931,7 @@ err:
 static int ad5823_t_focus_vcm(struct v4l2_subdev *sd, u16 val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	int ret;
+	int ret = -EINVAL;
 	u8 vcm_code;
 
 	ret = ad5823_i2c_read(client, AD5823_REG_VCM_CODE_MSB, &vcm_code);
@@ -1088,7 +1087,7 @@ static int ov5693_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_VCM_SLEW:
 		ret = ov5693_t_vcm_slew(&dev->sd, ctrl->val);
 		break;
-	case V4L2_CID_VCM_TIMING:
+	case V4L2_CID_VCM_TIMEING:
 		ret = ov5693_t_vcm_timing(&dev->sd, ctrl->val);
 		break;
 	default:
@@ -1231,7 +1230,7 @@ static const struct v4l2_ctrl_config ov5693_controls[] = {
 	},
 	{
 		.ops = &ctrl_ops,
-		.id = V4L2_CID_VCM_TIMING,
+		.id = V4L2_CID_VCM_TIMEING,
 		.type = V4L2_CTRL_TYPE_INTEGER,
 		.name = "vcm step time",
 		.min = 0,
@@ -1577,7 +1576,7 @@ static int startup(struct v4l2_subdev *sd)
 }
 
 static int ov5693_set_fmt(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_state *sd_state,
+			  struct v4l2_subdev_pad_config *cfg,
 			  struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *fmt = &format->format;
@@ -1608,7 +1607,7 @@ static int ov5693_set_fmt(struct v4l2_subdev *sd,
 
 	fmt->code = MEDIA_BUS_FMT_SBGGR10_1X10;
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
-		sd_state->pads->try_fmt = *fmt;
+		cfg->try_fmt = *fmt;
 		mutex_unlock(&dev->input_lock);
 		return 0;
 	}
@@ -1676,7 +1675,7 @@ err:
 }
 
 static int ov5693_get_fmt(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_state *sd_state,
+			  struct v4l2_subdev_pad_config *cfg,
 			  struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *fmt = &format->format;
@@ -1825,7 +1824,7 @@ static int ov5693_g_frame_interval(struct v4l2_subdev *sd,
 }
 
 static int ov5693_enum_mbus_code(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_state *sd_state,
+				 struct v4l2_subdev_pad_config *cfg,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
 	if (code->index >= MAX_FMTS)
@@ -1836,7 +1835,7 @@ static int ov5693_enum_mbus_code(struct v4l2_subdev *sd,
 }
 
 static int ov5693_enum_frame_size(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_state *sd_state,
+				  struct v4l2_subdev_pad_config *cfg,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
 	int index = fse->index;
@@ -1899,7 +1898,7 @@ static int ov5693_probe(struct i2c_client *client)
 {
 	struct ov5693_device *dev;
 	int i2c;
-	int ret;
+	int ret = 0;
 	void *pdata;
 	unsigned int i;
 
@@ -1909,7 +1908,7 @@ static int ov5693_probe(struct i2c_client *client)
 	 * some BIOS versions haven't gotten the memo.  Work around
 	 * via config.
 	 */
-	i2c = gmin_get_var_int(&client->dev, false, "I2CAddr", -1);
+	i2c = gmin_get_var_int(&client->dev, "I2CAddr", -1);
 	if (i2c != -1) {
 		dev_info(&client->dev,
 			 "Overriding firmware-provided I2C address (0x%x) with 0x%x\n",
@@ -1929,10 +1928,8 @@ static int ov5693_probe(struct i2c_client *client)
 	pdata = gmin_camera_platform_data(&dev->sd,
 					  ATOMISP_INPUT_FORMAT_RAW_10,
 					  atomisp_bayer_order_bggr);
-	if (!pdata) {
-		ret = -EINVAL;
+	if (!pdata)
 		goto out_free;
-	}
 
 	ret = ov5693_s_config(&dev->sd, client->irq, pdata);
 	if (ret)

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
@@ -18,14 +17,13 @@
 
 #include "ia_css_rmgr.h"
 #include <type_support.h>
-#include <ia_css_types.h>
-#include <system_local.h>
+#include <system_types.h>
 
 /**
  * @brief Data structure for the resource handle (host, vbuf)
  */
 struct ia_css_rmgr_vbuf_handle {
-	ia_css_ptr vptr;
+	hrt_vaddress vptr;
 	u8 count;
 	u32 size;
 };
@@ -53,7 +51,7 @@ extern struct ia_css_rmgr_vbuf_pool *hmm_buffer_pool;
  *
  * @param pool	The pointer to the pool
  */
-STORAGE_CLASS_RMGR_H int ia_css_rmgr_init_vbuf(
+STORAGE_CLASS_RMGR_H enum ia_css_err ia_css_rmgr_init_vbuf(
     struct ia_css_rmgr_vbuf_pool *pool);
 
 /**

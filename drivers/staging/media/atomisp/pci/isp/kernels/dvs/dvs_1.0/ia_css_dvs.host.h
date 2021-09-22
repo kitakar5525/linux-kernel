@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -51,11 +50,11 @@ convert_allocate_dvs_6axis_config(
     const struct ia_css_binary *binary,
     const struct ia_css_frame_info *dvs_in_frame_info);
 
-int
+enum ia_css_err
 store_dvs_6axis_config(
     const struct ia_css_dvs_6axis_config *dvs_6axis_config,
     const struct ia_css_binary *binary,
     const struct ia_css_frame_info *dvs_in_frame_info,
-    ia_css_ptr ddr_addr_y);
+    hrt_vaddress ddr_addr_y);
 
 #endif /* __IA_CSS_DVS_HOST_H */

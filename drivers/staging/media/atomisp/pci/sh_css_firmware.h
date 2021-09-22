@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -16,7 +15,7 @@
 #ifndef _SH_CSS_FIRMWARE_H_
 #define _SH_CSS_FIRMWARE_H_
 
-#include <system_local.h>
+#include <system_types.h>
 
 #include <ia_css_err.h>
 #include <ia_css_acc_types.h>
@@ -38,19 +37,18 @@ extern unsigned int sh_css_num_binaries;
 char
 *sh_css_get_fw_version(void);
 
-struct device;
 bool
-sh_css_check_firmware_version(struct device *dev, const char *fw_data);
+sh_css_check_firmware_version(const char *fw_data);
 
-int
-sh_css_load_firmware(struct device *dev, const char *fw_data,
+enum ia_css_err
+sh_css_load_firmware(const char *fw_data,
 		     unsigned int fw_size);
 
 void sh_css_unload_firmware(void);
 
-ia_css_ptr sh_css_load_blob(const unsigned char *blob, unsigned int size);
+hrt_vaddress sh_css_load_blob(const unsigned char *blob, unsigned int size);
 
-int
+enum ia_css_err
 sh_css_load_blob_info(const char *fw, const struct ia_css_fw_info *bi,
 		      struct ia_css_blob_descr *bd, unsigned int i);
 

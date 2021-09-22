@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -19,7 +18,7 @@
 /*! \file */
 
 #include <type_support.h>
-#include <linux/stdarg.h>
+#include <stdarg.h>
 #include "ia_css_types.h"
 #include "ia_css_binary.h"
 #include "ia_css_frame_public.h"
@@ -45,9 +44,8 @@
 #define IA_CSS_DEBUG_PARAM   8
 /*! Level for tracing info messages */
 #define IA_CSS_DEBUG_INFO    9
-
 /* Global variable which controls the verbosity levels of the debug tracing */
-extern int dbg_level;
+extern unsigned int ia_css_debug_trace_level;
 
 /*! @brief Enum defining the different isp parameters to dump.
  *  Values can be combined to dump a combination of sets.
@@ -92,7 +90,7 @@ enum ia_css_debug_enable_param_dump {
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, \
 		"%s(): leave: " fmt "\n", __func__, ##__VA_ARGS__)
 
-/* Shorthand for returning an int return value */
+/* Shorthand for returning an enum ia_css_err return value */
 #define IA_CSS_LEAVE_ERR(__err) \
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, \
 		"%s() %d: leave: return_err=%d\n", __func__, __LINE__, __err)
@@ -113,7 +111,7 @@ enum ia_css_debug_enable_param_dump {
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE, \
 		"%s(): leave: " fmt "\n", __func__, ##__VA_ARGS__)
 
-/* Shorthand for returning an int return value */
+/* Shorthand for returning an enum ia_css_err return value */
 #define IA_CSS_LEAVE_ERR_PRIVATE(__err) \
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE, \
 		"%s() %d: leave: return_err=%d\n", __func__, __LINE__, __err)
@@ -129,16 +127,15 @@ enum ia_css_debug_enable_param_dump {
  * @param[in]	fmt		printf like format string
  * @param[in]	args		arguments for the format string
  */
-static inline void __printf(2, 0) ia_css_debug_vdtrace(unsigned int level,
-						       const char *fmt,
-						       va_list args)
+static inline void
+ia_css_debug_vdtrace(unsigned int level, const char *fmt, va_list args)
 {
-	if (dbg_level >= level)
+	if (ia_css_debug_trace_level >= level)
 		sh_css_vprint(fmt, args);
 }
 
-__printf(2, 3) void ia_css_debug_dtrace(unsigned int level,
-					const char *fmt, ...);
+__printf(2, 3)
+void ia_css_debug_dtrace(unsigned int level, const char *fmt, ...);
 
 /*! @brief Dump sp thread's stack contents
  * SP thread's stack contents are set to 0xcafecafe. This function dumps the
@@ -158,6 +155,12 @@ void ia_css_debug_set_dtrace_level(
  * @return	global dtrace verbosity level
  */
 unsigned int ia_css_debug_get_dtrace_level(void);
+
+/*! @brief Dump input formatter state.
+ * Dumps the input formatter state to tracing output.
+ * @return	None
+ */
+void ia_css_debug_dump_if_state(void);
 
 /*! @brief Dump isp hardware state.
  * Dumps the isp hardware state to tracing output.

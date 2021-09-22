@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
@@ -24,20 +23,22 @@
 #include <system_global.h>
 #include "ia_css_isys_comm.h"
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 /**
  * Virtual Input System. (Input System 2401)
  */
-typedef isp2401_input_system_cfg_t	ia_css_isys_descr_t;
+typedef input_system_cfg_t	ia_css_isys_descr_t;
 /* end of Virtual Input System */
 #endif
 
-input_system_err_t ia_css_isys_init(void);
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
+input_system_error_t ia_css_isys_init(void);
 void ia_css_isys_uninit(void);
 enum mipi_port_id ia_css_isys_port_to_mipi_port(
     enum mipi_port_id api_port);
+#endif
 
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 
 /**
  * @brief Register one (virtual) stream. This is used to track when all
@@ -47,10 +48,10 @@ enum mipi_port_id ia_css_isys_port_to_mipi_port(
  * @param[in]	port		CSI port
  * @param[in]	isys_stream_id	Stream handle generated with ia_css_isys_generate_stream_id()
  *				Must be lower than SH_CSS_MAX_ISYS_CHANNEL_NODES
- * @return			0 if successful, -EINVAL if
+ * @return			IA_CSS_SUCCESS if successful, IA_CSS_ERR_INTERNAL_ERROR if
  *				there is already a stream registered with the same handle
  */
-int ia_css_isys_csi_rx_register_stream(
+enum ia_css_err ia_css_isys_csi_rx_register_stream(
     enum mipi_port_id port,
     uint32_t isys_stream_id);
 
@@ -62,21 +63,21 @@ int ia_css_isys_csi_rx_register_stream(
  * @param[in]	port		CSI port
  * @param[in]	isys_stream_id	Stream handle generated with ia_css_isys_generate_stream_id()
  *				Must be lower than SH_CSS_MAX_ISYS_CHANNEL_NODES
- * @return			0 if successful, -EINVAL if
+ * @return			IA_CSS_SUCCESS if successful, IA_CSS_ERR_INTERNAL_ERROR if
  *				there is no stream registered with that handle
  */
-int ia_css_isys_csi_rx_unregister_stream(
+enum ia_css_err ia_css_isys_csi_rx_unregister_stream(
     enum mipi_port_id port,
     uint32_t isys_stream_id);
 
-int ia_css_isys_convert_compressed_format(
+enum ia_css_err ia_css_isys_convert_compressed_format(
     struct ia_css_csi2_compression *comp,
-    struct isp2401_input_system_cfg_s *cfg);
+    struct input_system_cfg_s *cfg);
 unsigned int ia_css_csi2_calculate_input_system_alignment(
     enum atomisp_input_format fmt_type);
 #endif
 
-#if !defined(ISP2401)
+#if !defined(USE_INPUT_SYSTEM_VERSION_2401)
 /* CSS Receiver */
 void ia_css_isys_rx_configure(
     const rx_cfg_t *config,
@@ -93,7 +94,7 @@ void ia_css_isys_rx_clear_irq_info(enum mipi_port_id port,
 				   unsigned int irq_infos);
 unsigned int ia_css_isys_rx_translate_irq_infos(unsigned int bits);
 
-#endif /* #if !defined(ISP2401) */
+#endif /* #if !defined(USE_INPUT_SYSTEM_VERSION_2401) */
 
 /* @brief Translate format and compression to format type.
  *
@@ -106,12 +107,12 @@ unsigned int ia_css_isys_rx_translate_irq_infos(unsigned int bits);
  * This is normally done by the sensor, but when using the input fifo, this
  * format type must be sumitted correctly by the application.
  */
-int ia_css_isys_convert_stream_format_to_mipi_format(
+enum ia_css_err ia_css_isys_convert_stream_format_to_mipi_format(
     enum atomisp_input_format input_format,
     mipi_predictor_t compression,
     unsigned int *fmt_type);
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 /**
  * Virtual Input System. (Input System 2401)
  */

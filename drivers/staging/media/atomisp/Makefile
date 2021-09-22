@@ -186,8 +186,6 @@ INCLUDES += \
 	-I$(atomisp)/pci/base/refcount/interface/ \
 	-I$(atomisp)/pci/camera/pipe/interface/ \
 	-I$(atomisp)/pci/camera/util/interface/ \
-	-I$(atomisp)/pci/hive_isp_css_common/ \
-	-I$(atomisp)/pci/hive_isp_css_common/host/ \
 	-I$(atomisp)/pci/hive_isp_css_include/ \
 	-I$(atomisp)/pci/hive_isp_css_include/device_access/ \
 	-I$(atomisp)/pci/hive_isp_css_include/host/ \
@@ -310,12 +308,16 @@ INCLUDES += \
 
 INCLUDES_byt += \
 	-I$(atomisp)/pci/css_2400_system/hive/ \
+	-I$(atomisp)/pci/hive_isp_css_common/ \
+	-I$(atomisp)/pci/hive_isp_css_common/host/ \
 
 INCLUDES_cht += \
 	-I$(atomisp)/pci/css_2401_system/ \
 	-I$(atomisp)/pci/css_2401_system/host/ \
 	-I$(atomisp)/pci/css_2401_system/hive/ \
 	-I$(atomisp)/pci/css_2401_system/hrt/ \
+	-I$(atomisp)/pci/hive_isp_css_common/ \
+	-I$(atomisp)/pci/hive_isp_css_common/host/ \
 
 #	-I$(atomisp)/pci/css_2401_system/hive_isp_css_2401_system_generated/ \
 

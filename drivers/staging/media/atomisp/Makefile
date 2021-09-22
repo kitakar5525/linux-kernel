@@ -185,8 +185,6 @@ INCLUDES += \
 	-I$(atomisp)/pci/base/refcount/interface/ \
 	-I$(atomisp)/pci/camera/pipe/interface/ \
 	-I$(atomisp)/pci/camera/util/interface/ \
-	-I$(atomisp)/pci/hive_isp_css_common/ \
-	-I$(atomisp)/pci/hive_isp_css_common/host/ \
 	-I$(atomisp)/pci/hive_isp_css_include/ \
 	-I$(atomisp)/pci/hive_isp_css_include/device_access/ \
 	-I$(atomisp)/pci/hive_isp_css_include/host/ \
@@ -310,7 +308,9 @@ INCLUDES += \
 	-I$(atomisp)/pci/css_2401_system/ \
 	-I$(atomisp)/pci/css_2401_system/host/ \
 	-I$(atomisp)/pci/css_2401_system/hive/ \
-	-I$(atomisp)/pci/css_2401_system/hrt/
+	-I$(atomisp)/pci/css_2401_system/hrt/ \
+	-I$(atomisp)/pci/hive_isp_css_common/ \
+	-I$(atomisp)/pci/hive_isp_css_common/host/
 
 DEFINES := -DHRT_HW -DHRT_ISP_CSS_CUSTOM_HOST -DHRT_USE_VIR_ADDRS -D__HOST__
 #DEFINES += -DUSE_DYNAMIC_BIN

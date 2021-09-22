@@ -8626,49 +8626,6 @@ bool ia_css_pipe_has_dvs_stats(struct ia_css_pipe_info *pipe_info) {
 	return false;
 }
 
-enum ia_css_err
-ia_css_pipe_override_frame_format(struct ia_css_pipe *pipe,
-				    int pin_index,
-				    enum ia_css_frame_format new_format) {
-	enum ia_css_err err = IA_CSS_SUCCESS;
-
-	IA_CSS_ENTER_PRIVATE("pipe = %p, pin_index = %d, new_formats = %d", pipe, pin_index, new_format);
-
-	if (!pipe)
-	{
-		IA_CSS_ERROR("pipe is not set");
-		err = IA_CSS_ERR_INVALID_ARGUMENTS;
-		IA_CSS_LEAVE_ERR_PRIVATE(err);
-		return err;
-	}
-	if (0 != pin_index && 1 != pin_index)
-	{
-		IA_CSS_ERROR("pin index is not valid");
-		err = IA_CSS_ERR_INVALID_ARGUMENTS;
-		IA_CSS_LEAVE_ERR_PRIVATE(err);
-		return err;
-	}
-	if (new_format != IA_CSS_FRAME_FORMAT_NV12_TILEY)
-	{
-		IA_CSS_ERROR("new format is not valid");
-		err = IA_CSS_ERR_INVALID_ARGUMENTS;
-		IA_CSS_LEAVE_ERR_PRIVATE(err);
-		return err;
-	} else
-	{
-		err = ia_css_pipe_check_format(pipe, new_format);
-		if (err == IA_CSS_SUCCESS) {
-			if (pin_index == 0) {
-				pipe->output_info[0].format = new_format;
-			} else {
-				pipe->vf_output_info[0].format = new_format;
-			}
-		}
-	}
-	IA_CSS_LEAVE_ERR_PRIVATE(err);
-	return err;
-}
-
 #if defined(USE_INPUT_SYSTEM_VERSION_2)
 /* Configuration of INPUT_SYSTEM_VERSION_2401 is done on SP */
 static enum ia_css_err

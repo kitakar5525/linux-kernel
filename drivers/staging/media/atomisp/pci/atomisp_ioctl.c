@@ -2290,12 +2290,6 @@ static int atomisp_queryctl(struct file *file, void *fh,
 	case V4L2_CID_FOCUS_STATUS:
 		return v4l2_queryctrl(isp->inputs[asd->input_curr].camera->
 				      ctrl_handler, qc);
-		/* ISP2401 */
-		if (isp->motor)
-			return v4l2_queryctrl(isp->motor->ctrl_handler, qc);
-		else
-			return v4l2_queryctrl(isp->inputs[asd->input_curr].
-					      camera->ctrl_handler, qc);
 	}
 
 	if (qc->id & V4L2_CTRL_FLAG_NEXT_CTRL)

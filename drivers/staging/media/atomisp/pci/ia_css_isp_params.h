@@ -124,6 +124,7 @@ struct ia_css_memory_offsets {
 
 		/* ISP2401 */
 		struct ia_css_isp_parameter xnr3;
+
 	} vmem;
 	struct {
 		struct ia_css_isp_parameter bh;

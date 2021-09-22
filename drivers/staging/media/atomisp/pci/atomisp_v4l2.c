@@ -1518,17 +1518,7 @@ static int init_atomisp_wdts(struct atomisp_device *isp)
 
 	for (i = 0; i < isp->num_of_streams; i++) {
 		struct atomisp_sub_device *asd = &isp->asd[i];
-		if (!atomisp_hw_is_isp2401)
-			timer_setup(&asd->wdt, atomisp_wdt, 0);
-		else {
-			timer_setup(&asd->video_out_capture.wdt,
-				    atomisp_wdt, 0);
-			timer_setup(&asd->video_out_preview.wdt,
-				    atomisp_wdt, 0);
-			timer_setup(&asd->video_out_vf.wdt, atomisp_wdt, 0);
-			timer_setup(&asd->video_out_video_capture.wdt,
-				    atomisp_wdt, 0);
-		}
+		timer_setup(&asd->wdt, atomisp_wdt, 0);
 	}
 	return 0;
 alloc_fail:
@@ -1623,10 +1613,7 @@ static int atomisp_pci_probe(struct pci_dev *dev,
 			 * FIXME: This should likely be uneeded. Either one
 			 * value is likely the correct one for this resolution
 			 */
-			if (!atomisp_hw_is_isp2401)
-				dfs_rules_merr_117a[1].isp_freq = ISP_FREQ_266MHZ;
-			else
-				dfs_rules_merr_117a[1].isp_freq = ISP_FREQ_400MHZ;
+			dfs_rules_merr_117a[1].isp_freq = ISP_FREQ_266MHZ;
 
 			isp->dfs = &dfs_config_merr_117a;
 

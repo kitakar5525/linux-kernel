@@ -564,7 +564,6 @@ struct sh_css_sp_pipeline {
 	} copy;
 
 /* ISP2401 */
-
 	/* Parameters passed to Shading Correction kernel. */
 	struct {
 		u32 internal_frame_origin_x_bqs_on_sctbl; /* Origin X (bqs) of internal frame on shading table */

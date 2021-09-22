@@ -39,9 +39,6 @@
 #include "ia_css_isp_param.h"
 #include "sh_css_params.h"
 #include "ia_css_bufq.h"
-#ifdef ISP2401
-#include "ia_css_queue.h"
-#endif
 
 #include "ia_css_isp_params.h"
 
@@ -112,17 +109,6 @@ unsigned int ia_css_debug_trace_level = IA_CSS_DEBUG_WARNING;
 
 #define ENABLE_LINE_MAX_LENGTH (25)
 
-#ifdef ISP2401
-#define DBG_EXT_CMD_TRACE_PNTS_DUMP BIT(8)
-#define DBG_EXT_CMD_PUB_CFG_DUMP BIT(9)
-#define DBG_EXT_CMD_GAC_REG_DUMP BIT(10)
-#define DBG_EXT_CMD_GAC_ACB_REG_DUMP BIT(11)
-#define DBG_EXT_CMD_FIFO_DUMP BIT(12)
-#define DBG_EXT_CMD_QUEUE_DUMP BIT(13)
-#define DBG_EXT_CMD_DMA_DUMP BIT(14)
-#define DBG_EXT_CMD_MASK 0xAB0000CD
-
-#endif
 /*
  * TODO:SH_CSS_MAX_SP_THREADS is not the max number of sp threads
  * future rework should fix this and remove the define MAX_THREAD_NUM
@@ -3100,10 +3086,6 @@ ia_css_debug_dump_pipe_config(
 	ia_css_debug_dump_resolution(&config->capt_pp_in_res,
 				     "capt_pp_in_res");
 	ia_css_debug_dump_resolution(&config->vf_pp_in_res, "vf_pp_in_res");
-#ifdef ISP2401
-	ia_css_debug_dump_resolution(&config->output_system_in_res,
-				     "output_system_in_res");
-#endif
 	ia_css_debug_dump_resolution(&config->dvs_crop_out_res,
 				     "dvs_crop_out_res");
 	for (i = 0; i < IA_CSS_PIPE_MAX_OUTPUT_STAGE; i++) {
@@ -3276,29 +3258,16 @@ ia_css_debug_dump_stream_config(
 	byte 2-3: data
 */
 #if TRACE_ENABLE_SP0 || TRACE_ENABLE_SP1 || TRACE_ENABLE_ISP
-#ifndef ISP2401
 static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
-#else
-static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
-#endif
 {
 #if defined(HAS_TRACER_V2)
 	u32 start_addr;
 	u32 start_addr_data;
 	u32 item_size;
-#ifndef ISP2401
 	u32 tmp;
-#else
-	u8 tid_val;
-	enum TRACE_DUMP_FORMAT dump_format;
-#endif
 	int i, j, max_trace_points, point_num, limit = -1;
 	/* using a static buffer here as the driver has issues allocating memory */
 	static u32 trace_read_buf[TRACE_BUFF_SIZE] = {0};
-#ifdef ISP2401
-	static struct trace_header_t header;
-	u8 *header_arr;
-#endif
 
 	/* read the header and parse it */
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "~~~ Tracer ");
@@ -3329,27 +3298,12 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 				    "\t\ttraces are not supported for this processor ID - exiting\n");
 		return;
 	}
-#ifndef ISP2401
 	tmp = ia_css_device_load_uint32(start_addr);
 	point_num = (tmp >> 16) & 0xFFFF;
-#endif
 
-#ifndef ISP2401
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, " ver %d %d points\n", tmp & 0xFF,
 			    point_num);
 	if ((tmp & 0xFF) != TRACER_VER) {
-#else
-	/* Loading byte-by-byte as using the master routine had issues */
-	header_arr = (uint8_t *)&header;
-	for (i = 0; i < (int)sizeof(struct trace_header_t); i++)
-		header_arr[i] = ia_css_device_load_uint8(start_addr + (i));
-
-	point_num = header.max_tracer_points;
-
-	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, " ver %d %d points\n", header.version,
-			    point_num);
-	if ((header.version & 0xFF) != TRACER_VER) {
-#endif
 		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "\t\tUnknown version - exiting\n");
 		return;
 	}
@@ -3364,21 +3318,6 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 		if ((limit == (-1)) && (trace_read_buf[i] == 0))
 			limit = i;
 	}
-#ifdef ISP2401
-	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "Status:\n");
-	for (i = 0; i < SH_CSS_MAX_SP_THREADS; i++)
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-				    "\tT%d: %3d (%02x)  %6d (%04x)  %10d (%08x)\n", i,
-				    header.thr_status_byte[i], header.thr_status_byte[i],
-				    header.thr_status_word[i], header.thr_status_word[i],
-				    header.thr_status_dword[i], header.thr_status_dword[i]);
-	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "Scratch:\n");
-	for (i = 0; i < MAX_SCRATCH_DATA; i++)
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "%10d (%08x)  ",
-				    header.scratch_debug[i], header.scratch_debug[i]);
-	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "\n");
-
-#endif
 	/* two 0s in the beginning: empty buffer */
 	if ((trace_read_buf[0] == 0) && (trace_read_buf[1] == 0)) {
 		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "\t\tEmpty tracer - exiting\n");
@@ -3398,114 +3337,48 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 	for (i = 0; i < point_num; i++) {
 		j = (limit + i) % point_num;
 		if (trace_read_buf[j]) {
-#ifndef ISP2401
 			TRACE_DUMP_FORMAT dump_format = FIELD_FORMAT_UNPACK(trace_read_buf[j]);
-#else
-
-			tid_val = FIELD_TID_UNPACK(trace_read_buf[j]);
-			dump_format = TRACE_DUMP_FORMAT_POINT;
-
-			/*
-			 * When tid value is 111b, the data will be interpreted differently:
-			 * tid val is ignored, major field contains 2 bits (msb) for format type
-			 */
-			if (tid_val == FIELD_TID_SEL_FORMAT_PAT) {
-				dump_format = FIELD_FORMAT_UNPACK(trace_read_buf[j]);
-			}
-#endif
 			switch (dump_format) {
 			case TRACE_DUMP_FORMAT_POINT:
 				ia_css_debug_dtrace(
-#ifndef ISP2401
 				    IA_CSS_DEBUG_TRACE,	"\t\t%d %d:%d value - %d\n",
 				    j, FIELD_MAJOR_UNPACK(trace_read_buf[j]),
-#else
-				    IA_CSS_DEBUG_TRACE,	"\t\t%d T%d %d:%d value - %x (%d)\n",
-				    j,
-				    tid_val,
-				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
-#endif
 				    FIELD_MINOR_UNPACK(trace_read_buf[j]),
-#ifdef ISP2401
-				    FIELD_VALUE_UNPACK(trace_read_buf[j]),
-#endif
 				    FIELD_VALUE_UNPACK(trace_read_buf[j]));
 				break;
-#ifndef ISP2401
 			case TRACE_DUMP_FORMAT_VALUE24_HEX:
-#else
-			case TRACE_DUMP_FORMAT_POINT_NO_TID:
-#endif
 				ia_css_debug_dtrace(
-#ifndef ISP2401
 				    IA_CSS_DEBUG_TRACE,	"\t\t%d, %d, 24bit value %x H\n",
-#else
-				    IA_CSS_DEBUG_TRACE,	"\t\t%d %d:%d value - %x (%d)\n",
-#endif
 				    j,
-#ifndef ISP2401
 				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
 				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
-#else
-				    FIELD_MAJOR_W_FMT_UNPACK(trace_read_buf[j]),
-				    FIELD_MINOR_UNPACK(trace_read_buf[j]),
-				    FIELD_VALUE_UNPACK(trace_read_buf[j]),
-				    FIELD_VALUE_UNPACK(trace_read_buf[j]));
-#endif
 				break;
-#ifndef ISP2401
 			case TRACE_DUMP_FORMAT_VALUE24_DEC:
-#else
-			case TRACE_DUMP_FORMAT_VALUE24:
-#endif
 				ia_css_debug_dtrace(
-#ifndef ISP2401
 				    IA_CSS_DEBUG_TRACE,	"\t\t%d, %d, 24bit value %d D\n",
-#else
-				    IA_CSS_DEBUG_TRACE,	"\t\t%d, %d, 24bit value %x (%d)\n",
-#endif
 				    j,
 				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
-#ifdef ISP2401
-				    FIELD_MAJOR_W_FMT_UNPACK(trace_read_buf[j]),
-				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]),
-#endif
 				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
 				break;
-#ifdef ISP2401
-
-#endif
 			case TRACE_DUMP_FORMAT_VALUE24_TIMING:
 				ia_css_debug_dtrace(
 				    IA_CSS_DEBUG_TRACE,	"\t\t%d, %d, timing %x\n",
 				    j,
-#ifndef ISP2401
 				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
-#else
-				    FIELD_MAJOR_W_FMT_UNPACK(trace_read_buf[j]),
-#endif
 				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
 				break;
 			case TRACE_DUMP_FORMAT_VALUE24_TIMING_DELTA:
 				ia_css_debug_dtrace(
 				    IA_CSS_DEBUG_TRACE,	"\t\t%d, %d, timing delta %x\n",
 				    j,
-#ifndef ISP2401
 				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
-#else
-				    FIELD_MAJOR_W_FMT_UNPACK(trace_read_buf[j]),
-#endif
 				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
 				break;
 			default:
 				ia_css_debug_dtrace(
 				    IA_CSS_DEBUG_TRACE,
 				    "no such trace dump format %d",
-#ifndef ISP2401
 				    FIELD_FORMAT_UNPACK(trace_read_buf[j]));
-#else
-				    dump_format);
-#endif
 				break;
 			}
 		}
@@ -3557,22 +3430,6 @@ void ia_css_debug_tagger_state(void)
 }
 #endif /* defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401) */
 
-#ifdef ISP2401
-void ia_css_debug_pc_dump(sp_ID_t id, unsigned int num_of_dumps)
-{
-	unsigned int pc;
-	unsigned int i;
-	hrt_data sc = sp_ctrl_load(id, SP_SC_REG);
-
-	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "SP%-1d Status reg: 0x%X\n", id, sc);
-	sc = sp_ctrl_load(id, SP_CTRL_SINK_REG);
-	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "SP%-1d Stall reg: 0x%X\n", id, sc);
-	for (i = 0; i < num_of_dumps; i++) {
-		pc = sp_ctrl_load(id, SP_PC_REG);
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "SP%-1d PC: 0x%X\n", id, pc);
-	}
-}
-#endif
 
 #if defined(HRT_SCHED) || defined(SH_CSS_DEBUG_SPMEM_DUMP_SUPPORT)
 #include "spmem_dump.c"

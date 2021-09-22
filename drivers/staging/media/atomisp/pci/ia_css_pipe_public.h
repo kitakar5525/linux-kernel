@@ -483,7 +483,7 @@ ia_css_pipe_get_qos_ext_state(struct ia_css_pipe *pipe,
 			      u32 fw_handle,
 			      bool *enable);
 
-/* ISP2401  */
+/* ISP2401 */
 /* @brief  Update mapped CSS and ISP arguments for QoS pipe during SP runtime.
  * @param[in] pipe	Pipe handle.
  * @param[in] fw_handle	Extension firmware Handle (ia_css_fw_info.handle).

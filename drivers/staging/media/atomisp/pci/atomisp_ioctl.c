@@ -1559,7 +1559,6 @@ int atomisp_stream_on_master_slave_sensor(struct atomisp_device *isp,
 	return 0;
 }
 
-/* FIXME! ISP2400 */
 static void __wdt_on_master_slave_sensor(struct atomisp_device *isp,
 					 unsigned int wdt_duration)
 {
@@ -1567,23 +1566,6 @@ static void __wdt_on_master_slave_sensor(struct atomisp_device *isp,
 		atomisp_wdt_refresh(&isp->asd[0], wdt_duration);
 	if (atomisp_buffers_queued(&isp->asd[1]))
 		atomisp_wdt_refresh(&isp->asd[1], wdt_duration);
-}
-
-/* FIXME! ISP2401 */
-static void __wdt_on_master_slave_sensor_pipe(struct atomisp_video_pipe *pipe,
-					      unsigned int wdt_duration,
-					      bool enable)
-{
-	static struct atomisp_video_pipe *pipe0;
-
-	if (enable) {
-		if (atomisp_buffers_queued_pipe(pipe0))
-			atomisp_wdt_refresh_pipe(pipe0, wdt_duration);
-		if (atomisp_buffers_queued_pipe(pipe))
-			atomisp_wdt_refresh_pipe(pipe, wdt_duration);
-	} else {
-		pipe0 = pipe;
-	}
 }
 
 static void atomisp_pause_buffer_event(struct atomisp_device *isp)

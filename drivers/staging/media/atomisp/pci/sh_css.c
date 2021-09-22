@@ -205,6 +205,7 @@ sh_css_pipe_start(struct ia_css_stream *stream);
 static int
 sh_css_pipes_stop(struct ia_css_stream *stream);
 
+/* ISP2401 */
 /*
  * @brief Check if all "ia_css_pipe" instances in the target
  * "ia_css_stream" instance have stopped.
@@ -216,7 +217,6 @@ sh_css_pipes_stop(struct ia_css_stream *stream);
  *   instance have ben stopped.
  * - false, otherwise.
  */
-/* ISP2401 */
 static bool
 sh_css_pipes_have_stopped(struct ia_css_stream *stream);
 
@@ -4989,13 +4989,13 @@ ia_css_stream_get_buffer_depth(struct ia_css_stream *stream,
 	return 0;
 }
 
+/* ISP2401 */
 /*
  * @brief Stop all "ia_css_pipe" instances in the target
  * "ia_css_stream" instance.
  *
  * Refer to "Local prototypes" for more info.
  */
-/* ISP2401 */
 static int
 sh_css_pipes_stop(struct ia_css_stream *stream)
 {
@@ -5093,13 +5093,13 @@ ERR:
 	return err;
 }
 
+/* ISP2401 */
 /*
  * @brief Check if all "ia_css_pipe" instances in the target
  * "ia_css_stream" instance have stopped.
  *
  * Refer to "Local prototypes" for more info.
  */
-/* ISP2401 */
 static bool
 sh_css_pipes_have_stopped(struct ia_css_stream *stream)
 {

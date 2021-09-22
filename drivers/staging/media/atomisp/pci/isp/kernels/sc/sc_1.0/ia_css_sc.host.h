@@ -32,6 +32,7 @@ ia_css_sc_dump(
     const struct sh_css_isp_sc_params *sc,
     unsigned int level);
 
+/* ISP2401 */
 /* @brief Configure the shading correction.
  * @param[out]	to	Parameters used in the shading correction kernel in the isp.
  * @param[in]	from	Parameters passed from the host.
@@ -39,13 +40,13 @@ ia_css_sc_dump(
  *
  * This function passes the parameters for the shading correction from the host to the isp.
  */
-/* ISP2401 */
 void
 ia_css_sc_config(
     struct sh_css_isp_sc_isp_config *to,
     const struct ia_css_sc_configuration *from,
     unsigned int size);
 
+/* ISP2401 */
 /* @brief Configure the shading correction.
  * @param[in]	binary	The binary, which has the shading correction.
  * @param[in]	internal_frame_origin_x_bqs_on_sctbl
@@ -58,7 +59,6 @@ ia_css_sc_config(
  * The ia_css_configure_sc() function calls the ia_css_sc_config() function
  * to pass the parameters for the shading correction from the host to the isp.
  */
-/* ISP2401 */
 void
 ia_css_sc_configure(
     const struct ia_css_binary *binary,

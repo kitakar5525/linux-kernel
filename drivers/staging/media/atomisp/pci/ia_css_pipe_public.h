@@ -498,9 +498,9 @@ ia_css_pipe_get_qos_ext_state(struct ia_css_pipe *pipe,
  * -EBUSY	: Inactive QOS Pipe
  *					(No active stream with this pipe)
  *
- * \deprecated{This interface is used to temporarily support a late-developed,
+ * \deprecated[This interface is used to temporarily support a late-developed,
  * specific use-case on a specific IPU2 platform. It will not be supported or
- * maintained on IPU3 or further.}
+ * maintained on IPU3 or further.]
  */
 int
 ia_css_pipe_update_qos_ext_mapped_arg(struct ia_css_pipe *pipe,

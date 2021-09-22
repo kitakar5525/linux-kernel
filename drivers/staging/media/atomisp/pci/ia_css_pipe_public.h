@@ -163,6 +163,18 @@ struct ia_css_pipe_info {
 	     pixels normally used to initialize the ISP filters.
 	     This is why the raw output resolution should normally be set to
 	     the input resolution - 8x8. */
+	struct ia_css_shading_info shading_info;
+	/** After an image pipe is created, this field will contain the info
+	     for the shading correction. */
+	struct ia_css_grid_info  grid_info;
+	/** After an image pipe is created, this field will contain the grid
+	     info for 3A and DVS. */
+	int num_invalid_frames;
+	/** The very first frames in a started stream do not contain valid data.
+	     In this field, the CSS-firmware communicates to the host-driver how
+	     many initial frames will contain invalid data; this allows the
+	     host-driver to discard those initial invalid frames and start it's
+	     output at the first valid frame. */
 };
 
 /**

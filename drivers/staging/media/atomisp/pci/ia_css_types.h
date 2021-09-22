@@ -285,6 +285,7 @@ struct ia_css_shading_info {
 			u32 enable;	/** Shading correction enabled.
 						     0:disabled, 1:enabled */
 
+			u32 bayer_scale_hor_ratio_in;
 			u32 bayer_scale_hor_ratio_out;
 
 			/** Horizontal ratio of bayer scaling between input width and output width,

@@ -168,7 +168,6 @@ obj-byt = \
 #
 
 obj-cht = \
-	pci/css_2401_system/spmem_dump.o \
 	pci/css_2401_csi2p_system/spmem_dump.o \
 	pci/css_2401_csi2p_system/hive_isp_css_2401_system_csi2p_generated/ia_css_isp_configs.o \
 	pci/css_2401_csi2p_system/hive_isp_css_2401_system_csi2p_generated/ia_css_isp_params.o \
@@ -179,6 +178,7 @@ obj-cht = \
 	pci/css_2401_csi2p_system/host/isys_irq.o \
 	pci/css_2401_csi2p_system/host/isys_stream2mmio.o
 
+#	pci/css_2401_system/spmem_dump.o \
 #	pci/css_2401_system/hive_isp_css_2401_system_generated/ia_css_isp_configs.o \
 #	pci/css_2401_system/hive_isp_css_2401_system_generated/ia_css_isp_params.o \
 #	pci/css_2401_system/hive_isp_css_2401_system_generated/ia_css_isp_states.o \

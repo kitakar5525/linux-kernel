@@ -4247,7 +4247,7 @@ int atomisp_css_isr_thread(struct atomisp_device *isp,
 		}
 	}
 
-	/* ISP2400: If there are no buffers queued then delete wdt timer. */
+	/* If there are no buffers queued then delete wdt timer. */
 	for (i = 0; i < isp->num_of_streams; i++) {
 		asd = &isp->asd[i];
 		if (!asd)

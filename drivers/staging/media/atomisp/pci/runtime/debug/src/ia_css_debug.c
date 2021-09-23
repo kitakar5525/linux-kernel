@@ -3370,6 +3370,7 @@ static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
 				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
 				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
 				break;
+
 			/* ISP2401 */
 			case TRACE_DUMP_FORMAT_POINT_NO_TID:
 				ia_css_debug_dtrace(
@@ -3380,6 +3381,7 @@ static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
 				    FIELD_VALUE_UNPACK(trace_read_buf[j]),
 				    FIELD_VALUE_UNPACK(trace_read_buf[j]));
 				break;
+
 			/* ISP2401 */
 			case TRACE_DUMP_FORMAT_VALUE24:
 				ia_css_debug_dtrace(
@@ -3390,6 +3392,7 @@ static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
 				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]),
 				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
 				break;
+
 			case TRACE_DUMP_FORMAT_VALUE24_TIMING:
 				ia_css_debug_dtrace(
 				    IA_CSS_DEBUG_TRACE,	"\t\t%d, %d, timing %x\n",

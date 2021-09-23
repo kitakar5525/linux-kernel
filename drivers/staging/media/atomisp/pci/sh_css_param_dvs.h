@@ -59,7 +59,6 @@
 	* DVS_NUM_BLOCKS_Y((binary)->out_frame_info[0].res.height))
 
 /*
- * ISP2400:
  * Bilinear interpolation (HRT_GDC_BLI_MODE) is the supported method currently.
  * Bicubic interpolation (HRT_GDC_BCI_MODE) is not supported yet */
 #define DVS_GDC_INTERP_METHOD HRT_GDC_BLI_MODE

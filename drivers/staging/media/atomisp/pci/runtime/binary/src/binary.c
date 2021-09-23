@@ -116,13 +116,6 @@ struct sh_css_shading_table_bayer_origin_compute_results {
 	u32 sc_bayer_origin_y_bqs_on_shading_table; /* Y coordinate (in bqs) of bayer origin on shading table. */
 };
 
-	/* ISP internal frame is composed of the real sensor data and the padding data. */
-	u32 sensor_data_origin_x_bqs_on_internal; /* X origin (in bqs) of sensor data on internal frame
-								at shading correction. */
-	u32 sensor_data_origin_y_bqs_on_internal; /* Y origin (in bqs) of sensor data on internal frame
-								at shading correction. */
-};
-
 /* Get the requirements for the shading correction. */
 static int
 ia_css_binary_compute_shading_table_bayer_origin(

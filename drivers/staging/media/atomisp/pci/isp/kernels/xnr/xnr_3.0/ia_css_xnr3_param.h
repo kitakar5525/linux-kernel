@@ -68,17 +68,4 @@ struct sh_css_isp_xnr3_params {
 	struct sh_css_xnr3_blending_params blending;
 };
 
-/* ISP2401 */
-/*
- * STRUCT sh_css_isp_xnr3_vmem_params
- * -----------------------------------------------
- * ISP VMEM parameters
- */
-struct sh_css_isp_xnr3_vmem_params {
-	VMEM_ARRAY(x, ISP_VEC_NELEMS);
-	VMEM_ARRAY(a, ISP_VEC_NELEMS);
-	VMEM_ARRAY(b, ISP_VEC_NELEMS);
-	VMEM_ARRAY(c, ISP_VEC_NELEMS);
-};
-
 #endif  /*__IA_CSS_XNR3_PARAM_H */

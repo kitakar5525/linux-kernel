@@ -79,12 +79,6 @@ struct ia_css_pipe_config {
 	/** capture post processing input resolution */
 	struct ia_css_resolution vf_pp_in_res;
 
-	/** ISP2401: view finder post processing input resolution */
-	struct ia_css_resolution output_system_in_res;
-	/** For IPU3 only: use output_system_in_res to specify what input resolution
-	     will OSYS receive, this resolution is equal to the output resolution of GDC
-	     if not determined CSS will set output_system_in_res with main osys output pin resolution
-	     All other IPUs may ignore this property */
 	struct ia_css_resolution dvs_crop_out_res;
 	/** dvs crop, video only, not in use yet. Use dvs_envelope below. */
 	struct ia_css_frame_info output_info[IA_CSS_PIPE_MAX_OUTPUT_STAGE];

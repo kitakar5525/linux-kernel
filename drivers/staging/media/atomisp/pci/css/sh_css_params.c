@@ -115,7 +115,7 @@
 	 (binary)->sctbl_aligned_width_per_color * IA_CSS_SC_NUM_COLORS)
 
 #define ISP2401_SCTBL_BYTES(binary) \
-	(sizeof(unsigned short) * max((binary)->sctbl_height, (binary)->sctbl_legacy_height) * \
+	(sizeof(unsigned short) * max((binary)->sctbl_height, (binary)->sctbl_height) * \
 			/* height should be the larger height between new api and legacy api */ \
 	 (binary)->sctbl_aligned_width_per_color * IA_CSS_SC_NUM_COLORS)
 

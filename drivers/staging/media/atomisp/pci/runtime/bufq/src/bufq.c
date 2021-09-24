@@ -33,6 +33,7 @@ static char prefix[BUFQ_DUMP_FILE_NAME_PREFIX_SIZE] = {0};
 /* Global Queue objects used by CSS                      */
 /*********************************************************/
 
+
 struct sh_css_queues {
 	/* Host2SP buffer queue */
 	ia_css_queue_t host2sp_buffer_queue_handles
@@ -57,6 +58,7 @@ struct sh_css_queues {
 	/* Tagger command queue */
 	ia_css_queue_t host2sp_tag_cmd_queue_handle;
 };
+
 
 /*******************************************************
 *** Static variables

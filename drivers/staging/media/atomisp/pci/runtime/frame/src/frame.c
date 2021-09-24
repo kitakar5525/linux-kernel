@@ -130,20 +130,14 @@ enum ia_css_err ia_css_frame_allocate(struct ia_css_frame **frame,
 		return IA_CSS_ERR_INVALID_ARGUMENTS;
 
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-			    "ia_css_frame_allocate() enter: width=%d, height=%d, format=%d, padded_width=%d, raw_bit_depth=%d\n",
-			    width, height, format, padded_width, raw_bit_depth);
+			    "ia_css_frame_allocate() enter: width=%d, height=%d, format=%d\n",
+			    width, height, format);
 
 	err = frame_allocate_with_data(frame, width, height, format,
 				       padded_width, raw_bit_depth, false);
 
-	if ((*frame) && err == IA_CSS_SUCCESS)
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-				    "ia_css_frame_allocate() leave: frame=%p, data(DDR address)=0x%x\n", *frame,
-				    (*frame)->data);
-	else
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-				    "ia_css_frame_allocate() leave: frame=%p, data(DDR address)=0x%x\n",
-				    (void *)-1, (unsigned int)-1);
+	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
+			    "ia_css_frame_allocate() leave: frame=%p\n", *frame);
 
 	return err;
 }
@@ -176,7 +170,7 @@ enum ia_css_err ia_css_frame_map(struct ia_css_frame **frame,
 
 	if (err != IA_CSS_SUCCESS) {
 		sh_css_free(me);
-		me = NULL;
+		return err;
 	}
 
 	*frame = me;
@@ -213,12 +207,10 @@ enum ia_css_err ia_css_frame_create_from_info(struct ia_css_frame **frame,
 
 	err = ia_css_frame_init_planes(me);
 
-	if (err != IA_CSS_SUCCESS) {
+	if (err == IA_CSS_SUCCESS)
+		*frame = me;
+	else
 		sh_css_free(me);
-		me = NULL;
-	}
-
-	*frame = me;
 
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
 			    "ia_css_frame_create_from_info() leave:\n");
@@ -268,8 +260,8 @@ enum ia_css_err ia_css_frame_allocate_contiguous(struct ia_css_frame **frame,
 
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
 			    "ia_css_frame_allocate_contiguous() "
-			    "enter: width=%d, height=%d, format=%d, padded_width=%d, raw_bit_depth=%d\n",
-			    width, height, format, padded_width, raw_bit_depth);
+			    "enter: width=%d, height=%d, format=%d\n",
+			    width, height, format);
 
 	err = frame_allocate_with_data(frame, width, height, format,
 				       padded_width, raw_bit_depth, true);
@@ -538,7 +530,7 @@ enum ia_css_err ia_css_frame_allocate_with_buffer_size(
 
 	if (err != IA_CSS_SUCCESS) {
 		sh_css_free(me);
-		me = NULL;
+		return err;
 	}
 
 	*frame = me;

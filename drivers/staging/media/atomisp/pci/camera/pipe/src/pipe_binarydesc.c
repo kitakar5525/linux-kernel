@@ -599,10 +599,9 @@ void ia_css_pipe_get_primary_binarydesc(
 		 * since it has better performance. */
 		if (pipe_version == IA_CSS_PIPE_VERSION_2_6_1)
 			prim_descr->striped = false;
-		else {
+		else
 			prim_descr->striped = prim_descr->continuous &&
 					      (!pipe->stream->stop_copy_preview || !pipe->stream->disable_cont_vf);
-		}
 	}
 	IA_CSS_LEAVE_PRIVATE("");
 }
@@ -835,7 +834,6 @@ void ia_css_pipe_get_ldc_binarydesc(
 	IA_CSS_ENTER_PRIVATE("");
 
 	*in_info = *out_info;
-
 	in_info->format = IA_CSS_FRAME_FORMAT_YUV420;
 	in_info->raw_bit_depth = 0;
 	ia_css_frame_info_set_width(in_info, in_info->res.width, 0);

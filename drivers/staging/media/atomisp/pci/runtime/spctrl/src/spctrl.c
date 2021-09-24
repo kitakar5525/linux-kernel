@@ -1,6 +1,6 @@
 /*
  * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2010 - 2015, Intel Corporation.
+ * Copyright (c) 2015, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -98,6 +98,7 @@ enum ia_css_err ia_css_spctrl_load_fw(sp_ID_t sp_id,
 	spctrl_loaded[sp_id] = true;
 	return IA_CSS_SUCCESS;
 }
+
 
 hrt_vaddress get_sp_code_addr(sp_ID_t  sp_id)
 {

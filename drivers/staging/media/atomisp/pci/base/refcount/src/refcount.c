@@ -196,7 +196,6 @@ bool ia_css_refcount_decrement(s32 id, hrt_vaddress ptr)
 			     id, ptr, entry, entry->id, entry->count);
 	else
 		IA_CSS_ERROR("entry NULL\n");
-	assert(false);
 
 	return false;
 }
@@ -248,9 +247,6 @@ void ia_css_refcount_clear(s32 id, clear_func clear_func_ptr)
 			if (entry->count != 0) {
 				IA_CSS_WARNING("Ref count for entry %x is not zero!", entry->id);
 			}
-
-			assert(entry->count == 0);
-
 			entry->data = mmgr_NULL;
 			entry->count = 0;
 			entry->id = 0;

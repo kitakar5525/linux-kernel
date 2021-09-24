@@ -14,6 +14,8 @@
 
 #include "system_global.h"
 
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
+
 #include "assert_support.h"
 #include "platform_support.h"
 #include "ia_css_isys.h"
@@ -119,3 +121,4 @@ void ia_css_isys_ibuf_rmgr_release(
 		}
 	}
 }
+#endif

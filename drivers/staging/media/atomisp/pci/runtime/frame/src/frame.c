@@ -784,9 +784,6 @@ static void frame_init_qplane6_planes(struct ia_css_frame *frame)
 
 static enum ia_css_err frame_allocate_buffer_data(struct ia_css_frame *frame)
 {
-#ifdef ISP2401
-	IA_CSS_ENTER_LEAVE_PRIVATE("frame->data_bytes=%d\n", frame->data_bytes);
-#endif
 	frame->data = mmgr_alloc_attr(frame->data_bytes,
 				      frame->contiguous ?
 				      MMGR_ATTRIBUTE_CONTIGUOUS :
@@ -824,11 +821,7 @@ static enum ia_css_err frame_allocate_with_data(struct ia_css_frame **frame,
 
 	if (err != IA_CSS_SUCCESS) {
 		sh_css_free(me);
-#ifndef ISP2401
 		return err;
-#else
-		me = NULL;
-#endif
 	}
 
 	*frame = me;

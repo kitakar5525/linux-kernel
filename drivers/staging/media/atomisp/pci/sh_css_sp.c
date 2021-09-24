@@ -830,10 +830,6 @@ configure_isp_from_args(
 	ia_css_output1_configure(binary, &args->out_vf_frame->info);
 	ia_css_copy_output_configure(binary, args->copy_output);
 	ia_css_output0_configure(binary, &args->out_frame[0]->info);
-#ifdef ISP2401
-	ia_css_sc_configure(binary, pipeline->shading.internal_frame_origin_x_bqs_on_sctbl,
-			    pipeline->shading.internal_frame_origin_y_bqs_on_sctbl);
-#endif
 	ia_css_iterator_configure(binary, &args->in_frame->info);
 	ia_css_dvs_configure(binary, &args->out_frame[0]->info);
 	ia_css_output_configure(binary, &args->out_frame[0]->info);
@@ -1015,7 +1011,6 @@ sh_css_sp_init_stage(struct ia_css_binary *binary,
 		return err;
 
 #ifdef USE_INPUT_SYSTEM_VERSION_2401
-#ifndef ISP2401
 	if (args->in_frame)
 	{
 		pipe = find_pipe_by_num(sh_css_sp_group.pipe[thread_id].pipe_num);
@@ -1028,21 +1023,6 @@ sh_css_sp_init_stage(struct ia_css_binary *binary,
 		if (!pipe)
 			return IA_CSS_ERR_INTERNAL_ERROR;
 		ia_css_get_crop_offsets(pipe, &binary->in_frame_info);
-#else
-	if (stage == 0)
-	{
-		if (args->in_frame) {
-			pipe = find_pipe_by_num(sh_css_sp_group.pipe[thread_id].pipe_num);
-			if (!pipe)
-				return IA_CSS_ERR_INTERNAL_ERROR;
-			ia_css_get_crop_offsets(pipe, &args->in_frame->info);
-		} else if (&binary->in_frame_info) {
-			pipe = find_pipe_by_num(sh_css_sp_group.pipe[thread_id].pipe_num);
-			if (!pipe)
-				return IA_CSS_ERR_INTERNAL_ERROR;
-			ia_css_get_crop_offsets(pipe, &binary->in_frame_info);
-		}
-#endif
 	}
 #else
 	(void)pipe; /*avoid build warning*/

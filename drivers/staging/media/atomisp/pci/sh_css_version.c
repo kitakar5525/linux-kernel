@@ -22,10 +22,7 @@ enum ia_css_err
 ia_css_get_version(char *version, int max_size) {
 	char *css_version;
 
-	if (!atomisp_hw_is_isp2401)
-		css_version = ISP2400_CSS_VERSION_STRING;
-	else
-		css_version = ISP2401_CSS_VERSION_STRING;
+	css_version = ISP2400_CSS_VERSION_STRING;
 
 	if (max_size <= (int)strlen(css_version) + (int)strlen(sh_css_get_fw_version()) + 5)
 		return IA_CSS_ERR_INVALID_ARGUMENTS;

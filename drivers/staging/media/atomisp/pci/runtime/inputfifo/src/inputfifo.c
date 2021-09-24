@@ -1,6 +1,6 @@
 /*
  * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -178,38 +178,6 @@ static void inputfifo_send_eof(void)
 	_sh_css_fifo_snd(token);
 	return;
 }
-
-#ifdef __ON__
-static void inputfifo_send_ch_id(
-    /* static inline void inputfifo_send_ch_id( */
-    unsigned int ch_id)
-{
-	hrt_data	token;
-
-	inputfifo_curr_ch_id = ch_id & _HIVE_ISP_CH_ID_MASK;
-	/* we send an zero marker, this will wrap the ch_id and
-	 * fmt_type automatically.
-	 */
-	token = inputfifo_wrap_marker(0);
-	_sh_css_fifo_snd(token);
-	return;
-}
-
-static void inputfifo_send_fmt_type(
-    /* static inline void inputfifo_send_fmt_type( */
-    unsigned int fmt_type)
-{
-	hrt_data	token;
-
-	inputfifo_curr_fmt_type = fmt_type & _HIVE_ISP_FMT_TYPE_MASK;
-	/* we send an zero marker, this will wrap the ch_id and
-	 * fmt_type automatically.
-	 */
-	token = inputfifo_wrap_marker(0);
-	_sh_css_fifo_snd(token);
-	return;
-}
-#endif /*  __ON__ */
 
 static void inputfifo_send_ch_id_and_fmt_type(
     /* static inline

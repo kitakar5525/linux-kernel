@@ -17,6 +17,9 @@
 #include "ia_css_debug.h"
 #include "assert_support.h"
 
+#define IA_CSS_INCLUDE_CONFIGURATIONS
+#include "ia_css_isp_configs.h"
+
 #include "ia_css_sc.host.h"
 
 void

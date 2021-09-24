@@ -39,7 +39,6 @@
 #include "ia_css_isp_param.h"
 #include "sh_css_params.h"
 #include "ia_css_bufq.h"
-
 #include "ia_css_isp_params.h"
 
 #include "system_local.h"
@@ -3086,6 +3085,7 @@ ia_css_debug_dump_pipe_config(
 	ia_css_debug_dump_resolution(&config->capt_pp_in_res,
 				     "capt_pp_in_res");
 	ia_css_debug_dump_resolution(&config->vf_pp_in_res, "vf_pp_in_res");
+
 	ia_css_debug_dump_resolution(&config->dvs_crop_out_res,
 				     "dvs_crop_out_res");
 	for (i = 0; i < IA_CSS_PIPE_MAX_OUTPUT_STAGE; i++) {
@@ -3268,6 +3268,8 @@ static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
 	int i, j, max_trace_points, point_num, limit = -1;
 	/* using a static buffer here as the driver has issues allocating memory */
 	static u32 trace_read_buf[TRACE_BUFF_SIZE] = {0};
+	static struct trace_header_t header;
+	u8 *header_arr;
 
 	/* read the header and parse it */
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "~~~ Tracer ");
@@ -3298,11 +3300,14 @@ static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
 				    "\t\ttraces are not supported for this processor ID - exiting\n");
 		return;
 	}
-	tmp = ia_css_device_load_uint32(start_addr);
-	point_num = (tmp >> 16) & 0xFFFF;
 
-	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, " ver %d %d points\n", tmp & 0xFF,
-			    point_num);
+	{
+		tmp = ia_css_device_load_uint32(start_addr);
+		point_num = (tmp >> 16) & 0xFFFF;
+
+		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, " ver %d %d points\n", tmp & 0xFF,
+				    point_num);
+	}
 	if ((tmp & 0xFF) != TRACER_VER) {
 		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "\t\tUnknown version - exiting\n");
 		return;
@@ -3337,7 +3342,9 @@ static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
 	for (i = 0; i < point_num; i++) {
 		j = (limit + i) % point_num;
 		if (trace_read_buf[j]) {
-			TRACE_DUMP_FORMAT dump_format = FIELD_FORMAT_UNPACK(trace_read_buf[j]);
+			{
+				TRACE_DUMP_FORMAT dump_format = FIELD_FORMAT_UNPACK(trace_read_buf[j]);
+			}
 			switch (dump_format) {
 			case TRACE_DUMP_FORMAT_POINT:
 				ia_css_debug_dtrace(
@@ -3360,6 +3367,7 @@ static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
 				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
 				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
 				break;
+
 			case TRACE_DUMP_FORMAT_VALUE24_TIMING:
 				ia_css_debug_dtrace(
 				    IA_CSS_DEBUG_TRACE,	"\t\t%d, %d, timing %x\n",
@@ -3378,7 +3386,7 @@ static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
 				ia_css_debug_dtrace(
 				    IA_CSS_DEBUG_TRACE,
 				    "no such trace dump format %d",
-				    FIELD_FORMAT_UNPACK(trace_read_buf[j]));
+				    dump_format);
 				break;
 			}
 		}
@@ -3429,7 +3437,6 @@ void ia_css_debug_tagger_state(void)
 	}
 }
 #endif /* defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401) */
-
 
 #if defined(HRT_SCHED) || defined(SH_CSS_DEBUG_SPMEM_DUMP_SUPPORT)
 #include "spmem_dump.c"

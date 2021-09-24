@@ -1,6 +1,6 @@
 /*
  * Support for Intel Camera Imaging ISP subsystem.
- * Copyright (c) 2015, Intel Corporation.
+ * Copyright (c) 2010 - 2015, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -475,10 +475,6 @@ static void ifmtr_set_if_blocking_mode(
 	bool block[] = { false, false, false, false };
 
 	assert(N_INPUT_FORMATTER_ID <= (ARRAY_SIZE(block)));
-
-#if !defined(IS_ISP_2400_SYSTEM)
-#error "ifmtr_set_if_blocking_mode: ISP_SYSTEM must be one of {IS_ISP_2400_SYSTEM}"
-#endif
 
 	block[INPUT_FORMATTER0_ID] = (bool)config_a->block_no_reqs;
 	if (config_b)

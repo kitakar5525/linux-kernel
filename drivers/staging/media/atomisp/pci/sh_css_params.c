@@ -111,11 +111,14 @@
 	(sizeof(char) * (binary)->in_frame_info.res.height * \
 	 (binary)->in_frame_info.padded_width)
 
-
-#define SCTBL_BYTES(binary) \
+#define ISP2400_SCTBL_BYTES(binary) \
 	(sizeof(unsigned short) * (binary)->sctbl_height * \
 	 (binary)->sctbl_aligned_width_per_color * IA_CSS_SC_NUM_COLORS)
 
+#define ISP2401_SCTBL_BYTES(binary) \
+	(sizeof(unsigned short) * max((binary)->sctbl_height, (binary)->sctbl_height) * \
+			/* height should be the larger height between new api and legacy api */ \
+	 (binary)->sctbl_aligned_width_per_color * IA_CSS_SC_NUM_COLORS)
 
 #define MORPH_PLANE_BYTES(binary) \
 	(SH_CSS_MORPH_TABLE_ELEM_BYTES * (binary)->morph_tbl_aligned_width * \
@@ -2159,7 +2162,6 @@ ia_css_set_param_exceptions(const struct ia_css_pipe *pipe,
 	params->dp_config.gb = params->wb_config.gb;
 }
 
-
 static void
 sh_css_get_dp_config(const struct ia_css_pipe *pipe,
 		     const struct ia_css_isp_parameters *params,
@@ -2606,6 +2608,7 @@ sh_css_init_isp_params_from_config(struct ia_css_pipe *pipe,
 	}
 
 	ia_css_set_param_exceptions(pipe, params);
+
 exit:
 	IA_CSS_LEAVE_ERR_PRIVATE(err);
 	return err;
@@ -3114,13 +3117,16 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 				 * BDS is enabled by the user. But we do not return
 				 * the value immediately to enable internal firmware
 				 * feature testing. */
-				retval = !is_dp_10bpp;
+
+				if (is_dp_10bpp) {
+					retval = false;
+					/* FIXME: should it ignore this error? */
+				}
 			} else {
 				retval = false;
 				goto exit;
 			}
 		}
-
 		ia_css_set_param_exceptions(pipe_in, params);
 
 		params->fpn_config.data = stream_params->fpn_config.data;
@@ -3242,7 +3248,8 @@ enum ia_css_err ia_css_pipe_set_bci_scaler_lut(struct ia_css_pipe *pipe,
 	const void *lut)
 {
 	enum ia_css_err err = IA_CSS_SUCCESS;
-	bool store = true;
+	bool stream_started = false;
+
 	IA_CSS_ENTER("pipe=%p lut=%p", pipe, lut);
 
 	if (!lut || !pipe) {
@@ -3258,7 +3265,7 @@ enum ia_css_err ia_css_pipe_set_bci_scaler_lut(struct ia_css_pipe *pipe,
 	if (pipe->stream && pipe->stream->started) {
 		ia_css_debug_dtrace(IA_CSS_DEBUG_ERROR,
 				    "unable to set scaler lut since stream has started\n");
-		store = false;
+		stream_started = true;
 		err = IA_CSS_ERR_NOT_SUPPORTED;
 	}
 
@@ -3266,17 +3273,19 @@ enum ia_css_err ia_css_pipe_set_bci_scaler_lut(struct ia_css_pipe *pipe,
 	sh_css_params_free_gdc_lut(pipe->scaler_pp_lut);
 	pipe->scaler_pp_lut = mmgr_NULL;
 
-	if (store) {
+	if (!stream_started) {
 		pipe->scaler_pp_lut = mmgr_malloc(sizeof(zoom_table));
 		if (pipe->scaler_pp_lut == mmgr_NULL) {
-			IA_CSS_LEAVE("lut(%u) err=%d", pipe->scaler_pp_lut, err);
-			return IA_CSS_ERR_CANNOT_ALLOCATE_MEMORY;
+			ia_css_debug_dtrace(IA_CSS_DEBUG_ERROR,
+					    "unable to allocate scaler_pp_lut\n");
+			err = IA_CSS_ERR_CANNOT_ALLOCATE_MEMORY;
+		} else {
+			gdc_lut_convert_to_isp_format((const int(*)[HRT_GDC_N])lut,
+						      interleaved_lut_temp);
+			mmgr_store(pipe->scaler_pp_lut,
+				   (int *)interleaved_lut_temp,
+				   sizeof(zoom_table));
 		}
-
-		gdc_lut_convert_to_isp_format((const int(*)[HRT_GDC_N])lut,
-					      interleaved_lut_temp);
-		mmgr_store(pipe->scaler_pp_lut, (int *)interleaved_lut_temp,
-			   sizeof(zoom_table));
 	}
 
 	IA_CSS_LEAVE("lut(%u) err=%d", pipe->scaler_pp_lut, err);
@@ -3912,12 +3921,16 @@ sh_css_params_write_to_ddr_internal(
 
 	if (binary->info->sp.enable.sc)
 	{
-		u32 enable_conv = params->
-				  shading_settings.enable_shading_table_conversion;
+		u32 enable_conv;
+		size_t bytes;
+
+		bytes = ISP2400_SCTBL_BYTES(binary);
+
+		enable_conv = params->shading_settings.enable_shading_table_conversion;
 
 		buff_realloced = reallocate_buffer(&ddr_map->sc_tbl,
 						   &ddr_map_size->sc_tbl,
-						   (size_t)(SCTBL_BYTES(binary)),
+						   bytes,
 						   params->sc_table_changed,
 						   &err);
 		if (err != IA_CSS_SUCCESS) {
@@ -4083,12 +4096,10 @@ sh_css_params_write_to_ddr_internal(
 
 			/* Generate default DVS unity table on start up*/
 			if (!params->pipe_dvs_6axis_config[pipe_id]) {
-				struct ia_css_resolution dvs_offset;
+				struct ia_css_resolution dvs_offset = {0};
 
-				dvs_offset.width  =
-				    (PIX_SHIFT_FILTER_RUN_IN_X + binary->dvs_envelope.width) / 2;
-				dvs_offset.height =
-				    (PIX_SHIFT_FILTER_RUN_IN_Y + binary->dvs_envelope.height) / 2;
+				dvs_offset.width = (PIX_SHIFT_FILTER_RUN_IN_X + binary->dvs_envelope.width) / 2;
+				dvs_offset.height = (PIX_SHIFT_FILTER_RUN_IN_Y + binary->dvs_envelope.height) / 2;
 
 				params->pipe_dvs_6axis_config[pipe_id] =
 				    generate_dvs_6axis_table(&binary->out_frame_info[0].res, &dvs_offset);
@@ -4097,13 +4108,13 @@ sh_css_params_write_to_ddr_internal(
 					return IA_CSS_ERR_CANNOT_ALLOCATE_MEMORY;
 				}
 				params->pipe_dvs_6axis_config_changed[pipe_id] = true;
-			}
 
-			store_dvs_6axis_config(params->pipe_dvs_6axis_config[pipe_id],
-					       binary,
-					       dvs_in_frame_info,
-					       ddr_map->dvs_6axis_params_y);
-			params->isp_params_changed = true;
+				store_dvs_6axis_config(params->pipe_dvs_6axis_config[pipe_id],
+						    binary,
+						    dvs_in_frame_info,
+						    ddr_map->dvs_6axis_params_y);
+				params->isp_params_changed = true;
+			}
 		}
 	}
 
@@ -4111,13 +4122,13 @@ sh_css_params_write_to_ddr_internal(
 	{
 		unsigned int i;
 		hrt_vaddress *virt_addr_tetra_x[
-		 IA_CSS_MORPH_TABLE_NUM_PLANES];
+		IA_CSS_MORPH_TABLE_NUM_PLANES];
 		size_t *virt_size_tetra_x[
-		 IA_CSS_MORPH_TABLE_NUM_PLANES];
+		IA_CSS_MORPH_TABLE_NUM_PLANES];
 		hrt_vaddress *virt_addr_tetra_y[
-		 IA_CSS_MORPH_TABLE_NUM_PLANES];
+		IA_CSS_MORPH_TABLE_NUM_PLANES];
 		size_t *virt_size_tetra_y[
-		 IA_CSS_MORPH_TABLE_NUM_PLANES];
+		IA_CSS_MORPH_TABLE_NUM_PLANES];
 
 		virt_addr_tetra_x[0] = &ddr_map->tetra_r_x;
 		virt_addr_tetra_x[1] = &ddr_map->tetra_gr_x;
@@ -4151,22 +4162,22 @@ sh_css_params_write_to_ddr_internal(
 		for (i = 0; i < IA_CSS_MORPH_TABLE_NUM_PLANES; i++) {
 			buff_realloced |=
 			    reallocate_buffer(virt_addr_tetra_x[i],
-					      virt_size_tetra_x[i],
-					      (size_t)
-					      (MORPH_PLANE_BYTES(binary)),
-					      params->morph_table_changed,
-					      &err);
+					    virt_size_tetra_x[i],
+					    (size_t)
+					    (MORPH_PLANE_BYTES(binary)),
+					    params->morph_table_changed,
+					    &err);
 			if (err != IA_CSS_SUCCESS) {
 				IA_CSS_LEAVE_ERR_PRIVATE(err);
 				return err;
 			}
 			buff_realloced |=
 			    reallocate_buffer(virt_addr_tetra_y[i],
-					      virt_size_tetra_y[i],
-					      (size_t)
-					      (MORPH_PLANE_BYTES(binary)),
-					      params->morph_table_changed,
-					      &err);
+					    virt_size_tetra_y[i],
+					    (size_t)
+					    (MORPH_PLANE_BYTES(binary)),
+					    params->morph_table_changed,
+					    &err);
 			if (err != IA_CSS_SUCCESS) {
 				IA_CSS_LEAVE_ERR_PRIVATE(err);
 				return err;
@@ -4178,7 +4189,7 @@ sh_css_params_write_to_ddr_internal(
 
 			if ((table) &&
 			    (table->width < binary->morph_tbl_width ||
-			     table->height < binary->morph_tbl_height)) {
+			    table->height < binary->morph_tbl_height)) {
 				table = NULL;
 			}
 			if (!table) {
@@ -4193,15 +4204,15 @@ sh_css_params_write_to_ddr_internal(
 
 			for (i = 0; i < IA_CSS_MORPH_TABLE_NUM_PLANES; i++) {
 				store_morph_plane(table->coordinates_x[i],
-						  table->width,
-						  table->height,
-						  *virt_addr_tetra_x[i],
-						  binary->morph_tbl_aligned_width);
+						table->width,
+						table->height,
+						*virt_addr_tetra_x[i],
+						binary->morph_tbl_aligned_width);
 				store_morph_plane(table->coordinates_y[i],
-						  table->width,
-						  table->height,
-						  *virt_addr_tetra_y[i],
-						  binary->morph_tbl_aligned_width);
+						table->width,
+						table->height,
+						*virt_addr_tetra_y[i],
+						binary->morph_tbl_aligned_width);
 			}
 			if (id_table)
 				ia_css_morph_table_free(id_table);
@@ -4213,15 +4224,15 @@ sh_css_params_write_to_ddr_internal(
 	{
 		const struct ia_css_isp_data *isp_data =
 		    ia_css_isp_param_get_isp_mem_init(&binary->info->sp.mem_initializers,
-						      IA_CSS_PARAM_CLASS_PARAM, mem);
+						    IA_CSS_PARAM_CLASS_PARAM, mem);
 		size_t size = isp_data->size;
 
 		if (!size) continue;
 		buff_realloced = reallocate_buffer(&ddr_map->isp_mem_param[stage_num][mem],
-						   &ddr_map_size->isp_mem_param[stage_num][mem],
-						   size,
-						   params->isp_mem_params_changed[pipe_id][stage_num][mem],
-						   &err);
+						&ddr_map_size->isp_mem_param[stage_num][mem],
+						size,
+						params->isp_mem_params_changed[pipe_id][stage_num][mem],
+						&err);
 		if (err != IA_CSS_SUCCESS) {
 			IA_CSS_LEAVE_ERR_PRIVATE(err);
 			return err;

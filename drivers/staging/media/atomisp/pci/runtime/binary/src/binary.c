@@ -27,7 +27,9 @@
 #include "sh_css_legacy.h"
 
 #include "vf/vf_1.0/ia_css_vf.host.h"
+#include "sc/sc_1.0/ia_css_sc.host.h"
 #include "sdis/sdis_1.0/ia_css_sdis.host.h"
+#include "fixedbds/fixedbds_1.0/ia_css_fixedbds_param.h"	/* FRAC_ACC */
 
 #include "camera/pipe/interface/ia_css_pipe_binarydesc.h"
 

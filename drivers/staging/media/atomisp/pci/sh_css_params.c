@@ -2159,18 +2159,6 @@ ia_css_set_param_exceptions(const struct ia_css_pipe *pipe,
 	params->dp_config.r  = params->wb_config.r;
 	params->dp_config.b  = params->wb_config.b;
 	params->dp_config.gb = params->wb_config.gb;
-
-	if (atomisp_hw_is_isp2401) {
-		assert(pipe);
-		assert(pipe->mode < IA_CSS_PIPE_ID_NUM);
-
-		if (pipe->mode < IA_CSS_PIPE_ID_NUM) {
-			params->pipe_dp_config[pipe->mode].gr = params->wb_config.gr;
-			params->pipe_dp_config[pipe->mode].r  = params->wb_config.r;
-			params->pipe_dp_config[pipe->mode].b  = params->wb_config.b;
-			params->pipe_dp_config[pipe->mode].gb = params->wb_config.gb;
-		}
-	}
 }
 
 /* ISP2401 */
@@ -2624,16 +2612,6 @@ sh_css_init_isp_params_from_config(struct ia_css_pipe *pipe,
 	params->output_frame = config->output_frame;
 	params->isp_parameters_id = config->isp_config_id;
 
-	/* Currently we do not offer CSS interface to set different
-	 * configurations for DPC, i.e. depending on DPC being enabled
-	 * before (NORM+OBC) or after. The folllowing code to set the
-	 * DPC configuration should be updated when this interface is made
-	 * available */
-	if (atomisp_hw_is_isp2401) {
-		sh_css_set_dp_config(pipe, params, config->dp_config);
-		ia_css_set_param_exceptions(pipe, params);
-	}
-
 	if (0 ==
 	    sh_css_select_dp_10bpp_config(pipe, &is_dp_10bpp))
 	{
@@ -2650,8 +2628,7 @@ sh_css_init_isp_params_from_config(struct ia_css_pipe *pipe,
 		goto exit;
 	}
 
-	if (!atomisp_hw_is_isp2401)
-		ia_css_set_param_exceptions(pipe, params);
+	ia_css_set_param_exceptions(pipe, params);
 
 exit:
 	IA_CSS_LEAVE_ERR_PRIVATE(err);
@@ -3067,31 +3044,7 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 		ia_css_set_tnr_config(params, &default_tnr_config);
 		ia_css_set_ob_config(params, &default_ob_config);
 		ia_css_set_dp_config(params, &default_dp_config);
-
-		if (!atomisp_hw_is_isp2401) {
-			ia_css_set_param_exceptions(pipe_in, params);
-		} else {
-			for (i = 0; i < stream->num_pipes; i++) {
-				if (sh_css_select_dp_10bpp_config(stream->pipes[i],
-								&is_dp_10bpp) == 0) {
-					/* set the return value as false if both DPC and
-					* BDS is enabled by the user. But we do not return
-					* the value immediately to enable internal firmware
-					* feature testing. */
-					if (is_dp_10bpp) {
-						sh_css_set_dp_config(stream->pipes[i], params, &default_dp_10bpp_config);
-					} else {
-						sh_css_set_dp_config(stream->pipes[i], params, &default_dp_config);
-					}
-				} else {
-					retval = false;
-					goto exit;
-				}
-
-				ia_css_set_param_exceptions(stream->pipes[i], params);
-			}
-		}
-
+		ia_css_set_param_exceptions(pipe_in, params);
 		ia_css_set_de_config(params, &default_de_config);
 		ia_css_set_gc_config(params, &default_gc_config);
 		ia_css_set_anr_config(params, &default_anr_config);
@@ -3195,20 +3148,8 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
 				retval = false;
 				goto exit;
 			}
-			if (atomisp_hw_is_isp2401) {
-				if (stream->pipes[i]->mode < IA_CSS_PIPE_ID_NUM) {
-					sh_css_set_dp_config(stream->pipes[i], params,
-							    &stream_params->pipe_dp_config[stream->pipes[i]->mode]);
-					ia_css_set_param_exceptions(stream->pipes[i], params);
-				} else {
-					retval = false;
-					goto exit;
-				}
-			}
 		}
-
-		if (!atomisp_hw_is_isp2401)
-			ia_css_set_param_exceptions(pipe_in, params);
+		ia_css_set_param_exceptions(pipe_in, params);
 
 		params->fpn_config.data = stream_params->fpn_config.data;
 		params->config_changed[IA_CSS_FPN_ID] =
@@ -3361,11 +3302,7 @@ int ia_css_pipe_set_bci_scaler_lut(struct ia_css_pipe *pipe,
 	pipe->scaler_pp_lut = mmgr_NULL;
 
 	if (!stream_started) {
-		if (!atomisp_hw_is_isp2401)
-			pipe->scaler_pp_lut = hmm_alloc(sizeof(zoom_table), HMM_BO_PRIVATE, 0, NULL, 0);
-		else
-			pipe->scaler_pp_lut = sh_css_params_alloc_gdc_lut();
-
+		pipe->scaler_pp_lut = hmm_alloc(sizeof(zoom_table), HMM_BO_PRIVATE, 0, NULL, 0);
 		if (pipe->scaler_pp_lut == mmgr_NULL) {
 			ia_css_debug_dtrace(IA_CSS_DEBUG_ERROR,
 					    "unable to allocate scaler_pp_lut\n");
@@ -3406,11 +3343,7 @@ int sh_css_params_map_and_store_default_gdc_lut(void)
 
 	host_lut_store((void *)zoom_table);
 
-	if (!atomisp_hw_is_isp2401)
-		default_gdc_lut = hmm_alloc(sizeof(zoom_table), HMM_BO_PRIVATE, 0, NULL, 0);
-	else
-		default_gdc_lut = sh_css_params_alloc_gdc_lut();
-
+	default_gdc_lut = hmm_alloc(sizeof(zoom_table), HMM_BO_PRIVATE, 0, NULL, 0);
 	if (default_gdc_lut == mmgr_NULL)
 		return -ENOMEM;
 
@@ -4019,10 +3952,7 @@ sh_css_params_write_to_ddr_internal(
 		u32 enable_conv;
 		size_t bytes;
 
-		if (!atomisp_hw_is_isp2401)
-			bytes = ISP2400_SCTBL_BYTES(binary);
-		else
-			bytes = ISP2401_SCTBL_BYTES(binary);
+		bytes = ISP2400_SCTBL_BYTES(binary);
 
 		enable_conv = params->shading_settings.enable_shading_table_conversion;
 
@@ -4113,29 +4043,6 @@ sh_css_params_write_to_ddr_internal(
 		}
 	}
 
-	/* DPC configuration is made pipe specific to allow flexibility in positioning of the
-	 * DPC kernel. The code below sets the pipe specific configuration to
-	 * individual binaries. */
-	if (atomisp_hw_is_isp2401 &&
-	    params->pipe_dpc_config_changed[pipe_id] && binary->info->sp.enable.dpc)
-	{
-		unsigned int size   =
-		    stage->binary->info->mem_offsets.offsets.param->dmem.dp.size;
-
-		unsigned int offset =
-		    stage->binary->info->mem_offsets.offsets.param->dmem.dp.offset;
-
-		if (size) {
-			ia_css_dp_encode((struct sh_css_isp_dp_params *)
-					 &binary->mem_params.params[IA_CSS_PARAM_CLASS_PARAM][IA_CSS_ISP_DMEM].address[offset],
-					 &params->pipe_dp_config[pipe_id], size);
-
-			params->isp_params_changed = true;
-			params->isp_mem_params_changed[pipe_id][stage->stage_num][IA_CSS_ISP_DMEM] =
-			    true;
-		}
-	}
-
 	if (params->config_changed[IA_CSS_MACC_ID] && binary->info->sp.enable.macc)
 	{
 		unsigned int i, j, idx;
@@ -4219,13 +4126,7 @@ sh_css_params_write_to_ddr_internal(
 			if (!params->pipe_dvs_6axis_config[pipe_id]) {
 				struct ia_css_resolution dvs_offset = {0};
 
-				if (!atomisp_hw_is_isp2401) {
-					dvs_offset.width = (PIX_SHIFT_FILTER_RUN_IN_X + binary->dvs_envelope.width) / 2;
-				} else {
-					if (binary->dvs_envelope.width || binary->dvs_envelope.height) {
-						dvs_offset.width  = (PIX_SHIFT_FILTER_RUN_IN_X + binary->dvs_envelope.width) / 2;
-					}
-				}
+				dvs_offset.width = (PIX_SHIFT_FILTER_RUN_IN_X + binary->dvs_envelope.width) / 2;
 				dvs_offset.height = (PIX_SHIFT_FILTER_RUN_IN_Y + binary->dvs_envelope.height) / 2;
 
 				params->pipe_dvs_6axis_config[pipe_id] =

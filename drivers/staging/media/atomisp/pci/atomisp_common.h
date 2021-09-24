@@ -40,9 +40,6 @@ extern int pad_h;
 #define CSS_DTRACE_VERBOSITY_TIMEOUT	9	/* Verbosity on ISP timeout */
 #define MRFLD_MAX_ZOOM_FACTOR	1024
 
-/* ISP2401 */
-#define ATOMISP_CSS_ISP_PIPE_VERSION_2_7    1
-
 #define IS_ISP2401(isp)							\
 	(((isp)->media_dev.hw_revision & ATOMISP_HW_REVISION_MASK)	\
 	 >= (ATOMISP_HW_REVISION_ISP2401_LEGACY << ATOMISP_HW_REVISION_SHIFT))

@@ -99,19 +99,6 @@ enum ia_css_err ia_css_spctrl_load_fw(sp_ID_t sp_id,
 	return IA_CSS_SUCCESS;
 }
 
-/* ISP2401 */
-/* reload pre-loaded FW */
-void sh_css_spctrl_reload_fw(sp_ID_t sp_id)
-{
-	/* now we program the base address into the icache and
-	* invalidate the cache.
-	*/
-	sp_ctrl_store(sp_id, SP_ICACHE_ADDR_REG,
-		      (hrt_data)spctrl_cofig_info[sp_id].code_addr);
-	sp_ctrl_setbit(sp_id, SP_ICACHE_INV_REG, SP_ICACHE_INV_BIT);
-	spctrl_loaded[sp_id] = true;
-}
-
 hrt_vaddress get_sp_code_addr(sp_ID_t  sp_id)
 {
 	return spctrl_cofig_info[sp_id].code_addr;

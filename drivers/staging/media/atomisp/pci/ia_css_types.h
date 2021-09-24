@@ -51,9 +51,6 @@
 #include "isp/kernels/xnr/xnr_1.0/ia_css_xnr_types.h"
 #include "isp/kernels/xnr/xnr_3.0/ia_css_xnr3_types.h"
 
-/* ISP2401 */
-#include "isp/kernels/tnr/tnr3/ia_css_tnr3_types.h"
-
 #include "isp/kernels/ynr/ynr_1.0/ia_css_ynr_types.h"
 #include "isp/kernels/ynr/ynr_2/ia_css_ynr2_types.h"
 #include "isp/kernels/output/output_1.0/ia_css_output_types.h"
@@ -327,25 +324,6 @@ struct ia_css_shading_info {
 			     for the scaling which should be done before shading correction.
 				output_height = input_height * bayer_scale_ver_ratio_out
 								/ bayer_scale_ver_ratio_in + 0.5 */
-			/* ISP2401 */
-			struct ia_css_resolution isp_input_sensor_data_res_bqs;
-			/** Sensor data size (in bqs) inputted to ISP. This is the size BEFORE bayer scaling.
-			     NOTE: This is NOT the size of the physical sensor size.
-				   CSS requests the driver that ISP inputs sensor data
-				   by the size of isp_input_sensor_data_res_bqs.
-				   The driver sends the sensor data to ISP,
-				   after the adequate cropping/binning/scaling
-				   are applied to the physical sensor data area.
-				   ISP assumes the area of isp_input_sensor_data_res_bqs
-				   is centered on the physical sensor. */
-			/* ISP2401 */
-			struct ia_css_resolution sensor_data_res_bqs;
-			/** Sensor data size (in bqs) at shading correction.
-			     This is the size AFTER bayer scaling. */
-			/* ISP2401 */
-			struct ia_css_coordinate sensor_data_origin_bqs_on_sctbl;
-			/** Origin of sensor data area positioned on shading table at shading correction.
-			     The coordinate x,y should be positive values. */
 		} type_1;
 
 		/** More structures can be added here when more shading correction types will be added

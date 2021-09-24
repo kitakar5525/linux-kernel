@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
@@ -16,7 +15,7 @@
 #include "system_global.h"
 #include <linux/kernel.h>
 
-#ifndef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2
 
 #include "ia_css_ifmtr.h"
 #include <math_support.h>
@@ -29,12 +28,12 @@
 /************************************************************
  * Static functions declarations
  ************************************************************/
-static int ifmtr_start_column(
+static enum ia_css_err ifmtr_start_column(
     const struct ia_css_stream_config *config,
     unsigned int bin_in,
     unsigned int *start_column);
 
-static int ifmtr_input_start_line(
+static enum ia_css_err ifmtr_input_start_line(
     const struct ia_css_stream_config *config,
     unsigned int bin_in,
     unsigned int *start_line);
@@ -72,7 +71,7 @@ unsigned int ia_css_ifmtr_columns_needed_for_bayer_order(
 	return 0;
 }
 
-int ia_css_ifmtr_configure(struct ia_css_stream_config *config,
+enum ia_css_err ia_css_ifmtr_configure(struct ia_css_stream_config *config,
 				       struct ia_css_binary *binary)
 {
 	unsigned int start_line, start_column = 0,
@@ -98,7 +97,7 @@ int ia_css_ifmtr_configure(struct ia_css_stream_config *config,
 				 left_padding = 0;
 	input_formatter_cfg_t if_a_config, if_b_config;
 	enum atomisp_input_format input_format;
-	int err = 0;
+	enum ia_css_err err = IA_CSS_SUCCESS;
 	u8 if_config_index;
 
 	/* Determine which input formatter config set is targeted. */
@@ -143,10 +142,10 @@ int ia_css_ifmtr_configure(struct ia_css_stream_config *config,
 	 * columns.
 	 */
 	err = ifmtr_input_start_line(config, cropped_height, &start_line);
-	if (err)
+	if (err != IA_CSS_SUCCESS)
 		return err;
 	err = ifmtr_start_column(config, cropped_width, &start_column);
-	if (err)
+	if (err != IA_CSS_SUCCESS)
 		return err;
 
 	if (config->left_padding == -1)
@@ -359,7 +358,7 @@ int ia_css_ifmtr_configure(struct ia_css_stream_config *config,
 		break;
 	}
 	if (width_a == 0)
-		return -EINVAL;
+		return IA_CSS_ERR_INVALID_ARGUMENTS;
 
 	if (two_ppc)
 		left_padding /= 2;
@@ -460,7 +459,7 @@ int ia_css_ifmtr_configure(struct ia_css_stream_config *config,
 		}
 	}
 
-	return 0;
+	return IA_CSS_SUCCESS;
 }
 
 bool ifmtr_set_if_blocking_mode_reset = true;
@@ -497,7 +496,7 @@ static void ifmtr_set_if_blocking_mode(
 	return;
 }
 
-static int ifmtr_start_column(
+static enum ia_css_err ifmtr_start_column(
     const struct ia_css_stream_config *config,
     unsigned int bin_in,
     unsigned int *start_column)
@@ -506,7 +505,7 @@ static int ifmtr_start_column(
 		     for_bayer = ia_css_ifmtr_columns_needed_for_bayer_order(config);
 
 	if (bin_in + 2 * for_bayer > in)
-		return -EINVAL;
+		return IA_CSS_ERR_INVALID_ARGUMENTS;
 
 	/* On the hardware, we want to use the middle of the input, so we
 	 * divide the start column by 2. */
@@ -520,10 +519,10 @@ static int ifmtr_start_column(
 	 */
 	start += for_bayer;
 	*start_column = start;
-	return 0;
+	return IA_CSS_SUCCESS;
 }
 
-static int ifmtr_input_start_line(
+static enum ia_css_err ifmtr_input_start_line(
     const struct ia_css_stream_config *config,
     unsigned int bin_in,
     unsigned int *start_line)
@@ -532,7 +531,7 @@ static int ifmtr_input_start_line(
 		     for_bayer = ia_css_ifmtr_lines_needed_for_bayer_order(config);
 
 	if (bin_in + 2 * for_bayer > in)
-		return -EINVAL;
+		return IA_CSS_ERR_INVALID_ARGUMENTS;
 
 	/* On the hardware, we want to use the middle of the input, so we
 	 * divide the start line by 2. On the simulator, we cannot handle extra
@@ -547,7 +546,7 @@ static int ifmtr_input_start_line(
 	/* now we add the one line (if needed) to correct for the bayer order */
 	start += for_bayer;
 	*start_line = start;
-	return 0;
+	return IA_CSS_SUCCESS;
 }
 
 #endif

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -17,7 +16,6 @@
 #define __IBUF_CTRL_LOCAL_H_INCLUDED__
 
 #include "ibuf_ctrl_global.h"
-#include "ibuf_ctrl_local.h"
 
 typedef struct ibuf_ctrl_proc_state_s	ibuf_ctrl_proc_state_t;
 typedef struct ibuf_ctrl_state_s		ibuf_ctrl_state_t;

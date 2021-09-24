@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -60,10 +59,10 @@ void ia_css_pipe_get_vfpp_binarydesc(
  *		(= The numerator member in the sh_css_bds_factor structure.)
  * @param[out] bds_factor_denominator: The denominator of the bayer downscaling factor.
  *		(= The denominator member in the sh_css_bds_factor structure.)
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  *
  */
-int sh_css_bds_factor_get_numerator_denominator(
+enum ia_css_err sh_css_bds_factor_get_numerator_denominator(
     unsigned int bds_factor,
     unsigned int *bds_factor_numerator,
     unsigned int *bds_factor_denominator);
@@ -76,10 +75,10 @@ int sh_css_bds_factor_get_numerator_denominator(
  * @param[in/out] bds_out_info
  * @param[in/out] out_info
  * @param[in/out] vf_info
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  *
  */
-int ia_css_pipe_get_preview_binarydesc(
+enum ia_css_err ia_css_pipe_get_preview_binarydesc(
     struct ia_css_pipe *const pipe,
     struct ia_css_binary_descr *preview_descr,
     struct ia_css_frame_info *in_info,
@@ -94,10 +93,10 @@ int ia_css_pipe_get_preview_binarydesc(
  * @param[in/out] in_info
  * @param[in/out] bds_out_info
  * @param[in/out] vf_info
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  *
  */
-int ia_css_pipe_get_video_binarydesc(
+enum ia_css_err ia_css_pipe_get_video_binarydesc(
     struct ia_css_pipe *const pipe,
     struct ia_css_binary_descr *video_descr,
     struct ia_css_frame_info *in_info,
@@ -288,9 +287,9 @@ void ia_css_pipe_get_ldc_binarydesc(
  * @param[in] input_res
  * @param[in] output_res
  * @param[in/out] bds_factor
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  */
-int binarydesc_calculate_bds_factor(
+enum ia_css_err binarydesc_calculate_bds_factor(
     struct ia_css_resolution input_res,
     struct ia_css_resolution output_res,
     unsigned int *bds_factor);

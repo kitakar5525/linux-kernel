@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -26,7 +25,7 @@
  * to the requested viewfinder resolution on the upper side. The output cannot
  * be smaller than the requested viewfinder resolution.
  */
-int
+enum ia_css_err
 sh_css_vf_downscale_log2(
     const struct ia_css_frame_info *out_info,
     const struct ia_css_frame_info *vf_info,
@@ -38,7 +37,7 @@ ia_css_vf_config(
     const struct ia_css_vf_configuration *from,
     unsigned int size);
 
-int
+enum ia_css_err
 ia_css_vf_configure(
     const struct ia_css_binary *binary,
     const struct ia_css_frame_info *out_info,

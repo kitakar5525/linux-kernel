@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -20,8 +19,15 @@
 #include <system_global.h>
 
 #ifndef PIPE_GENERATION
+#if defined(HAS_VAMEM_VERSION_2)
 #define SH_CSS_ISP_XNR_TABLE_SIZE_LOG2       IA_CSS_VAMEM_2_XNR_TABLE_SIZE_LOG2
 #define SH_CSS_ISP_XNR_TABLE_SIZE            IA_CSS_VAMEM_2_XNR_TABLE_SIZE
+#elif defined(HAS_VAMEM_VERSION_1)
+#define SH_CSS_ISP_XNR_TABLE_SIZE_LOG2       IA_CSS_VAMEM_1_XNR_TABLE_SIZE_LOG2
+#define SH_CSS_ISP_XNR_TABLE_SIZE            IA_CSS_VAMEM_1_XNR_TABLE_SIZE
+#else
+#error "Unknown vamem type"
+#endif
 
 #else
 /* For pipe generation, the size is not relevant */

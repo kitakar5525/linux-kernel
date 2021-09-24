@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Medifield PNW Camera Imaging ISP subsystem.
  *
@@ -60,7 +59,8 @@ struct atomisp_in_fmt_conv {
 	u8 bpp; /* bits per pixel */
 	u8 depth; /* uncompressed */
 	enum atomisp_input_format atomisp_in_fmt;
-	enum ia_css_bayer_order bayer_order;
+	enum atomisp_css_bayer_order bayer_order;
+	enum atomisp_input_format css_stream_fmt;
 };
 
 struct atomisp_sub_device;
@@ -215,8 +215,8 @@ struct atomisp_subdev_params {
 	unsigned int histogram_elenum;
 
 	/* Current grid info */
-	struct ia_css_grid_info curr_grid_info;
-	enum ia_css_pipe_id s3a_enabled_pipe;
+	struct atomisp_css_grid_info curr_grid_info;
+	enum atomisp_css_pipe_id s3a_enabled_pipe;
 
 	int s3a_output_bytes;
 
@@ -225,7 +225,7 @@ struct atomisp_subdev_params {
 	struct ia_css_dz_config   dz_config;  /** Digital Zoom */
 	struct ia_css_capture_config   capture_config;
 
-	struct ia_css_isp_config config;
+	struct atomisp_css_isp_config config;
 
 	/* current configurations */
 	struct atomisp_css_params css_param;
@@ -240,7 +240,7 @@ struct atomisp_subdev_params {
 	u32 metadata_width_size;
 
 	struct ia_css_dvs2_statistics *dvs_stat;
-	struct ia_css_dvs_6axis_config *dvs_6axis;
+	struct atomisp_css_dvs_6axis *dvs_6axis;
 	u32 exp_id;
 	int  dvs_hor_coef_bytes;
 	int  dvs_ver_coef_bytes;
@@ -265,7 +265,7 @@ struct atomisp_css_params_with_list {
 };
 
 struct atomisp_acc_fw {
-	struct ia_css_fw_info *fw;
+	struct atomisp_css_fw_info *fw;
 	unsigned int handle;
 	unsigned int flags;
 	unsigned int type;
@@ -323,7 +323,7 @@ struct atomisp_sub_device {
 	struct {
 		struct list_head fw;
 		struct list_head memory_maps;
-		struct ia_css_pipe *pipeline;
+		struct atomisp_css_pipeline *pipeline;
 		bool extension_mode;
 		struct ida ida;
 		struct completion acc_done;
@@ -335,11 +335,11 @@ struct atomisp_sub_device {
 	struct atomisp_stream_env stream_env[ATOMISP_INPUT_STREAM_NUM];
 
 	struct v4l2_pix_format dvs_envelop;
-	unsigned int s3a_bufs_in_css[IA_CSS_PIPE_ID_NUM];
+	unsigned int s3a_bufs_in_css[CSS_PIPE_ID_NUM];
 	unsigned int dis_bufs_in_css;
 
 	unsigned int metadata_bufs_in_css
-	[ATOMISP_INPUT_STREAM_NUM][IA_CSS_PIPE_ID_NUM];
+	[ATOMISP_INPUT_STREAM_NUM][CSS_PIPE_ID_NUM];
 	/* The list of free and available metadata buffers for CSS */
 	struct list_head metadata[ATOMISP_METADATA_TYPE_NUM];
 	/* The list of metadata buffers which have been en-queued to CSS */
@@ -358,8 +358,8 @@ struct atomisp_sub_device {
 	struct list_head dis_stats_in_css;
 	spinlock_t dis_stats_lock;
 
-	struct ia_css_frame *vf_frame; /* TODO: needed? */
-	struct ia_css_frame *raw_output_frame;
+	struct atomisp_css_frame *vf_frame; /* TODO: needed? */
+	struct atomisp_css_frame *raw_output_frame;
 	enum atomisp_frame_status frame_status[VIDEO_MAX_FRAME];
 
 	/* This field specifies which camera (v4l2 input) is selected. */
@@ -437,20 +437,19 @@ uint16_t atomisp_subdev_source_pad(struct video_device *vdev);
 /* Get pointer to appropriate format */
 struct v4l2_mbus_framefmt
 *atomisp_subdev_get_ffmt(struct v4l2_subdev *sd,
-			 struct v4l2_subdev_state *sd_state, uint32_t which,
+			 struct v4l2_subdev_pad_config *cfg, uint32_t which,
 			 uint32_t pad);
 struct v4l2_rect *atomisp_subdev_get_rect(struct v4l2_subdev *sd,
-	struct v4l2_subdev_state *sd_state,
+	struct v4l2_subdev_pad_config *cfg,
 	u32 which, uint32_t pad,
 	uint32_t target);
 int atomisp_subdev_set_selection(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_state *sd_state,
+				 struct v4l2_subdev_pad_config *cfg,
 				 u32 which, uint32_t pad, uint32_t target,
 				 u32 flags, struct v4l2_rect *r);
 /* Actually set the format */
 void atomisp_subdev_set_ffmt(struct v4l2_subdev *sd,
-			     struct v4l2_subdev_state *sd_state,
-			     uint32_t which,
+			     struct v4l2_subdev_pad_config *cfg, uint32_t which,
 			     u32 pad, struct v4l2_mbus_framefmt *ffmt);
 
 int atomisp_update_run_mode(struct atomisp_sub_device *asd);

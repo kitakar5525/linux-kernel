@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -47,7 +46,6 @@ struct isys2401_dma_port_cfg_s {
 	u32 cropping;
 	u32 width;
 };
-
 /* end of DMA Port */
 
 /************************************************

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -18,7 +17,7 @@
 
 #include <type_support.h>
 #include <system_local.h>
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_SYSTEM) && !defined(USE_INPUT_SYSTEM_VERSION_2401)
 #include <input_system.h>
 #endif
 #include "ia_css_types.h"
@@ -30,7 +29,7 @@
 struct ia_css_stream {
 	struct ia_css_stream_config    config;
 	struct ia_css_stream_info      info;
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_SYSTEM) && !defined(USE_INPUT_SYSTEM_VERSION_2401)
 	rx_cfg_t                       csi_rx_config;
 #endif
 	bool                           reconfigure_css_rx;
@@ -103,7 +102,7 @@ ia_css_get_isp_dvs2_coefficients(struct ia_css_stream *stream,
 				 short *ver_coefs_even_real,
 				 short *ver_coefs_even_imag);
 
-int
+enum ia_css_err
 ia_css_stream_isp_parameters_init(struct ia_css_stream *stream);
 
 void

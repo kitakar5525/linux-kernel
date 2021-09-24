@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -54,6 +53,7 @@ static const s16 c[XNR3_LOOK_UP_TABLE_POINTS] = {
 };
 
 /*
+#endif
  * Default kernel parameters. In general, default is bypass mode or as close
  * to the ineffective values as possible. Due to the chroma down+upsampling,
  * perfect bypass mode is not possible for xnr3 filter itself. Instead, the
@@ -127,7 +127,7 @@ compute_blending(int strength)
 	 * exactly as s0.11 fixed point, but -1.0 can.
 	 */
 	isp_strength = -(((strength * isp_scale) + offset) / host_scale);
-	return MAX(MIN(isp_strength, 0), -isp_scale);
+	return MAX(MIN(isp_strength, 0), -XNR_BLENDING_SCALE_FACTOR);
 }
 
 void

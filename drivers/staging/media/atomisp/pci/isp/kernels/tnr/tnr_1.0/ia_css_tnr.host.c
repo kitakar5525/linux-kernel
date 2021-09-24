@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -96,7 +95,7 @@ ia_css_tnr_config(
 void
 ia_css_tnr_configure(
     const struct ia_css_binary     *binary,
-    const struct ia_css_frame * const *frames)
+    const struct ia_css_frame **frames)
 {
 	struct ia_css_tnr_configuration config;
 	unsigned int i;

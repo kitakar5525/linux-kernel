@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -230,8 +229,15 @@ prepare_shading_table(const struct ia_css_shading_table *in_table,
 		      const struct ia_css_binary *binary,
 		      unsigned int bds_factor)
 {
-	unsigned int input_width, input_height, table_width, table_height, i;
-	unsigned int left_padding, top_padding, left_cropping;
+	unsigned int input_width,
+		 input_height,
+		 table_width,
+		 table_height,
+		 left_padding,
+		 top_padding,
+		 padded_width,
+		 left_cropping,
+		 i;
 	unsigned int bds_numerator, bds_denominator;
 	int right_padding;
 
@@ -247,11 +253,15 @@ prepare_shading_table(const struct ia_css_shading_table *in_table,
 		return;
 	}
 
-	/*
-	 * We use the ISP input resolution for the shading table because
-	 * shading correction is performed in the bayer domain (before bayer
-	 * down scaling).
-	 */
+	padded_width = binary->in_frame_info.padded_width;
+	/* We use the ISP input resolution for the shading table because
+	   shading correction is performed in the bayer domain (before bayer
+	   down scaling). */
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
+	padded_width = CEIL_MUL(binary->effective_in_frame_res.width + 2 *
+				ISP_VEC_NELEMS,
+				2 * ISP_VEC_NELEMS);
+#endif
 	input_height  = binary->in_frame_info.res.height;
 	input_width   = binary->in_frame_info.res.width;
 	left_padding  = binary->left_padding;
@@ -350,13 +360,12 @@ ia_css_shading_table_alloc(
 	me->fraction_bits = 0;
 	for (i = 0; i < IA_CSS_SC_NUM_COLORS; i++) {
 		me->data[i] =
-		    kvmalloc(width * height * sizeof(*me->data[0]),
-			     GFP_KERNEL);
+		    sh_css_malloc(width * height * sizeof(*me->data[0]));
 		if (!me->data[i]) {
 			unsigned int j;
 
 			for (j = 0; j < i; j++) {
-				kvfree(me->data[j]);
+				sh_css_free(me->data[j]);
 				me->data[j] = NULL;
 			}
 			kfree(me);
@@ -383,7 +392,7 @@ ia_css_shading_table_free(struct ia_css_shading_table *table)
 
 	for (i = 0; i < IA_CSS_SC_NUM_COLORS; i++) {
 		if (table->data[i]) {
-			kvfree(table->data[i]);
+			sh_css_free(table->data[i]);
 			table->data[i] = NULL;
 		}
 	}

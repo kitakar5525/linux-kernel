@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -33,7 +32,7 @@
 // Number of registers
 #define CAPT_NOF_REGS                             16
 
-// Register id's of MMIO slave accessible registers
+// Register id's of MMIO slave accesible registers
 #define CAPT_START_MODE_REG_ID                    0
 #define CAPT_START_ADDR_REG_ID                    1
 #define CAPT_MEM_REGION_SIZE_REG_ID               2

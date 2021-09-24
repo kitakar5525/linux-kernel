@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -171,6 +170,7 @@ enum TRACE_DUMP_FORMAT {
 #define TRACE_ISP_DATA_ADDR   (TRACE_ISP_HEADER_ADDR + TRACE_ISP_HEADER_SIZE)
 #define TRACE_ISP_DATA_SIZE   (TRACE_ISP_SIZE - TRACE_ISP_HEADER_SIZE)
 #define TRACE_ISP_MAX_POINTS  (TRACE_ISP_DATA_SIZE / TRACE_ISP_ITEM_SIZE)
+
 
 /* common majors */
 /* SP0 */

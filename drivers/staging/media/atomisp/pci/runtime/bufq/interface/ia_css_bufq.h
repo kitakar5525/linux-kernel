@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
@@ -78,10 +77,10 @@ void ia_css_bufq_init(void);
  *
  * @param queue_id[in]		Index of the queue in the specified thread
  * @param item[in]		Object to enqueue.
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  *
 */
-int ia_css_bufq_enqueue_buffer(
+enum ia_css_err ia_css_bufq_enqueue_buffer(
     int thread_index,
     int queue_id,
     uint32_t item);
@@ -92,10 +91,10 @@ int ia_css_bufq_enqueue_buffer(
  * @param queue_id[in]		Specifies  the index of the queue in the list where
  *				the item has to be read.
  * @paramitem [out]		Object to be dequeued into this item.
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  *
 */
-int ia_css_bufq_dequeue_buffer(
+enum  ia_css_err ia_css_bufq_dequeue_buffer(
     int queue_id,
     uint32_t *item);
 
@@ -106,10 +105,10 @@ int ia_css_bufq_dequeue_buffer(
  * @param[in]	evt_payload_0	The event payload.
  * @param[in]	evt_payload_1	The event payload.
  * @param[in]	evt_payload_2	The event payload.
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  *
 */
-int ia_css_bufq_enqueue_psys_event(
+enum ia_css_err ia_css_bufq_enqueue_psys_event(
     u8 evt_id,
     u8 evt_payload_0,
     u8 evt_payload_1,
@@ -120,10 +119,10 @@ int ia_css_bufq_enqueue_psys_event(
  * @brief   Dequeue an item from  SP to host communication event queue.
  *
  * @param item	Object to be dequeued into this item.
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  *
 */
-int ia_css_bufq_dequeue_psys_event(
+enum  ia_css_err ia_css_bufq_dequeue_psys_event(
     u8 item[BUFQ_EVENT_SIZE]
 
 );
@@ -132,10 +131,10 @@ int ia_css_bufq_dequeue_psys_event(
  * @brief  Enqueue an event item into host to SP EOF event queue.
  *
  * @param[in]	evt_id		      The event ID.
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  *
  */
-int ia_css_bufq_enqueue_isys_event(
+enum ia_css_err ia_css_bufq_enqueue_isys_event(
     uint8_t evt_id);
 
 /**
@@ -143,29 +142,29 @@ int ia_css_bufq_enqueue_isys_event(
 
  *
  * @param item	Object to be dequeued into this item.
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  *
  */
-int ia_css_bufq_dequeue_isys_event(
+enum  ia_css_err ia_css_bufq_dequeue_isys_event(
     u8 item[BUFQ_EVENT_SIZE]);
 
 /**
 * @brief   Enqueue a tagger command item into tagger command queue..
  *
  * @param item	Object to be enqueue.
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  *
 */
-int ia_css_bufq_enqueue_tag_cmd(
+enum ia_css_err ia_css_bufq_enqueue_tag_cmd(
     uint32_t item);
 
 /**
 * @brief  Uninitializes bufq module.
  *
- * @return	0 or error code upon error.
+ * @return	IA_CSS_SUCCESS or error code upon error.
  *
 */
-int ia_css_bufq_deinit(void);
+enum ia_css_err ia_css_bufq_deinit(void);
 
 /**
 * @brief  Dump queue states

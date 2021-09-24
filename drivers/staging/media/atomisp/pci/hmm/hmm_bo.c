@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Medifield PNW Camera Imaging ISP subsystem.
  *
@@ -53,6 +52,17 @@ static unsigned int order_to_nr(unsigned int order)
 static unsigned int nr_to_order_bottom(unsigned int nr)
 {
 	return fls(nr) - 1;
+}
+
+static struct hmm_buffer_object *__bo_alloc(struct kmem_cache *bo_cache)
+{
+	struct hmm_buffer_object *bo;
+
+	bo = kmem_cache_alloc(bo_cache, GFP_KERNEL);
+	if (!bo)
+		dev_err(atomisp_dev, "%s: failed!\n", __func__);
+
+	return bo;
 }
 
 static int __bo_init(struct hmm_bo_device *bdev, struct hmm_buffer_object *bo,
@@ -252,7 +262,7 @@ static struct hmm_buffer_object *__bo_break_up(struct hmm_bo_device *bdev,
 	unsigned long flags;
 	int ret;
 
-	new_bo = kmem_cache_alloc(bdev->bo_cache, GFP_KERNEL);
+	new_bo = __bo_alloc(bdev->bo_cache);
 	if (!new_bo) {
 		dev_err(atomisp_dev, "%s: __bo_alloc failed!\n", __func__);
 		return NULL;
@@ -377,7 +387,7 @@ int hmm_bo_device_init(struct hmm_bo_device *bdev,
 		return -ENOMEM;
 	}
 
-	bo = kmem_cache_alloc(bdev->bo_cache, GFP_KERNEL);
+	bo = __bo_alloc(bdev->bo_cache);
 	if (!bo) {
 		dev_err(atomisp_dev, "%s: __bo_alloc failed!\n", __func__);
 		isp_mmu_exit(&bdev->mmu);
@@ -660,8 +670,6 @@ static void free_private_bo_pages(struct hmm_buffer_object *bo,
 				break;
 			}
 
-			fallthrough;
-
 		/*
 		 * if dynamic memory pool doesn't exist, need to free
 		 * pages to system directly.
@@ -857,21 +865,109 @@ static void free_private_pages(struct hmm_buffer_object *bo,
 	kfree(bo->page_obj);
 }
 
-static void free_user_pages(struct hmm_buffer_object *bo,
-			    unsigned int page_nr)
+/*
+ * Hacked from kernel function __get_user_pages in mm/memory.c
+ *
+ * Handle buffers allocated by other kernel space driver and mmaped into user
+ * space, function Ignore the VM_PFNMAP and VM_IO flag in VMA structure
+ *
+ * Get physical pages from user space virtual address and update into page list
+ */
+static int __get_pfnmap_pages(struct task_struct *tsk, struct mm_struct *mm,
+			      unsigned long start, int nr_pages,
+			      unsigned int gup_flags, struct page **pages,
+			      struct vm_area_struct **vmas)
 {
-	int i;
+	int i, ret;
+	unsigned long vm_flags;
 
-	hmm_mem_stat.usr_size -= bo->pgnr;
+	if (nr_pages <= 0)
+		return 0;
 
-	if (bo->mem_type == HMM_BO_MEM_TYPE_PFN) {
-		unpin_user_pages(bo->pages, page_nr);
-	} else {
-		for (i = 0; i < page_nr; i++)
-			put_page(bo->pages[i]);
-	}
-	kfree(bo->pages);
-	kfree(bo->page_obj);
+	VM_BUG_ON(!!pages != !!(gup_flags & FOLL_GET));
+
+	/*
+	 * Require read or write permissions.
+	 * If FOLL_FORCE is set, we only require the "MAY" flags.
+	 */
+	vm_flags  = (gup_flags & FOLL_WRITE) ?
+		    (VM_WRITE | VM_MAYWRITE) : (VM_READ | VM_MAYREAD);
+	vm_flags &= (gup_flags & FOLL_FORCE) ?
+		    (VM_MAYREAD | VM_MAYWRITE) : (VM_READ | VM_WRITE);
+	i = 0;
+
+	do {
+		struct vm_area_struct *vma;
+
+		vma = find_vma(mm, start);
+		if (!vma) {
+			dev_err(atomisp_dev, "find_vma failed\n");
+			return i ? : -EFAULT;
+		}
+
+		if (is_vm_hugetlb_page(vma)) {
+			/*
+			i = follow_hugetlb_page(mm, vma, pages, vmas,
+					&start, &nr_pages, i, gup_flags);
+			*/
+			continue;
+		}
+
+		do {
+			struct page *page;
+			unsigned long pfn;
+
+			/*
+			 * If we have a pending SIGKILL, don't keep faulting
+			 * pages and potentially allocating memory.
+			 */
+			if (unlikely(fatal_signal_pending(current))) {
+				dev_err(atomisp_dev,
+					"fatal_signal_pending in %s\n",
+					__func__);
+				return i ? i : -ERESTARTSYS;
+			}
+
+			ret = follow_pfn(vma, start, &pfn);
+			if (ret) {
+				dev_err(atomisp_dev, "follow_pfn() failed\n");
+				return i ? : -EFAULT;
+			}
+
+			page = pfn_to_page(pfn);
+			if (IS_ERR(page))
+				return i ? i : PTR_ERR(page);
+			if (pages) {
+				pages[i] = page;
+				get_page(page);
+				flush_anon_page(vma, page, start);
+				flush_dcache_page(page);
+			}
+			if (vmas)
+				vmas[i] = vma;
+			i++;
+			start += PAGE_SIZE;
+			nr_pages--;
+		} while (nr_pages && start < vma->vm_end);
+	} while (nr_pages);
+
+	return i;
+}
+
+static int get_pfnmap_pages(struct task_struct *tsk, struct mm_struct *mm,
+			    unsigned long start, int nr_pages, int write, int force,
+			    struct page **pages, struct vm_area_struct **vmas)
+{
+	int flags = FOLL_TOUCH;
+
+	if (pages)
+		flags |= FOLL_GET;
+	if (write)
+		flags |= FOLL_WRITE;
+	if (force)
+		flags |= FOLL_FORCE;
+
+	return __get_pfnmap_pages(tsk, mm, start, nr_pages, flags, pages, vmas);
 }
 
 /*
@@ -897,9 +993,9 @@ static int alloc_user_pages(struct hmm_buffer_object *bo,
 	}
 
 	mutex_unlock(&bo->mutex);
-	mmap_read_lock(current->mm);
+	down_read(&current->mm->mmap_sem);
 	vma = find_vma(current->mm, (unsigned long)userptr);
-	mmap_read_unlock(current->mm);
+	up_read(&current->mm->mmap_sem);
 	if (!vma) {
 		dev_err(atomisp_dev, "find_vma failed\n");
 		kfree(bo->page_obj);
@@ -912,15 +1008,11 @@ static int alloc_user_pages(struct hmm_buffer_object *bo,
 	 * Handle frame buffer allocated in other kerenl space driver
 	 * and map to user space
 	 */
-
-	userptr = untagged_addr(userptr);
-
-	bo->pages = pages;
-
 	if (vma->vm_flags & (VM_IO | VM_PFNMAP)) {
-		page_nr = pin_user_pages((unsigned long)userptr, bo->pgnr,
-					 FOLL_LONGTERM | FOLL_WRITE,
-					 pages, NULL);
+		page_nr = get_pfnmap_pages(current, current->mm,
+					   (unsigned long)userptr,
+					   (int)(bo->pgnr), 1, 0,
+					   pages, NULL);
 		bo->mem_type = HMM_BO_MEM_TYPE_PFN;
 	} else {
 		/*Handle frame buffer allocated in user space*/
@@ -931,20 +1023,11 @@ static int alloc_user_pages(struct hmm_buffer_object *bo,
 		bo->mem_type = HMM_BO_MEM_TYPE_USER;
 	}
 
-	dev_dbg(atomisp_dev, "%s: %d %s pages were allocated as 0x%08x\n",
-		__func__,
-		bo->pgnr,
-		bo->mem_type == HMM_BO_MEM_TYPE_USER ? "user" : "pfn", page_nr);
-
-	hmm_mem_stat.usr_size += bo->pgnr;
-
 	/* can be written by caller, not forced */
 	if (page_nr != bo->pgnr) {
 		dev_err(atomisp_dev,
 			"get_user_pages err: bo->pgnr = %d, pgnr actually pinned = %d.\n",
 			bo->pgnr, page_nr);
-		if (page_nr < 0)
-			page_nr = 0;
 		goto out_of_mem;
 	}
 
@@ -952,14 +1035,29 @@ static int alloc_user_pages(struct hmm_buffer_object *bo,
 		bo->page_obj[i].page = pages[i];
 		bo->page_obj[i].type = HMM_PAGE_TYPE_GENERAL;
 	}
+	hmm_mem_stat.usr_size += bo->pgnr;
+	kfree(pages);
 
 	return 0;
 
 out_of_mem:
-
-	free_user_pages(bo, page_nr);
+	for (i = 0; i < page_nr; i++)
+		put_page(pages[i]);
+	kfree(pages);
+	kfree(bo->page_obj);
 
 	return -ENOMEM;
+}
+
+static void free_user_pages(struct hmm_buffer_object *bo)
+{
+	int i;
+
+	for (i = 0; i < bo->pgnr; i++)
+		put_page(bo->page_obj[i].page);
+	hmm_mem_stat.usr_size -= bo->pgnr;
+
+	kfree(bo->page_obj);
 }
 
 /*
@@ -1040,7 +1138,7 @@ void hmm_bo_free_pages(struct hmm_buffer_object *bo)
 	if (bo->type == HMM_BO_PRIVATE)
 		free_private_pages(bo, &dynamic_pool, &reserved_pool);
 	else if (bo->type == HMM_BO_USER)
-		free_user_pages(bo, bo->pgnr);
+		free_user_pages(bo);
 	else
 		dev_err(atomisp_dev, "invalid buffer type.\n");
 	mutex_unlock(&bo->mutex);

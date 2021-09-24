@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -35,7 +34,7 @@
 
 #define NOF_ACQ_REGS                              12
 
-// Register id's of MMIO slave accessible registers
+// Register id's of MMIO slave accesible registers
 #define ACQ_START_ADDR_REG_ID                     0
 #define ACQ_MEM_REGION_SIZE_REG_ID                1
 #define ACQ_NUM_MEM_REGIONS_REG_ID                2

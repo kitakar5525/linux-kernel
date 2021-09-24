@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Merrifield PNW Camera Imaging ISP subsystem.
  *
@@ -20,6 +19,7 @@
 #include "type_support.h"
 #include "mmu/isp_mmu.h"
 #include "mmu/sh_mmu_mrfld.h"
+#include "memory_access/memory_access.h"
 #include "atomisp_compat.h"
 
 #define MERR_VALID_PTE_MASK	0x80000000
@@ -63,7 +63,7 @@ static unsigned int sh_get_pd_base(struct isp_mmu *mmu,
  */
 static void sh_tlb_flush(struct isp_mmu *mmu)
 {
-	ia_css_mmu_invalidate_cache();
+	atomisp_css_mmu_invalidate_cache();
 }
 
 struct isp_mmu_client sh_mmu_mrfld = {

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -122,7 +121,8 @@ struct ia_css_frame_info {
 	struct ia_css_crop_info crop_info;
 };
 
-#define IA_CSS_BINARY_DEFAULT_FRAME_INFO { \
+#define IA_CSS_BINARY_DEFAULT_FRAME_INFO \
+(struct ia_css_frame_info) { \
 	.format			= IA_CSS_FRAME_FORMAT_NUM,  \
 	.raw_bayer_order	= IA_CSS_BAYER_ORDER_NUM, \
 }
@@ -184,7 +184,8 @@ struct ia_css_frame {
 		       info.format */
 };
 
-#define DEFAULT_FRAME { \
+#define DEFAULT_FRAME \
+(struct ia_css_frame) { \
 	.info			= IA_CSS_BINARY_DEFAULT_FRAME_INFO, \
 	.dynamic_queue_id	= SH_CSS_INVALID_QUEUE_ID, \
 	.buf_type		= IA_CSS_BUFFER_TYPE_INVALID, \
@@ -213,7 +214,7 @@ void ia_css_frame_zero(struct ia_css_frame *frame);
  * Allocate a CSS frame structure. The memory for the frame data will be
  * allocated in the CSS address space.
  */
-int
+enum ia_css_err
 ia_css_frame_allocate(struct ia_css_frame **frame,
 		      unsigned int width,
 		      unsigned int height,
@@ -231,7 +232,7 @@ ia_css_frame_allocate(struct ia_css_frame **frame,
  * This is a convenience function, implemented on top of
  * ia_css_frame_allocate().
  */
-int
+enum ia_css_err
 ia_css_frame_allocate_from_info(struct ia_css_frame **frame,
 				const struct ia_css_frame_info *info);
 /* @brief Free a CSS frame structure.
@@ -259,7 +260,7 @@ ia_css_frame_free(struct ia_css_frame *frame);
  * physically contiguous memory.
  * Deprecated.
  */
-int
+enum ia_css_err
 ia_css_frame_allocate_contiguous(struct ia_css_frame **frame,
 				 unsigned int width,
 				 unsigned int height,
@@ -279,7 +280,7 @@ ia_css_frame_allocate_contiguous(struct ia_css_frame **frame,
  * Only for FPGA display driver which needs physically contiguous memory.
  * Deprecated.
  */
-int
+enum ia_css_err
 ia_css_frame_allocate_contiguous_from_info(struct ia_css_frame **frame,
 	const struct ia_css_frame_info *info);
 
@@ -292,7 +293,7 @@ ia_css_frame_allocate_contiguous_from_info(struct ia_css_frame **frame,
  * Allocate an empty CSS frame with no data buffer using the parameters
  * in the frame info.
  */
-int
+enum ia_css_err
 ia_css_frame_create_from_info(struct ia_css_frame **frame,
 			      const struct ia_css_frame_info *info);
 
@@ -309,7 +310,7 @@ ia_css_frame_create_from_info(struct ia_css_frame **frame,
  * free the mapped_data buffer. However if ia_css_frame_free() is called and
  * the frame had a valid data buffer, it would be freed along with the frame.
  */
-int
+enum ia_css_err
 ia_css_frame_set_data(struct ia_css_frame *frame,
 		      const ia_css_ptr   mapped_data,
 		      size_t data_size_bytes);
@@ -330,12 +331,12 @@ ia_css_frame_set_data(struct ia_css_frame *frame,
  * ia_css_frame_allocate() does, but instead of allocating the memory, it will
  * map the pre-allocated memory into the CSS address space.
  */
-int
+enum ia_css_err
 ia_css_frame_map(struct ia_css_frame **frame,
 		 const struct ia_css_frame_info *info,
 		 const void __user *data,
 		 u16 attribute,
-		 unsigned int pgnr);
+		 void *context);
 
 /* @brief Unmap a CSS frame structure.
  *

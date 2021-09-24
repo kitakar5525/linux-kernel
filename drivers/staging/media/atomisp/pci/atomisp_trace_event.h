@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support Camera Imaging tracer core.
  *
@@ -44,7 +43,7 @@ TRACE_EVENT(camera_meminfo,
 	    ),
 
 	    TP_fast_assign(
-		strscpy(__entry->name, name, 24);
+		strlcpy(__entry->name, name, 24);
 		__entry->uptr_size = uptr_size;
 		__entry->counter = counter;
 		__entry->sys_size = sys_size;
@@ -74,8 +73,8 @@ TRACE_EVENT(camera_debug,
 	    ),
 
 	    TP_fast_assign(
-		strscpy(__entry->name, name, 24);
-		strscpy(__entry->info, info, 24);
+		strlcpy(__entry->name, name, 24);
+		strlcpy(__entry->info, info, 24);
 		__entry->line = line;
 	    ),
 

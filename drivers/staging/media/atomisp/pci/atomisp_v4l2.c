@@ -1530,8 +1530,13 @@ static bool is_valid_device(struct pci_dev *dev,
 	 */
 
 #if defined(ISP2400)
+	if (atomisp_hw_is_isp2401) {
+		dev_err(&dev->dev, "Support for %s (ISP2401) was disabled at compile time\n",
+			name);
+		return false;
+}
 #else
-	{
+	if (!atomisp_hw_is_isp2401) {
 		dev_err(&dev->dev, "Support for %s (ISP2400) was disabled at compile time\n",
 			name);
 		return false;

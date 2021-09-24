@@ -4114,13 +4114,13 @@ sh_css_params_write_to_ddr_internal(
 					return -ENOMEM;
 				}
 				params->pipe_dvs_6axis_config_changed[pipe_id] = true;
-
-				store_dvs_6axis_config(params->pipe_dvs_6axis_config[pipe_id],
-						    binary,
-						    dvs_in_frame_info,
-						    ddr_map->dvs_6axis_params_y);
-				params->isp_params_changed = true;
 			}
+
+			store_dvs_6axis_config(params->pipe_dvs_6axis_config[pipe_id],
+					    binary,
+					    dvs_in_frame_info,
+					    ddr_map->dvs_6axis_params_y);
+			params->isp_params_changed = true;
 		}
 	}
 

@@ -45,47 +45,6 @@ ia_css_mipi_frame_specify(const unsigned int size_mem_words,
 	return err;
 }
 
-/*
- * Check if a source port or TPG/PRBS ID is valid
- */
-static bool ia_css_mipi_is_source_port_valid(struct ia_css_pipe *pipe,
-	unsigned int *pport)
-{
-	bool ret = true;
-	unsigned int port = 0;
-	unsigned int max_ports = 0;
-
-	switch (pipe->stream->config.mode) {
-	case IA_CSS_INPUT_MODE_BUFFERED_SENSOR:
-		port = (unsigned int)pipe->stream->config.source.port.port;
-		max_ports = N_CSI_PORTS;
-		break;
-	case IA_CSS_INPUT_MODE_TPG:
-		port = (unsigned int)pipe->stream->config.source.tpg.id;
-		max_ports = N_CSS_TPG_IDS;
-		break;
-	case IA_CSS_INPUT_MODE_PRBS:
-		port = (unsigned int)pipe->stream->config.source.prbs.id;
-		max_ports = N_CSS_PRBS_IDS;
-		break;
-	default:
-		assert(false);
-		ret = false;
-		break;
-	}
-
-	if (ret) {
-		assert(port < max_ports);
-
-		if (port >= max_ports)
-			ret = false;
-	}
-
-	*pport = port;
-
-	return ret;
-}
-
 /* Assumptions:
  *	- A line is multiple of 4 bytes = 1 word.
  *	- Each frame has SOF and EOF (each 1 word).

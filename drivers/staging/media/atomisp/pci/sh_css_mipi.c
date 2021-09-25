@@ -399,9 +399,8 @@ allocate_mipi_frames(struct ia_css_pipe *pipe,
 	assert(port < N_CSI_PORTS);
 
 	if (port >= N_CSI_PORTS) {
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
-				    "allocate_mipi_frames(%p) exit: error: port is not correct (port=%d).\n",
-				    pipe, port);
+		IA_CSS_ERROR("allocate_mipi_frames(%p) exit: port is not correct (port=%d).",
+			     pipe, port);
 		return IA_CSS_ERR_INTERNAL_ERROR;
 	}
 
@@ -476,9 +475,8 @@ allocate_mipi_frames(struct ia_css_pipe *pipe,
 							my_css.mipi_frames[port][j] = NULL;
 						}
 					}
-					ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
-							    "allocate_mipi_frames(%p, %d) exit: error: allocation failed.\n",
-							    pipe, port);
+					IA_CSS_ERROR("allocate_mipi_frames(%p, %d) exit: allocation failed.",
+						     pipe, port);
 					return err;
 				}
 			}
@@ -527,16 +525,14 @@ free_mipi_frames(struct ia_css_pipe *pipe) {
 	{
 		assert(pipe->stream);
 		if ((!pipe) || (!pipe->stream)) {
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
-					    "free_mipi_frames(%p) exit: error: pipe or stream is null.\n",
-					    pipe);
+			IA_CSS_ERROR("free_mipi_frames(%p) exit: pipe or stream is null.",
+				     pipe);
 			return IA_CSS_ERR_INVALID_ARGUMENTS;
 		}
 
 		if (!buffers_needed(pipe)) {
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
-					    "free_mipi_frames(%p) exit: error: wrong mode.\n",
-					    pipe);
+			IA_CSS_ERROR("free_mipi_frames(%p) exit: wrong mode.",
+				     pipe);
 			return err;
 		}
 
@@ -545,9 +541,8 @@ free_mipi_frames(struct ia_css_pipe *pipe) {
 		assert(port < N_CSI_PORTS);
 
 		if (port >= N_CSI_PORTS) {
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
-					    "free_mipi_frames(%p, %d) exit: error: pipe port is not correct.\n",
-					    pipe, port);
+			IA_CSS_ERROR("free_mipi_frames(%p, %d) exit: pipe port is not correct.",
+				     pipe, port);
 			return err;
 		}
 
@@ -555,9 +550,8 @@ free_mipi_frames(struct ia_css_pipe *pipe) {
 #if defined(USE_INPUT_SYSTEM_VERSION_2)
 			assert(ref_count_mipi_allocation[port] == 1);
 			if (ref_count_mipi_allocation[port] != 1) {
-				ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE_PRIVATE,
-						    "free_mipi_frames(%p) exit: error: wrong ref_count (ref_count=%d).\n",
-						    pipe, ref_count_mipi_allocation[port]);
+				IA_CSS_ERROR("free_mipi_frames(%p) exit: wrong ref_count (ref_count=%d).",
+					     pipe, ref_count_mipi_allocation[port]);
 				return err;
 			}
 #endif
@@ -654,7 +648,7 @@ send_mipi_frames(struct ia_css_pipe *pipe) {
 	assert(port < N_CSI_PORTS);
 
 	if (port >= N_CSI_PORTS) {
-		IA_CSS_ERROR("send_mipi_frames(%p) exit: invalid port specified (port=%d).\n",
+		IA_CSS_ERROR("send_mipi_frames(%p) exit: invalid port specified (port=%d).",
 			     pipe, port);
 		return err;
 	}

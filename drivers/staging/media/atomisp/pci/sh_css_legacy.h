@@ -63,7 +63,6 @@ enum ia_css_err
 sh_css_set_black_frame(struct ia_css_stream *stream,
 		       const struct ia_css_frame *raw_black_frame);
 
-/* ISP2400 */
 void
 sh_css_enable_cont_capt(bool enable, bool stop_copy_preview);
 

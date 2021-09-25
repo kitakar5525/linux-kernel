@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -16,7 +15,7 @@
 #ifndef __PIXELGEN_PUBLIC_H_INCLUDED__
 #define __PIXELGEN_PUBLIC_H_INCLUDED__
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 /*****************************************************
  *
  * Native command interface (NCI).
@@ -76,5 +75,5 @@ STORAGE_CLASS_PIXELGEN_H void pixelgen_ctrl_reg_store(
     const hrt_data value);
 /* end of DLI */
 
-#endif /* ISP2401 */
+#endif /* USE_INPUT_SYSTEM_VERSION_2401 */
 #endif /* __PIXELGEN_PUBLIC_H_INCLUDED__ */

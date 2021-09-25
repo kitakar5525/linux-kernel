@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
@@ -20,7 +19,7 @@
 #include "ia_css_irq.h"
 #include "sh_css_internal.h"
 
-#if !defined(ISP2401)
+#if !defined(USE_INPUT_SYSTEM_VERSION_2401)
 void ia_css_isys_rx_enable_all_interrupts(enum mipi_port_id port)
 {
 	hrt_data bits = receiver_port_reg_load(RX0_ID,
@@ -28,7 +27,9 @@ void ia_css_isys_rx_enable_all_interrupts(enum mipi_port_id port)
 					       _HRT_CSS_RECEIVER_IRQ_ENABLE_REG_IDX);
 
 	bits |= (1U << _HRT_CSS_RECEIVER_IRQ_OVERRUN_BIT) |
+#if defined(HAS_RX_VERSION_2)
 		(1U << _HRT_CSS_RECEIVER_IRQ_INIT_TIMEOUT_BIT) |
+#endif
 		(1U << _HRT_CSS_RECEIVER_IRQ_SLEEP_MODE_ENTRY_BIT) |
 		(1U << _HRT_CSS_RECEIVER_IRQ_SLEEP_MODE_EXIT_BIT) |
 		(1U << _HRT_CSS_RECEIVER_IRQ_ERR_SOT_HS_BIT) |
@@ -115,8 +116,10 @@ unsigned int ia_css_isys_rx_translate_irq_infos(unsigned int bits)
 
 	if (bits & (1U << _HRT_CSS_RECEIVER_IRQ_OVERRUN_BIT))
 		infos |= IA_CSS_RX_IRQ_INFO_BUFFER_OVERRUN;
+#if defined(HAS_RX_VERSION_2)
 	if (bits & (1U << _HRT_CSS_RECEIVER_IRQ_INIT_TIMEOUT_BIT))
 		infos |= IA_CSS_RX_IRQ_INFO_INIT_TIMEOUT;
+#endif
 	if (bits & (1U << _HRT_CSS_RECEIVER_IRQ_SLEEP_MODE_ENTRY_BIT))
 		infos |= IA_CSS_RX_IRQ_INFO_ENTER_SLEEP_MODE;
 	if (bits & (1U << _HRT_CSS_RECEIVER_IRQ_SLEEP_MODE_EXIT_BIT))
@@ -172,8 +175,10 @@ void ia_css_isys_rx_clear_irq_info(enum mipi_port_id port,
 	/* MW: Why do we remap the receiver bitmap */
 	if (irq_infos & IA_CSS_RX_IRQ_INFO_BUFFER_OVERRUN)
 		bits |= 1U << _HRT_CSS_RECEIVER_IRQ_OVERRUN_BIT;
+#if defined(HAS_RX_VERSION_2)
 	if (irq_infos & IA_CSS_RX_IRQ_INFO_INIT_TIMEOUT)
 		bits |= 1U << _HRT_CSS_RECEIVER_IRQ_INIT_TIMEOUT_BIT;
+#endif
 	if (irq_infos & IA_CSS_RX_IRQ_INFO_ENTER_SLEEP_MODE)
 		bits |= 1U << _HRT_CSS_RECEIVER_IRQ_SLEEP_MODE_ENTRY_BIT;
 	if (irq_infos & IA_CSS_RX_IRQ_INFO_EXIT_SLEEP_MODE)
@@ -209,7 +214,7 @@ void ia_css_isys_rx_clear_irq_info(enum mipi_port_id port,
 
 	return;
 }
-#endif /* #if !defined(ISP2401) */
+#endif /* #if !defined(USE_INPUT_SYSTEM_VERSION_2401) */
 
 int ia_css_isys_convert_stream_format_to_mipi_format(
     enum atomisp_input_format input_format,
@@ -311,7 +316,7 @@ int ia_css_isys_convert_stream_format_to_mipi_format(
 	case ATOMISP_INPUT_FORMAT_EMBEDDED:
 		*fmt_type = MIPI_FORMAT_EMBEDDED;
 		break;
-#ifndef ISP2401
+#ifndef USE_INPUT_SYSTEM_VERSION_2401
 	case ATOMISP_INPUT_FORMAT_RAW_16:
 		/* This is not specified by Arasan, so we use
 		 * 17 for now.
@@ -356,7 +361,7 @@ int ia_css_isys_convert_stream_format_to_mipi_format(
 	return 0;
 }
 
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 static mipi_predictor_t sh_css_csi2_compression_type_2_mipi_predictor(
     enum ia_css_csi2_compression_type type)
 {
@@ -368,7 +373,6 @@ static mipi_predictor_t sh_css_csi2_compression_type_2_mipi_predictor(
 		break;
 	case IA_CSS_CSI2_COMPRESSION_TYPE_2:
 		predictor = MIPI_PREDICTOR_TYPE2 - 1;
-		break;
 	default:
 		break;
 	}
@@ -377,7 +381,7 @@ static mipi_predictor_t sh_css_csi2_compression_type_2_mipi_predictor(
 
 int ia_css_isys_convert_compressed_format(
     struct ia_css_csi2_compression *comp,
-    struct isp2401_input_system_cfg_s *cfg)
+    struct input_system_cfg_s *cfg)
 {
 	int err = 0;
 
@@ -475,21 +479,12 @@ unsigned int ia_css_csi2_calculate_input_system_alignment(
 
 #endif
 
-#if !defined(ISP2401)
-static const mipi_lane_cfg_t MIPI_PORT_LANES[N_RX_MODE][N_MIPI_PORT_ID] = {
-	{MIPI_4LANE_CFG, MIPI_1LANE_CFG, MIPI_0LANE_CFG},
-	{MIPI_3LANE_CFG, MIPI_1LANE_CFG, MIPI_0LANE_CFG},
-	{MIPI_2LANE_CFG, MIPI_1LANE_CFG, MIPI_0LANE_CFG},
-	{MIPI_1LANE_CFG, MIPI_1LANE_CFG, MIPI_0LANE_CFG},
-	{MIPI_2LANE_CFG, MIPI_1LANE_CFG, MIPI_2LANE_CFG},
-	{MIPI_3LANE_CFG, MIPI_1LANE_CFG, MIPI_1LANE_CFG},
-	{MIPI_2LANE_CFG, MIPI_1LANE_CFG, MIPI_1LANE_CFG},
-	{MIPI_1LANE_CFG, MIPI_1LANE_CFG, MIPI_1LANE_CFG}
-};
-
+#if !defined(USE_INPUT_SYSTEM_VERSION_2401)
 void ia_css_isys_rx_configure(const rx_cfg_t *config,
 			      const enum ia_css_input_mode input_mode)
 {
+#if defined(HAS_RX_VERSION_2)
+	bool port_enabled[N_MIPI_PORT_ID];
 	bool any_port_enabled = false;
 	enum mipi_port_id port;
 
@@ -525,6 +520,8 @@ void ia_css_isys_rx_configure(const rx_cfg_t *config,
 		receiver_port_reg_store(RX0_ID, port,
 					_HRT_CSS_RECEIVER_2400_RX_COUNT_REG_IDX,
 					config->rxcount);
+
+		port_enabled[port] = true;
 
 		if (input_mode != IA_CSS_INPUT_MODE_BUFFERED_SENSOR) {
 			/* MW: A bit of a hack, straight wiring of the capture
@@ -582,6 +579,9 @@ void ia_css_isys_rx_configure(const rx_cfg_t *config,
 	 *                INPUT_SYSTEM_CSI_RECEIVER_SELECT_BACKENG, 1);
 	 */
 	input_system_reg_store(INPUT_SYSTEM0_ID, 0x207, 1);
+#else
+#error "rx.c: RX version must be one of {RX_VERSION_2}"
+#endif
 
 	return;
 }
@@ -597,4 +597,4 @@ void ia_css_isys_rx_disable(void)
 	}
 	return;
 }
-#endif /* if !defined(ISP2401) */
+#endif /* if !defined(USE_INPUT_SYSTEM_VERSION_2401) */

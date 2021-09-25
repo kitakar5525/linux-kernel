@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -608,7 +607,7 @@ void ia_css_pipe_get_primary_binarydesc(
 		 * since it has better performance. */
 		if (pipe_version == IA_CSS_PIPE_VERSION_2_6_1)
 			prim_descr->striped = false;
-		else if (!IS_ISP2401) {
+		else if (!atomisp_hw_is_isp2401) {
 			prim_descr->striped = prim_descr->continuous &&
 					      (!pipe->stream->stop_copy_preview || !pipe->stream->disable_cont_vf);
 		} else {
@@ -849,7 +848,7 @@ void ia_css_pipe_get_ldc_binarydesc(
 	assert(out_info);
 	IA_CSS_ENTER_PRIVATE("");
 
-	if (!IS_ISP2401) {
+	if (!atomisp_hw_is_isp2401) {
 		*in_info = *out_info;
 	} else {
 		if (pipe->out_yuv_ds_input_info.res.width)

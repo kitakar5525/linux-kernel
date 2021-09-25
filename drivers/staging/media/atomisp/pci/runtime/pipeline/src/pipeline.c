@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
@@ -140,7 +139,9 @@ void ia_css_pipeline_start(enum ia_css_pipe_id pipe_id,
 				false, false, false, true, SH_CSS_BDS_FACTOR_1_00,
 				SH_CSS_PIPE_CONFIG_OVRD_NO_OVRD,
 				IA_CSS_INPUT_MODE_MEMORY, NULL, NULL,
+#if !defined(HAS_NO_INPUT_SYSTEM)
 				(enum mipi_port_id)0,
+#endif
 				NULL, NULL);
 
 	ia_css_pipeline_get_sp_thread_id(pipe_num, &thread_id);
@@ -455,7 +456,7 @@ bool ia_css_pipeline_has_stopped(struct ia_css_pipeline *pipeline)
 	return sp_group.pipe[thread_id].num_stages == 0;
 }
 
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 struct sh_css_sp_pipeline_io_status *ia_css_pipeline_get_pipe_io_status(void)
 {
 	return(&sh_css_sp_group.pipe_io_status);
@@ -663,8 +664,6 @@ ERR:
 	return err;
 }
 
-static const struct ia_css_frame ia_css_default_frame = DEFAULT_FRAME;
-
 static void pipeline_init_defaults(
     struct ia_css_pipeline *pipeline,
     enum ia_css_pipe_id pipe_id,
@@ -677,15 +676,10 @@ static void pipeline_init_defaults(
 	pipeline->stages = NULL;
 	pipeline->stop_requested = false;
 	pipeline->current_stage = NULL;
-
-	memcpy(&pipeline->in_frame, &ia_css_default_frame,
-	       sizeof(ia_css_default_frame));
-
+	pipeline->in_frame = DEFAULT_FRAME;
 	for (i = 0; i < IA_CSS_PIPE_MAX_OUTPUT_STAGE; i++) {
-		memcpy(&pipeline->out_frame[i], &ia_css_default_frame,
-		       sizeof(ia_css_default_frame));
-		memcpy(&pipeline->vf_frame[i], &ia_css_default_frame,
-		       sizeof(ia_css_default_frame));
+		pipeline->out_frame[i] = DEFAULT_FRAME;
+		pipeline->vf_frame[i] = DEFAULT_FRAME;
 	}
 	pipeline->num_execs = -1;
 	pipeline->acquire_isp_each_stage = true;

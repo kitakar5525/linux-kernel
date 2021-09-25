@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -149,7 +148,8 @@ struct ia_css_pipe_config {
 /**
  * Default settings for newly created pipe configurations.
  */
-#define DEFAULT_PIPE_CONFIG { \
+#define DEFAULT_PIPE_CONFIG \
+(struct ia_css_pipe_config) { \
 	.mode			= IA_CSS_PIPE_MODE_PREVIEW, \
 	.isp_pipe_version	= 1, \
 	.output_info		= {IA_CSS_BINARY_DEFAULT_FRAME_INFO}, \
@@ -202,7 +202,8 @@ struct ia_css_pipe_info {
 /**
  * Defaults for ia_css_pipe_info structs.
  */
-#define DEFAULT_PIPE_INFO {\
+#define DEFAULT_PIPE_INFO \
+(struct ia_css_pipe_info) { \
 	.output_info		= {IA_CSS_BINARY_DEFAULT_FRAME_INFO}, \
 	.vf_output_info		= {IA_CSS_BINARY_DEFAULT_FRAME_INFO}, \
 	.raw_output_info	= IA_CSS_BINARY_DEFAULT_FRAME_INFO, \

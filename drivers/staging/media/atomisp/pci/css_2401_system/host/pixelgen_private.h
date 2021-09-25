@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -19,43 +18,6 @@
 #include "PixelGen_SysBlock_defs.h"
 #include "device_access.h"	/* ia_css_device_load_uint32 */
 #include "assert_support.h" /* assert */
-
-/*****************************************************
- *
- * Device level interface (DLI).
- *
- *****************************************************/
-/**
- * @brief Load the register value.
- * Refer to "pixelgen_public.h" for details.
- */
-STORAGE_CLASS_PIXELGEN_C hrt_data pixelgen_ctrl_reg_load(
-    const pixelgen_ID_t ID,
-    const hrt_address reg)
-{
-	assert(ID < N_PIXELGEN_ID);
-	assert(PIXELGEN_CTRL_BASE[ID] != (hrt_address) - 1);
-	return ia_css_device_load_uint32(PIXELGEN_CTRL_BASE[ID] + reg * sizeof(
-					     hrt_data));
-}
-
-/**
- * @brief Store a value to the register.
- * Refer to "pixelgen_ctrl_public.h" for details.
- */
-STORAGE_CLASS_PIXELGEN_C void pixelgen_ctrl_reg_store(
-    const pixelgen_ID_t ID,
-    const hrt_address reg,
-    const hrt_data value)
-{
-	assert(ID < N_PIXELGEN_ID);
-	assert(PIXELGEN_CTRL_BASE[ID] != (hrt_address)-1);
-
-	ia_css_device_store_uint32(PIXELGEN_CTRL_BASE[ID] + reg * sizeof(hrt_data),
-				   value);
-}
-
-/* end of DLI */
 
 /*****************************************************
  *
@@ -181,4 +143,40 @@ STORAGE_CLASS_PIXELGEN_C void pixelgen_ctrl_dump_state(
 }
 
 /* end of NCI */
+/*****************************************************
+ *
+ * Device level interface (DLI).
+ *
+ *****************************************************/
+/**
+ * @brief Load the register value.
+ * Refer to "pixelgen_public.h" for details.
+ */
+STORAGE_CLASS_PIXELGEN_C hrt_data pixelgen_ctrl_reg_load(
+    const pixelgen_ID_t ID,
+    const hrt_address reg)
+{
+	assert(ID < N_PIXELGEN_ID);
+	assert(PIXELGEN_CTRL_BASE[ID] != (hrt_address) - 1);
+	return ia_css_device_load_uint32(PIXELGEN_CTRL_BASE[ID] + reg * sizeof(
+					     hrt_data));
+}
+
+/**
+ * @brief Store a value to the register.
+ * Refer to "pixelgen_ctrl_public.h" for details.
+ */
+STORAGE_CLASS_PIXELGEN_C void pixelgen_ctrl_reg_store(
+    const pixelgen_ID_t ID,
+    const hrt_address reg,
+    const hrt_data value)
+{
+	assert(ID < N_PIXELGEN_ID);
+	assert(PIXELGEN_CTRL_BASE[ID] != (hrt_address)-1);
+
+	ia_css_device_store_uint32(PIXELGEN_CTRL_BASE[ID] + reg * sizeof(hrt_data),
+				   value);
+}
+
+/* end of DLI */
 #endif /* __PIXELGEN_PRIVATE_H_INCLUDED__ */

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -122,7 +121,8 @@ struct ia_css_frame_info {
 	struct ia_css_crop_info crop_info;
 };
 
-#define IA_CSS_BINARY_DEFAULT_FRAME_INFO { \
+#define IA_CSS_BINARY_DEFAULT_FRAME_INFO \
+(struct ia_css_frame_info) { \
 	.format			= IA_CSS_FRAME_FORMAT_NUM,  \
 	.raw_bayer_order	= IA_CSS_BAYER_ORDER_NUM, \
 }
@@ -184,7 +184,8 @@ struct ia_css_frame {
 		       info.format */
 };
 
-#define DEFAULT_FRAME { \
+#define DEFAULT_FRAME \
+(struct ia_css_frame) { \
 	.info			= IA_CSS_BINARY_DEFAULT_FRAME_INFO, \
 	.dynamic_queue_id	= SH_CSS_INVALID_QUEUE_ID, \
 	.buf_type		= IA_CSS_BUFFER_TYPE_INVALID, \

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Medifield PNW Camera Imaging ISP subsystem.
  *
@@ -660,8 +659,6 @@ static void free_private_bo_pages(struct hmm_buffer_object *bo,
 				break;
 			}
 
-			fallthrough;
-
 		/*
 		 * if dynamic memory pool doesn't exist, need to free
 		 * pages to system directly.
@@ -857,17 +854,16 @@ static void free_private_pages(struct hmm_buffer_object *bo,
 	kfree(bo->page_obj);
 }
 
-static void free_user_pages(struct hmm_buffer_object *bo,
-			    unsigned int page_nr)
+static void free_user_pages(struct hmm_buffer_object *bo)
 {
 	int i;
 
 	hmm_mem_stat.usr_size -= bo->pgnr;
 
 	if (bo->mem_type == HMM_BO_MEM_TYPE_PFN) {
-		unpin_user_pages(bo->pages, page_nr);
+		unpin_user_pages(bo->pages, bo->pgnr);
 	} else {
-		for (i = 0; i < page_nr; i++)
+		for (i = 0; i < bo->pgnr; i++)
 			put_page(bo->pages[i]);
 	}
 	kfree(bo->pages);
@@ -897,9 +893,9 @@ static int alloc_user_pages(struct hmm_buffer_object *bo,
 	}
 
 	mutex_unlock(&bo->mutex);
-	mmap_read_lock(current->mm);
+	down_read(&current->mm->mmap_sem);
 	vma = find_vma(current->mm, (unsigned long)userptr);
-	mmap_read_unlock(current->mm);
+	up_read(&current->mm->mmap_sem);
 	if (!vma) {
 		dev_err(atomisp_dev, "find_vma failed\n");
 		kfree(bo->page_obj);
@@ -943,8 +939,6 @@ static int alloc_user_pages(struct hmm_buffer_object *bo,
 		dev_err(atomisp_dev,
 			"get_user_pages err: bo->pgnr = %d, pgnr actually pinned = %d.\n",
 			bo->pgnr, page_nr);
-		if (page_nr < 0)
-			page_nr = 0;
 		goto out_of_mem;
 	}
 
@@ -957,7 +951,7 @@ static int alloc_user_pages(struct hmm_buffer_object *bo,
 
 out_of_mem:
 
-	free_user_pages(bo, page_nr);
+	free_user_pages(bo);
 
 	return -ENOMEM;
 }
@@ -1040,7 +1034,7 @@ void hmm_bo_free_pages(struct hmm_buffer_object *bo)
 	if (bo->type == HMM_BO_PRIVATE)
 		free_private_pages(bo, &dynamic_pool, &reserved_pool);
 	else if (bo->type == HMM_BO_USER)
-		free_user_pages(bo, bo->pgnr);
+		free_user_pages(bo);
 	else
 		dev_err(atomisp_dev, "invalid buffer type.\n");
 	mutex_unlock(&bo->mutex);

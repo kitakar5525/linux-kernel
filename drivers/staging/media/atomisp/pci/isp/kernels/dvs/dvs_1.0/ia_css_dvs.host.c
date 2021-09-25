@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -234,6 +233,7 @@ convert_allocate_dvs_6axis_config(
 	unsigned int o_width;
 	unsigned int o_height;
 	struct ia_css_host_data *me;
+	struct gdc_warp_param_mem_s *isp_data_ptr;
 
 	assert(binary);
 	assert(dvs_6axis_config);
@@ -247,6 +247,8 @@ convert_allocate_dvs_6axis_config(
 	/*DVS only supports input frame of YUV420 or NV12. Fail for all other cases*/
 	assert((dvs_in_frame_info->format == IA_CSS_FRAME_FORMAT_NV12)
 	       || (dvs_in_frame_info->format == IA_CSS_FRAME_FORMAT_YUV420));
+
+	isp_data_ptr = (struct gdc_warp_param_mem_s *)me->address;
 
 	i_stride  = dvs_in_frame_info->padded_width;
 

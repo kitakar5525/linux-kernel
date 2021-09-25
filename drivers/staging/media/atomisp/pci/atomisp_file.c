@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Medifield PNW Camera Imaging ISP subsystem.
  *
@@ -80,7 +79,7 @@ static int file_input_s_stream(struct v4l2_subdev *sd, int enable)
 }
 
 static int file_input_get_fmt(struct v4l2_subdev *sd,
-			      struct v4l2_subdev_state *sd_state,
+			      struct v4l2_subdev_pad_config *cfg,
 			      struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *fmt = &format->format;
@@ -104,16 +103,16 @@ static int file_input_get_fmt(struct v4l2_subdev *sd,
 }
 
 static int file_input_set_fmt(struct v4l2_subdev *sd,
-			      struct v4l2_subdev_state *sd_state,
+			      struct v4l2_subdev_pad_config *cfg,
 			      struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *fmt = &format->format;
 
 	if (format->pad)
 		return -EINVAL;
-	file_input_get_fmt(sd, sd_state, format);
+	file_input_get_fmt(sd, cfg, format);
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
-		sd_state->pads->try_fmt = *fmt;
+		cfg->try_fmt = *fmt;
 	return 0;
 }
 
@@ -130,7 +129,7 @@ static int file_input_s_power(struct v4l2_subdev *sd, int on)
 }
 
 static int file_input_enum_mbus_code(struct v4l2_subdev *sd,
-				     struct v4l2_subdev_state *sd_state,
+				     struct v4l2_subdev_pad_config *cfg,
 				     struct v4l2_subdev_mbus_code_enum *code)
 {
 	/*to fake*/
@@ -138,7 +137,7 @@ static int file_input_enum_mbus_code(struct v4l2_subdev *sd,
 }
 
 static int file_input_enum_frame_size(struct v4l2_subdev *sd,
-				      struct v4l2_subdev_state *sd_state,
+				      struct v4l2_subdev_pad_config *cfg,
 				      struct v4l2_subdev_frame_size_enum *fse)
 {
 	/*to fake*/
@@ -146,7 +145,7 @@ static int file_input_enum_frame_size(struct v4l2_subdev *sd,
 }
 
 static int file_input_enum_frame_ival(struct v4l2_subdev *sd,
-				      struct v4l2_subdev_state *sd_state,
+				      struct v4l2_subdev_pad_config *cfg,
 				      struct v4l2_subdev_frame_interval_enum
 				      *fie)
 {
@@ -219,7 +218,7 @@ int atomisp_file_input_init(struct atomisp_device *isp)
 
 	v4l2_subdev_init(sd, &file_input_ops);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
-	strscpy(sd->name, "file_input_subdev", sizeof(sd->name));
+	strcpy(sd->name, "file_input_subdev");
 	v4l2_set_subdevdata(sd, file_dev);
 
 	pads[0].flags = MEDIA_PAD_FL_SINK;

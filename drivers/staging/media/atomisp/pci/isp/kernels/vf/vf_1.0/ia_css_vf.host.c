@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -12,8 +11,6 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  */
-
-#include "atomisp_internal.h"
 
 #include "ia_css_vf.host.h"
 #include <assert_support.h>
@@ -60,7 +57,7 @@ sh_css_vf_downscale_log2(
 	unsigned int ds_log2 = 0;
 	unsigned int out_width;
 
-	if ((!out_info) || (!vf_info))
+	if ((!out_info) | (!vf_info))
 		return -EINVAL;
 
 	out_width = out_info->res.width;
@@ -131,9 +128,6 @@ ia_css_vf_configure(
 	const struct ia_css_binary_info *info = &binary->info->sp;
 
 	err = configure_kernel(info, out_info, vf_info, downscale_log2, &config);
-	if (err)
-		dev_warn(atomisp_dev, "Couldn't setup downscale\n");
-
 	configure_dma(&config, vf_info);
 
 	if (vf_info)

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -116,6 +115,7 @@ void ia_css_get_isp_dvs2_coefficients(
 {
 	struct ia_css_isp_parameters *params;
 	unsigned int hor_num_3a, ver_num_3a;
+	unsigned int hor_num_isp, ver_num_isp;
 	struct ia_css_binary *dvs_binary;
 
 	IA_CSS_ENTER("void");
@@ -139,6 +139,8 @@ void ia_css_get_isp_dvs2_coefficients(
 
 	hor_num_3a  = dvs_binary->dis.coef.dim.width;
 	ver_num_3a  = dvs_binary->dis.coef.dim.height;
+	hor_num_isp = dvs_binary->dis.coef.pad.width;
+	ver_num_isp = dvs_binary->dis.coef.pad.height;
 
 	memcpy(hor_coefs_odd_real,  params->dvs2_coefs.hor_coefs.odd_real,
 	       hor_num_3a * sizeof(short));

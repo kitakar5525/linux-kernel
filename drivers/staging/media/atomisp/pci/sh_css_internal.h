@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -20,9 +19,9 @@
 #include <math_support.h>
 #include <type_support.h>
 #include <platform_support.h>
-#include <linux/stdarg.h>
+#include <stdarg.h>
 
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_FORMATTER)
 #include "input_formatter.h"
 #endif
 #include "input_system.h"
@@ -76,7 +75,11 @@
 #define SH_CSS_REF_BIT_DEPTH 8
 
 /* keep next up to date with the definition for MAX_CB_ELEMS_FOR_TAGGER in tagger.sp.c */
+#if defined(HAS_SP_2400)
 #define NUM_CONTINUOUS_FRAMES	15
+#else
+#define NUM_CONTINUOUS_FRAMES	10
+#endif
 #define NUM_MIPI_FRAMES_PER_STREAM		2
 
 #define NUM_ONLINE_INIT_CONTINUOUS_FRAMES      2
@@ -86,9 +89,11 @@
 #define SH_CSS_MAX_IF_CONFIGS	3 /* Must match with IA_CSS_NR_OF_CONFIGS (not defined yet).*/
 #define SH_CSS_IF_CONFIG_NOT_NEEDED	0xFF
 
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 #define SH_CSS_ENABLE_METADATA
+#endif
 
-#if defined(SH_CSS_ENABLE_METADATA) && !defined(ISP2401)
+#if defined(SH_CSS_ENABLE_METADATA) && !defined(USE_INPUT_SYSTEM_VERSION_2401)
 #define SH_CSS_ENABLE_METADATA_THREAD
 #endif
 
@@ -318,9 +323,15 @@ struct sh_css_sp_debug_state {
 
 #elif SP_DEBUG == SP_DEBUG_TRACE
 
+#if 1
 /* Example of just one global trace */
 #define SH_CSS_SP_DBG_NR_OF_TRACES	(1)
 #define SH_CSS_SP_DBG_TRACE_DEPTH	(40)
+#else
+/* E.g. if you like separate traces for 4 threads */
+#define SH_CSS_SP_DBG_NR_OF_TRACES	(4)
+#define SH_CSS_SP_DBG_TRACE_DEPTH	(10)
+#endif
 
 #define SH_CSS_SP_DBG_TRACE_FILE_ID_BIT_POS (13)
 
@@ -363,7 +374,7 @@ struct sh_css_sp_debug_command {
 	u32 dma_sw_reg;
 };
 
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_FORMATTER)
 /* SP input formatter configuration.*/
 struct sh_css_sp_input_formatter_set {
 	u32				stream_format;
@@ -383,7 +394,7 @@ struct sh_css_sp_config {
 	     frames are locked when their EOF event is successfully sent to the
 	     host (true) or when they are passed to the preview/video pipe
 	     (false). */
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_FORMATTER)
 	struct {
 		u8					a_changed;
 		u8					b_changed;
@@ -392,7 +403,7 @@ struct sh_css_sp_config {
 			set[SH_CSS_MAX_IF_CONFIGS]; /* CSI-2 port is used as index. */
 	} input_formatter;
 #endif
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_SYSTEM) && defined(USE_INPUT_SYSTEM_VERSION_2)
 	sync_generator_cfg_t	sync_gen;
 	tpg_cfg_t		tpg;
 	prbs_cfg_t		prbs;
@@ -415,7 +426,7 @@ enum sh_css_stage_type {
 #define SH_CSS_PIPE_CONFIG_SAMPLE_PARAMS_MASK \
 	((SH_CSS_PIPE_CONFIG_SAMPLE_PARAMS << SH_CSS_MAX_SP_THREADS) - 1)
 
-#if defined(ISP2401)
+#if !defined(HAS_NO_INPUT_SYSTEM) && defined(USE_INPUT_SYSTEM_VERSION_2401)
 struct sh_css_sp_pipeline_terminal {
 	union {
 		/* Input System 2401 */
@@ -671,7 +682,7 @@ struct sh_css_sp_stage {
 struct sh_css_sp_group {
 	struct sh_css_sp_config		config;
 	struct sh_css_sp_pipeline	pipe[SH_CSS_MAX_SP_THREADS];
-#if defined(ISP2401)
+#if !defined(HAS_NO_INPUT_SYSTEM) && defined(USE_INPUT_SYSTEM_VERSION_2401)
 	struct sh_css_sp_pipeline_io	pipe_io[SH_CSS_MAX_SP_THREADS];
 	struct sh_css_sp_pipeline_io_status	pipe_io_status;
 #endif
@@ -717,9 +728,15 @@ struct sh_css_sp_output {
  * separate SP thread for this. */
 #define  IA_CSS_NUM_ELEMS_HOST2SP_ISYS_EVENT_QUEUE (2 * N_CSI_PORTS)
 
+#if defined(HAS_SP_2400)
 #define  IA_CSS_NUM_ELEMS_HOST2SP_PSYS_EVENT_QUEUE    13
 #define  IA_CSS_NUM_ELEMS_SP2HOST_BUFFER_QUEUE        19
 #define  IA_CSS_NUM_ELEMS_SP2HOST_PSYS_EVENT_QUEUE    26 /* holds events for all type of buffers, hence deeper */
+#else
+#define  IA_CSS_NUM_ELEMS_HOST2SP_PSYS_EVENT_QUEUE    6
+#define  IA_CSS_NUM_ELEMS_SP2HOST_BUFFER_QUEUE        6
+#define  IA_CSS_NUM_ELEMS_SP2HOST_PSYS_EVENT_QUEUE    6
+#endif
 
 struct sh_css_hmm_buffer {
 	union {
@@ -820,9 +837,11 @@ struct host_sp_communication {
 	ia_css_ptr host2sp_offline_frames[NUM_CONTINUOUS_FRAMES];
 	ia_css_ptr host2sp_offline_metadata[NUM_CONTINUOUS_FRAMES];
 
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 	ia_css_ptr host2sp_mipi_frames[N_CSI_PORTS][NUM_MIPI_FRAMES_PER_STREAM];
 	ia_css_ptr host2sp_mipi_metadata[N_CSI_PORTS][NUM_MIPI_FRAMES_PER_STREAM];
 	u32 host2sp_num_mipi_frames[N_CSI_PORTS];
+#endif
 	u32 host2sp_cont_avail_num_raw_frames;
 	u32 host2sp_cont_extra_num_raw_frames;
 	u32 host2sp_cont_target_num_raw_frames;
@@ -830,12 +849,20 @@ struct host_sp_communication {
 
 };
 
+#if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 #define SIZE_OF_HOST_SP_COMMUNICATION_STRUCT				\
 	(sizeof(uint32_t) +						\
 	(NUM_CONTINUOUS_FRAMES * SIZE_OF_HRT_VADDRESS * 2) +		\
 	(N_CSI_PORTS * NUM_MIPI_FRAMES_PER_STREAM * SIZE_OF_HRT_VADDRESS * 2) +			\
 	((3 + N_CSI_PORTS) * sizeof(uint32_t)) +						\
 	(NR_OF_PIPELINES * SIZE_OF_SH_CSS_EVENT_IRQ_MASK_STRUCT))
+#else
+#define SIZE_OF_HOST_SP_COMMUNICATION_STRUCT				\
+	(sizeof(uint32_t) +						\
+	(NUM_CONTINUOUS_FRAMES * SIZE_OF_HRT_VADDRESS * 2) +		\
+	(3 * sizeof(uint32_t)) +						\
+	(NR_OF_PIPELINES * SIZE_OF_SH_CSS_EVENT_IRQ_MASK_STRUCT))
+#endif
 
 struct host_sp_queues {
 	/*
@@ -907,9 +934,10 @@ struct host_sp_queues {
 #define SIZE_OF_HOST_SP_QUEUES_STRUCT		\
 	(SIZE_OF_QUEUES_ELEMS + SIZE_OF_QUEUES_DESC)
 
-extern int  __printf(1, 0) (*sh_css_printf)(const char *fmt, va_list args);
+extern int (*sh_css_printf)(const char *fmt, va_list args);
 
-static inline void  __printf(1, 2) sh_css_print(const char *fmt, ...)
+static inline void
+sh_css_print(const char *fmt, ...)
 {
 	va_list ap;
 
@@ -920,7 +948,8 @@ static inline void  __printf(1, 2) sh_css_print(const char *fmt, ...)
 	}
 }
 
-static inline void  __printf(1, 0) sh_css_vprint(const char *fmt, va_list args)
+static inline void
+sh_css_vprint(const char *fmt, va_list args)
 {
 	if (sh_css_printf)
 		sh_css_printf(fmt, args);
@@ -967,7 +996,7 @@ sh_css_frame_info_set_width(struct ia_css_frame_info *info,
 			    unsigned int width,
 			    unsigned int aligned);
 
-#if !defined(ISP2401)
+#if !defined(HAS_NO_INPUT_SYSTEM) && defined(USE_INPUT_SYSTEM_VERSION_2)
 
 unsigned int
 sh_css_get_mipi_sizes_for_check(const unsigned int port,
@@ -1016,7 +1045,7 @@ sh_css_continuous_is_enabled(uint8_t pipe_num);
 struct ia_css_pipe *
 find_pipe_by_num(uint32_t pipe_num);
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 void
 ia_css_get_crop_offsets(
     struct ia_css_pipe *pipe,

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
@@ -57,7 +56,8 @@ struct ia_css_pipeline {
 	u32 pipe_qos_config;
 };
 
-#define DEFAULT_PIPELINE { \
+#define DEFAULT_PIPELINE \
+(struct ia_css_pipeline) { \
 	.pipe_id		= IA_CSS_PIPE_ID_PREVIEW, \
 	.in_frame		= DEFAULT_FRAME, \
 	.out_frame		= {DEFAULT_FRAME}, \
@@ -243,7 +243,7 @@ bool ia_css_pipeline_uses_params(struct ia_css_pipeline *pipeline);
  */
 bool ia_css_pipeline_get_sp_thread_id(unsigned int key, unsigned int *val);
 
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 /**
  * @brief Get the pipeline io status
  *

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -397,6 +396,10 @@ RGB[0,8191],coef[-8192,8191] -> RGB[0,8191]
 #define SH_CSS_MAX_STAGES 8 /* primary_stage[1-6], capture_pp, vf_pp */
 
 /* For CSI2+ input system, it requires extra paddinga from vmem */
+#ifdef CONFIG_CSI2_PLUS
+#define _ISP_EXTRA_PADDING_VECS 2
+#else
 #define _ISP_EXTRA_PADDING_VECS 0
+#endif /* CONFIG_CSI2_PLUS */
 
 #endif /* _SH_CSS_DEFS_H_ */

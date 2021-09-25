@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -19,10 +18,13 @@
 #include "type_support.h"
 #include "input_system_global.h"
 
+#include "ibuf_ctrl.h"
 #include "csi_rx.h"
 #include "pixelgen.h"
 #include "isys_stream2mmio.h"
 #include "isys_irq.h"
+
+typedef input_system_err_t input_system_error_t;
 
 typedef enum {
 	MIPI_FORMAT_SHORT1 = 0x08,

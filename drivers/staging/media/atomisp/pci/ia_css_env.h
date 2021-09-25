@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -17,7 +16,7 @@
 #define __IA_CSS_ENV_H
 
 #include <type_support.h>
-#include <linux/stdarg.h> /* va_list */
+#include <stdarg.h> /* va_list */
 #include "ia_css_types.h"
 #include "ia_css_acc_types.h"
 
@@ -75,9 +74,9 @@ struct ia_css_hw_access_env {
 /* Environment with function pointers to print error and debug messages.
  */
 struct ia_css_print_env {
-	int  __printf(1, 0) (*debug_print)(const char *fmt, va_list args);
+	int (*debug_print)(const char *fmt, va_list args);
 	/** Print a debug message. */
-	int  __printf(1, 0) (*error_print)(const char *fmt, va_list args);
+	int (*error_print)(const char *fmt, va_list args);
 	/** Print an error message.*/
 };
 

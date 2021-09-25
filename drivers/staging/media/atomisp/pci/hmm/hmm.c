@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Medifield PNW Camera Imaging ISP subsystem.
  *
@@ -268,9 +267,9 @@ ia_css_ptr hmm_alloc(size_t bytes, enum hmm_bo_type type,
 	if (attrs & ATOMISP_MAP_FLAG_CLEARED)
 		hmm_set(bo->start, 0, bytes);
 
-	dev_dbg(atomisp_dev,
-		"%s: pages: 0x%08x (%zu bytes), type: %d from highmem %d, user ptr %p, cached %d\n",
-		__func__, bo->start, bytes, type, from_highmem, userptr, cached);
+	    dev_dbg(atomisp_dev,
+	    "%s: pages: 0x%08x (%ld bytes), type: %d from highmem %d, user ptr %p, cached %d\n",
+	    __func__, bo->start, bytes, type, from_highmem, userptr, cached);
 
 	return bo->start;
 
@@ -285,8 +284,6 @@ create_bo_err:
 void hmm_free(ia_css_ptr virt)
 {
 	struct hmm_buffer_object *bo;
-
-	dev_dbg(atomisp_dev, "%s: free 0x%08x\n", __func__, virt);
 
 	WARN_ON(!virt);
 
@@ -735,11 +732,11 @@ ia_css_ptr hmm_host_vaddr_to_hrt_vaddr(const void *ptr)
 
 void hmm_show_mem_stat(const char *func, const int line)
 {
-	pr_info("tol_cnt=%d usr_size=%d res_size=%d res_cnt=%d sys_size=%d  dyc_thr=%d dyc_size=%d.\n",
-		hmm_mem_stat.tol_cnt,
-		hmm_mem_stat.usr_size, hmm_mem_stat.res_size,
-		hmm_mem_stat.res_cnt, hmm_mem_stat.sys_size,
-		hmm_mem_stat.dyc_thr, hmm_mem_stat.dyc_size);
+	trace_printk("tol_cnt=%d usr_size=%d res_size=%d res_cnt=%d sys_size=%d  dyc_thr=%d dyc_size=%d.\n",
+		     hmm_mem_stat.tol_cnt,
+		     hmm_mem_stat.usr_size, hmm_mem_stat.res_size,
+		     hmm_mem_stat.res_cnt, hmm_mem_stat.sys_size,
+		     hmm_mem_stat.dyc_thr, hmm_mem_stat.dyc_size);
 }
 
 void hmm_init_mem_stat(int res_pgnr, int dyc_en, int dyc_pgnr)

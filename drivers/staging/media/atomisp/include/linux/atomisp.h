@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Medifield PNW Camera Imaging ISP subsystem.
  *
@@ -69,6 +68,9 @@
 #if 0
 #define V4L2_MBUS_FMT_CUSTOM_M10MO_RAW	0x800b
 #endif
+
+/* FIXME: for now, let's use a boolean to identify the type of atomisp chipset */
+extern bool atomisp_hw_is_isp2401;
 
 /* Configuration used by Bayer noise reduction and YCC noise reduction */
 struct atomisp_nr_config {
@@ -507,7 +509,7 @@ struct atomisp_parameters {
 	struct atomisp_shading_table *shading_table;
 	struct atomisp_morph_table   *morph_table;
 	struct atomisp_dvs_coefficients *dvs_coefs; /* DVS 1.0 coefficients */
-	struct atomisp_dis_coefficients *dvs2_coefs; /* DVS 2.0 coefficients */
+	struct atomisp_dvs2_coefficients *dvs2_coefs; /* DVS 2.0 coefficients */
 	struct atomisp_capture_config   *capture_config;
 	struct atomisp_anr_thres   *anr_thres;
 

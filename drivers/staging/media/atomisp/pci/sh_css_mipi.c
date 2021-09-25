@@ -686,11 +686,7 @@ send_mipi_frames(struct ia_css_pipe *pipe) {
 #if defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401)
 	int err = -EINVAL;
 	unsigned int i;
-#ifndef ISP2401
 	unsigned int port;
-#else
-	unsigned int port = 0;
-#endif
 
 	IA_CSS_ENTER_PRIVATE("pipe=%p", pipe);
 

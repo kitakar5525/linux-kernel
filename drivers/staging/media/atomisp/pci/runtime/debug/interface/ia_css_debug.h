@@ -175,14 +175,6 @@ void ia_css_debug_dump_isp_state(void);
  */
 void ia_css_debug_dump_sp_state(void);
 
-/* ISP2401 */
-/*! @brief Dump GAC hardware state.
- * Dumps the GAC ACB hardware registers. may be useful for
- * detecting a GAC which got hang.
- * @return	None
- */
-void ia_css_debug_dump_gac_state(void);
-
 /*! @brief Dump dma controller state.
  * Dumps the dma controller state to tracing output.
  * @return	None
@@ -468,18 +460,6 @@ bool ia_css_debug_mode_enable_dma_channel(
  *	- none.
  */
 void ia_css_debug_dump_trace(void);
-
-/* ISP2401 */
-/**
- * @brief Program counter dumping (in loop)
- *
- * @param[in]	id		The ID of the SP
- * @param[in]	num_of_dumps	The number of dumps
- *
- * @return
- *	- none
- */
-void ia_css_debug_pc_dump(sp_ID_t id, unsigned int num_of_dumps);
 
 /* ISP2500 */
 /*! @brief Dump all states for ISP hang case.

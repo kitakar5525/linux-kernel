@@ -645,12 +645,6 @@ bool atomisp_buffers_queued(struct atomisp_sub_device *asd)
 	       true : false;
 }
 
-/* ISP2401 */
-bool atomisp_buffers_queued_pipe(struct atomisp_video_pipe *pipe)
-{
-	return pipe->buffers_in_css ? true : false;
-}
-
 /* 0x100000 is the start of dmem inside SP */
 #define SP_DMEM_BASE	0x100000
 
@@ -1605,33 +1599,6 @@ void atomisp_wdt_start(struct atomisp_sub_device *asd)
 	atomisp_wdt_refresh(asd, ATOMISP_ISP_TIMEOUT_DURATION);
 }
 
-/* ISP2401 */
-void atomisp_wdt_refresh_pipe(struct atomisp_video_pipe *pipe,
-			      unsigned int delay)
-{
-	unsigned long next;
-
-	if (delay != ATOMISP_WDT_KEEP_CURRENT_DELAY)
-		pipe->wdt_duration = delay;
-
-	next = jiffies + pipe->wdt_duration;
-
-	/* Override next if it has been pushed beyon the "next" time */
-	if (atomisp_is_wdt_running(pipe) && time_after(pipe->wdt_expires, next))
-		next = pipe->wdt_expires;
-
-	pipe->wdt_expires = next;
-
-	if (atomisp_is_wdt_running(pipe))
-		dev_dbg(pipe->asd->isp->dev, "WDT will hit after %d ms (%s)\n",
-			((int)(next - jiffies) * 1000 / HZ), pipe->vdev.name);
-	else
-		dev_dbg(pipe->asd->isp->dev, "WDT starts with %d ms period (%s)\n",
-			((int)(next - jiffies) * 1000 / HZ), pipe->vdev.name);
-
-	mod_timer(&pipe->wdt, next);
-}
-
 void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay)
 {
 	{
@@ -1658,29 +1625,6 @@ void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay)
 		mod_timer(&asd->wdt, next);
 		atomic_set(&asd->isp->wdt_count, 0);
 	}
-}
-
-/* ISP2401 */
-void atomisp_wdt_stop_pipe(struct atomisp_video_pipe *pipe, bool sync)
-{
-	if (!atomisp_is_wdt_running(pipe))
-		return;
-
-	dev_dbg(pipe->asd->isp->dev,
-		"WDT stop asd %d (%s)\n", pipe->asd->index, pipe->vdev.name);
-
-	if (sync) {
-		del_timer_sync(&pipe->wdt);
-		cancel_work_sync(&pipe->asd->isp->wdt_work);
-	} else {
-		del_timer(&pipe->wdt);
-	}
-}
-
-/* ISP2401 */
-void atomisp_wdt_start_pipe(struct atomisp_video_pipe *pipe)
-{
-	atomisp_wdt_refresh_pipe(pipe, ATOMISP_ISP_TIMEOUT_DURATION);
 }
 
 void atomisp_wdt_stop(struct atomisp_sub_device *asd, bool sync)
@@ -1963,28 +1907,6 @@ static void atomisp_update_capture_mode(struct atomisp_sub_device *asd)
 		atomisp_css_capture_set_mode(asd, IA_CSS_CAPTURE_MODE_RAW);
 	else
 		atomisp_css_capture_set_mode(asd, IA_CSS_CAPTURE_MODE_PRIMARY);
-}
-
-/* ISP2401 */
-int atomisp_set_sensor_runmode(struct atomisp_sub_device *asd,
-			       struct atomisp_s_runmode *runmode)
-{
-	struct atomisp_device *isp = asd->isp;
-	struct v4l2_ctrl *c;
-	int ret = 0;
-
-	if (!(runmode && (runmode->mode & RUNMODE_MASK)))
-		return -EINVAL;
-
-	mutex_lock(asd->ctrl_handler.lock);
-	c = v4l2_ctrl_find(isp->inputs[asd->input_curr].camera->ctrl_handler,
-			   V4L2_CID_RUN_MODE);
-
-	if (c)
-		ret = v4l2_ctrl_s_ctrl(c, runmode->mode);
-
-	mutex_unlock(asd->ctrl_handler.lock);
-	return ret;
 }
 
 /*

@@ -1685,7 +1685,7 @@ void atomisp_wdt_stop_pipe(struct atomisp_video_pipe *pipe, bool sync)
 	}
 }
 
-/* ISP 2401 */
+/* ISP2401 */
 void atomisp_wdt_start_pipe(struct atomisp_video_pipe *pipe)
 {
 	atomisp_wdt_refresh_pipe(pipe, ATOMISP_ISP_TIMEOUT_DURATION);

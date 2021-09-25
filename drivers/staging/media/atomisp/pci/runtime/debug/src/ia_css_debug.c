@@ -108,17 +108,6 @@
 
 #define ENABLE_LINE_MAX_LENGTH (25)
 
-#ifdef ISP2401
-#define DBG_EXT_CMD_TRACE_PNTS_DUMP BIT(8)
-#define DBG_EXT_CMD_PUB_CFG_DUMP BIT(9)
-#define DBG_EXT_CMD_GAC_REG_DUMP BIT(10)
-#define DBG_EXT_CMD_GAC_ACB_REG_DUMP BIT(11)
-#define DBG_EXT_CMD_FIFO_DUMP BIT(12)
-#define DBG_EXT_CMD_QUEUE_DUMP BIT(13)
-#define DBG_EXT_CMD_DMA_DUMP BIT(14)
-#define DBG_EXT_CMD_MASK 0xAB0000CD
-
-#endif
 /*
  * TODO:SH_CSS_MAX_SP_THREADS is not the max number of sp threads
  * future rework should fix this and remove the define MAX_THREAD_NUM
@@ -3273,22 +3262,13 @@ ia_css_debug_dump_stream_config(
 	byte 2-3: data
 */
 #if TRACE_ENABLE_SP0 || TRACE_ENABLE_SP1 || TRACE_ENABLE_ISP
-#ifndef ISP2401
 static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
-#else
-static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
-#endif
 {
 #if defined(HAS_TRACER_V2)
 	u32 start_addr;
 	u32 start_addr_data;
 	u32 item_size;
-#ifndef ISP2401
 	u32 tmp;
-#else
-	u8 tid_val;
-	enum TRACE_DUMP_FORMAT dump_format;
-#endif
 	int i, j, max_trace_points, point_num, limit = -1;
 	/* using a static buffer here as the driver has issues allocating memory */
 	static u32 trace_read_buf[TRACE_BUFF_SIZE] = {0};

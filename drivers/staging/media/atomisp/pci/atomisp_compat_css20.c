@@ -33,12 +33,13 @@
 #include "atomisp_ioctl.h"
 #include "atomisp_acc.h"
 
+#include <asm/intel-mid.h>
+
 #include "ia_css_debug.h"
 #include "ia_css_isp_param.h"
 #include "sh_css_hrt.h"
 #include "ia_css_isys.h"
 
-#include <linux/io.h>
 #include <linux/pm_runtime.h>
 
 /* Assume max number of ACC stages */
@@ -68,105 +69,104 @@ struct bayer_ds_factor {
 
 static void atomisp_css2_hw_store_8(hrt_address addr, uint8_t data)
 {
-	struct atomisp_device *isp = dev_get_drvdata(atomisp_dev);
 	unsigned long flags;
 
 	spin_lock_irqsave(&mmio_lock, flags);
-	writeb(data, isp->base + (addr & 0x003FFFFF));
+	_hrt_master_port_store_8(addr, data);
 	spin_unlock_irqrestore(&mmio_lock, flags);
 }
 
 static void atomisp_css2_hw_store_16(hrt_address addr, uint16_t data)
 {
-	struct atomisp_device *isp = dev_get_drvdata(atomisp_dev);
 	unsigned long flags;
 
 	spin_lock_irqsave(&mmio_lock, flags);
-	writew(data, isp->base + (addr & 0x003FFFFF));
+	_hrt_master_port_store_16(addr, data);
 	spin_unlock_irqrestore(&mmio_lock, flags);
 }
 
 void atomisp_css2_hw_store_32(hrt_address addr, uint32_t data)
 {
-	struct atomisp_device *isp = dev_get_drvdata(atomisp_dev);
 	unsigned long flags;
 
 	spin_lock_irqsave(&mmio_lock, flags);
-	writel(data, isp->base + (addr & 0x003FFFFF));
+	_hrt_master_port_store_32(addr, data);
 	spin_unlock_irqrestore(&mmio_lock, flags);
 }
 
 static uint8_t atomisp_css2_hw_load_8(hrt_address addr)
 {
-	struct atomisp_device *isp = dev_get_drvdata(atomisp_dev);
 	unsigned long flags;
 	u8 ret;
 
 	spin_lock_irqsave(&mmio_lock, flags);
-	ret = readb(isp->base + (addr & 0x003FFFFF));
+	ret = _hrt_master_port_load_8(addr);
 	spin_unlock_irqrestore(&mmio_lock, flags);
 	return ret;
 }
 
 static uint16_t atomisp_css2_hw_load_16(hrt_address addr)
 {
-	struct atomisp_device *isp = dev_get_drvdata(atomisp_dev);
 	unsigned long flags;
 	u16 ret;
 
 	spin_lock_irqsave(&mmio_lock, flags);
-	ret = readw(isp->base + (addr & 0x003FFFFF));
+	ret = _hrt_master_port_load_16(addr);
 	spin_unlock_irqrestore(&mmio_lock, flags);
 	return ret;
 }
 
 static uint32_t atomisp_css2_hw_load_32(hrt_address addr)
 {
-	struct atomisp_device *isp = dev_get_drvdata(atomisp_dev);
 	unsigned long flags;
 	u32 ret;
 
 	spin_lock_irqsave(&mmio_lock, flags);
-	ret = readl(isp->base + (addr & 0x003FFFFF));
+	ret = _hrt_master_port_load_32(addr);
 	spin_unlock_irqrestore(&mmio_lock, flags);
 	return ret;
 }
 
-static void atomisp_css2_hw_store(hrt_address addr, const void *from, uint32_t n)
+static void atomisp_css2_hw_store(hrt_address addr,
+				  const void *from, uint32_t n)
 {
-	struct atomisp_device *isp = dev_get_drvdata(atomisp_dev);
 	unsigned long flags;
 	unsigned int i;
+	unsigned int _to = (unsigned int)addr;
+	const char *_from = (const char *)from;
 
-	addr &= 0x003FFFFF;
 	spin_lock_irqsave(&mmio_lock, flags);
-	for (i = 0; i < n; i++, from++)
-		writeb(*(s8 *)from, isp->base + addr + i);
-
+	for (i = 0; i < n; i++, _to++, _from++)
+		_hrt_master_port_store_8(_to, *_from);
 	spin_unlock_irqrestore(&mmio_lock, flags);
 }
 
 static void atomisp_css2_hw_load(hrt_address addr, void *to, uint32_t n)
 {
-	struct atomisp_device *isp = dev_get_drvdata(atomisp_dev);
 	unsigned long flags;
 	unsigned int i;
+	char *_to = (char *)to;
+	unsigned int _from = (unsigned int)addr;
 
-	addr &= 0x003FFFFF;
 	spin_lock_irqsave(&mmio_lock, flags);
-	for (i = 0; i < n; i++, to++)
-		*(s8 *)to = readb(isp->base + addr + i);
+	for (i = 0; i < n; i++, _to++, _from++)
+		*_to = _hrt_master_port_load_8(_from);
 	spin_unlock_irqrestore(&mmio_lock, flags);
 }
 
-static int  __printf(1, 0) atomisp_css2_dbg_ftrace_print(const char *fmt,
-							 va_list args)
+static int atomisp_css2_dbg_print(const char *fmt, va_list args)
+{
+	vprintk(fmt, args);
+	return 0;
+}
+
+static int atomisp_css2_dbg_ftrace_print(const char *fmt, va_list args)
 {
 	ftrace_vprintk(fmt, args);
 	return 0;
 }
 
-static int  __printf(1, 0) atomisp_vprintk(const char *fmt, va_list args)
+static int atomisp_css2_err_print(const char *fmt, va_list args)
 {
 	vprintk(fmt, args);
 	return 0;
@@ -177,10 +177,10 @@ void atomisp_load_uint32(hrt_address addr, uint32_t *data)
 	*data = atomisp_css2_hw_load_32(addr);
 }
 
-static int hmm_get_mmu_base_addr(struct device *dev, unsigned int *mmu_base_addr)
+static int hmm_get_mmu_base_addr(unsigned int *mmu_base_addr)
 {
 	if (!sh_mmu_mrfld.get_pd_base) {
-		dev_err(dev, "get mmu base address failed.\n");
+		dev_err(atomisp_dev, "get mmu base address failed.\n");
 		return -EINVAL;
 	}
 
@@ -699,13 +699,14 @@ static bool is_pipe_valid_to_current_run_mode(struct atomisp_sub_device *asd,
 
 			return false;
 		}
-		fallthrough;
+	/* fall-through */
 	case ATOMISP_RUN_MODE_CONTINUOUS_CAPTURE:
 		if (pipe_id == IA_CSS_PIPE_ID_CAPTURE ||
 		    pipe_id == IA_CSS_PIPE_ID_PREVIEW)
 			return true;
 
 		return false;
+	/* fall-through */
 	case ATOMISP_RUN_MODE_VIDEO:
 		if (!asd->continuous_mode->val) {
 			if (pipe_id == IA_CSS_PIPE_ID_VIDEO ||
@@ -714,7 +715,7 @@ static bool is_pipe_valid_to_current_run_mode(struct atomisp_sub_device *asd,
 			else
 				return false;
 		}
-		fallthrough;
+	/* fall through  */
 	case ATOMISP_RUN_MODE_SDV:
 		if (pipe_id == IA_CSS_PIPE_ID_CAPTURE ||
 		    pipe_id == IA_CSS_PIPE_ID_VIDEO)
@@ -834,7 +835,7 @@ int atomisp_css_init(struct atomisp_device *isp)
 	int ret;
 	int err;
 
-	ret = hmm_get_mmu_base_addr(isp->dev, &mmu_base_addr);
+	ret = hmm_get_mmu_base_addr(&mmu_base_addr);
 	if (ret)
 		return ret;
 
@@ -863,7 +864,8 @@ static inline int __set_css_print_env(struct atomisp_device *isp, int opt)
 		isp->css_env.isp_css_env.print_env.debug_print =
 		    atomisp_css2_dbg_ftrace_print;
 	else if (opt == 2)
-		isp->css_env.isp_css_env.print_env.debug_print = atomisp_vprintk;
+		isp->css_env.isp_css_env.print_env.debug_print =
+		    atomisp_css2_dbg_print;
 	else
 		ret = -EINVAL;
 
@@ -896,7 +898,7 @@ int atomisp_css_load_firmware(struct atomisp_device *isp)
 
 	__set_css_print_env(isp, dbg_func);
 
-	isp->css_env.isp_css_env.print_env.error_print = atomisp_vprintk;
+	isp->css_env.isp_css_env.print_env.error_print = atomisp_css2_err_print;
 
 	/* load isp fw into ISP memory */
 	err = ia_css_load_firmware(isp->dev, &isp->css_env.isp_css_env,
@@ -935,7 +937,7 @@ int atomisp_css_resume(struct atomisp_device *isp)
 	unsigned int mmu_base_addr;
 	int ret;
 
-	ret = hmm_get_mmu_base_addr(isp->dev, &mmu_base_addr);
+	ret = hmm_get_mmu_base_addr(&mmu_base_addr);
 	if (ret) {
 		dev_err(isp->dev, "get base address error.\n");
 		return -EINVAL;
@@ -990,9 +992,9 @@ void atomisp_css_rx_clear_irq_info(enum mipi_port_id port,
 int atomisp_css_irq_enable(struct atomisp_device *isp,
 			   enum ia_css_irq_info info, bool enable)
 {
-	dev_dbg(isp->dev, "%s: css irq info 0x%08x: %s (%d).\n",
+	dev_dbg(isp->dev, "%s: css irq info 0x%08x: %s.\n",
 		__func__, info,
-		enable ? "enable" : "disable", enable);
+		enable ? "enable" : "disable");
 	if (ia_css_irq_enable(info, enable)) {
 		dev_warn(isp->dev, "%s:Invalid irq info: 0x%08x when %s.\n",
 			 __func__, info,
@@ -1142,7 +1144,7 @@ int atomisp_css_start(struct atomisp_sub_device *asd,
 	 * Thus the stream created in set_fmt get destroyed and need to be
 	 * recreated in the next stream on.
 	 */
-	if (!asd->stream_prepared) {
+	if (asd->stream_prepared == false) {
 		if (__create_pipes(asd)) {
 			dev_err(isp->dev, "create pipe error.\n");
 			return -EINVAL;
@@ -1960,7 +1962,8 @@ void atomisp_css_input_set_mode(struct atomisp_sub_device *asd,
 			true,
 			0x13000,
 			&size_mem_words) != 0) {
-			if (IS_MRFD)
+			if (intel_mid_identify_cpu() ==
+			    INTEL_MID_CPU_CHIP_TANGIER)
 				size_mem_words = CSS_MIPI_FRAME_BUFFER_SIZE_2;
 			else
 				size_mem_words = CSS_MIPI_FRAME_BUFFER_SIZE_1;
@@ -2098,10 +2101,13 @@ int atomisp_css_input_configure_port(
 	return 0;
 }
 
-void atomisp_css_stop(struct atomisp_sub_device *asd,
-		      enum ia_css_pipe_id pipe_id, bool in_reset)
+int atomisp_css_stop(struct atomisp_sub_device *asd,
+		     enum ia_css_pipe_id pipe_id, bool in_reset)
 {
 	struct atomisp_device *isp = asd->isp;
+	struct atomisp_s3a_buf *s3a_buf;
+	struct atomisp_dis_buf *dis_buf;
+	struct atomisp_metadata_buf *md_buf;
 	unsigned long irqflags;
 	unsigned int i;
 
@@ -2141,17 +2147,42 @@ void atomisp_css_stop(struct atomisp_sub_device *asd,
 	}
 
 	/* move stats buffers to free queue list */
-	list_splice_init(&asd->s3a_stats_in_css, &asd->s3a_stats);
-	list_splice_init(&asd->s3a_stats_ready, &asd->s3a_stats);
+	while (!list_empty(&asd->s3a_stats_in_css)) {
+		s3a_buf = list_entry(asd->s3a_stats_in_css.next,
+				     struct atomisp_s3a_buf, list);
+		list_del(&s3a_buf->list);
+		list_add_tail(&s3a_buf->list, &asd->s3a_stats);
+	}
+	while (!list_empty(&asd->s3a_stats_ready)) {
+		s3a_buf = list_entry(asd->s3a_stats_ready.next,
+				     struct atomisp_s3a_buf, list);
+		list_del(&s3a_buf->list);
+		list_add_tail(&s3a_buf->list, &asd->s3a_stats);
+	}
 
 	spin_lock_irqsave(&asd->dis_stats_lock, irqflags);
-	list_splice_init(&asd->dis_stats_in_css, &asd->dis_stats);
+	while (!list_empty(&asd->dis_stats_in_css)) {
+		dis_buf = list_entry(asd->dis_stats_in_css.next,
+				     struct atomisp_dis_buf, list);
+		list_del(&dis_buf->list);
+		list_add_tail(&dis_buf->list, &asd->dis_stats);
+	}
 	asd->params.dis_proj_data_valid = false;
 	spin_unlock_irqrestore(&asd->dis_stats_lock, irqflags);
 
 	for (i = 0; i < ATOMISP_METADATA_TYPE_NUM; i++) {
-		list_splice_init(&asd->metadata_in_css[i], &asd->metadata[i]);
-		list_splice_init(&asd->metadata_ready[i], &asd->metadata[i]);
+		while (!list_empty(&asd->metadata_in_css[i])) {
+			md_buf = list_entry(asd->metadata_in_css[i].next,
+					    struct atomisp_metadata_buf, list);
+			list_del(&md_buf->list);
+			list_add_tail(&md_buf->list, &asd->metadata[i]);
+		}
+		while (!list_empty(&asd->metadata_ready[i])) {
+			md_buf = list_entry(asd->metadata_ready[i].next,
+					    struct atomisp_metadata_buf, list);
+			list_del(&md_buf->list);
+			list_add_tail(&md_buf->list, &asd->metadata[i]);
+		}
 	}
 
 	atomisp_flush_params_queue(&asd->video_out_capture);
@@ -2160,11 +2191,12 @@ void atomisp_css_stop(struct atomisp_sub_device *asd,
 	atomisp_flush_params_queue(&asd->video_out_video_capture);
 	atomisp_free_css_parameters(&asd->params.css_param);
 	memset(&asd->params.css_param, 0, sizeof(asd->params.css_param));
+	return 0;
 }
 
-void atomisp_css_continuous_set_num_raw_frames(
-     struct atomisp_sub_device *asd,
-     int num_frames)
+int atomisp_css_continuous_set_num_raw_frames(
+    struct atomisp_sub_device *asd,
+    int num_frames)
 {
 	if (asd->enable_raw_buffer_lock->val) {
 		asd->stream_env[ATOMISP_INPUT_STREAM_GENERAL]
@@ -2188,6 +2220,7 @@ void atomisp_css_continuous_set_num_raw_frames(
 
 	asd->stream_env[ATOMISP_INPUT_STREAM_GENERAL]
 	.stream_config.target_num_cont_raw_buf = num_frames;
+	return 0;
 }
 
 static enum ia_css_pipe_mode __pipe_id_to_pipe_mode(
@@ -2377,13 +2410,13 @@ static void __configure_preview_pp_input(struct atomisp_sub_device *asd,
 	struct ia_css_resolution  *effective_res =
 		    &stream_config->input_config.effective_res;
 
-	static const struct bayer_ds_factor bds_fct[] = {{2, 1}, {3, 2}, {5, 4} };
+	const struct bayer_ds_factor bds_fct[] = {{2, 1}, {3, 2}, {5, 4} };
 	/*
 	 * BZ201033: YUV decimation factor of 4 causes couple of rightmost
 	 * columns to be shaded. Remove this factor to work around the CSS bug.
 	 * const unsigned int yuv_dec_fct[] = {4, 2};
 	 */
-	static const unsigned int yuv_dec_fct[] = { 2 };
+	const unsigned int yuv_dec_fct[] = { 2 };
 	unsigned int i;
 
 	if (width == 0 && height == 0)
@@ -2503,7 +2536,7 @@ static void __configure_video_pp_input(struct atomisp_sub_device *asd,
 	struct ia_css_resolution  *effective_res =
 		    &stream_config->input_config.effective_res;
 
-	static const struct bayer_ds_factor bds_factors[] = {
+	const struct bayer_ds_factor bds_factors[] = {
 		{8, 1}, {6, 1}, {4, 1}, {3, 1}, {2, 1}, {3, 2}
 	};
 	unsigned int i;
@@ -2728,7 +2761,7 @@ static unsigned int atomisp_get_pipe_index(struct atomisp_sub_device *asd,
 		if (!atomisp_is_mbuscode_raw(asd->fmt[asd->capture_pad].fmt.code)) {
 			return IA_CSS_PIPE_ID_CAPTURE;
 		}
-		fallthrough;
+		/* fall through */
 	case ATOMISP_SUBDEV_PAD_SOURCE_PREVIEW:
 		if (asd->yuvpp_mode)
 			return IA_CSS_PIPE_ID_YUVPP;
@@ -2754,9 +2787,9 @@ int atomisp_get_css_frame_info(struct atomisp_sub_device *asd,
 	int stream_index;
 	struct atomisp_device *isp = asd->isp;
 
-	if (ATOMISP_SOC_CAMERA(asd)) {
+	if (ATOMISP_SOC_CAMERA(asd))
 		stream_index = atomisp_source_pad_to_stream_id(asd, source_pad);
-	} else {
+	else {
 		stream_index = (pipe_index == IA_CSS_PIPE_ID_YUVPP) ?
 			       ATOMISP_INPUT_STREAM_VIDEO :
 			       atomisp_source_pad_to_stream_id(asd, source_pad);
@@ -4259,13 +4292,8 @@ bool atomisp_css_valid_sof(struct atomisp_device *isp)
 		struct atomisp_sub_device *asd = &isp->asd[i];
 		/* Loop for each css vc stream */
 		for (j = 0; j < ATOMISP_INPUT_STREAM_NUM; j++) {
-			if (!asd->stream_env[j].stream)
-				continue;
-
-			dev_dbg(isp->dev,
-				"stream #%d: mode: %d\n", j,
-				asd->stream_env[j].stream_config.mode);
-			if (asd->stream_env[j].stream_config.mode ==
+			if (asd->stream_env[j].stream &&
+			    asd->stream_env[j].stream_config.mode ==
 			    IA_CSS_INPUT_MODE_BUFFERED_SENSOR)
 				return false;
 		}
@@ -4300,7 +4328,7 @@ static const char * const fw_acc_type_name[] = {
 	[IA_CSS_ACC_STANDALONE] =	"Stand-alone acceleration",
 };
 
-int atomisp_css_dump_blob_infor(struct atomisp_device *isp)
+int atomisp_css_dump_blob_infor(void)
 {
 	struct ia_css_blob_descr *bd = sh_css_blob_info;
 	unsigned int i, nm = sh_css_num_binaries;
@@ -4317,7 +4345,8 @@ int atomisp_css_dump_blob_infor(struct atomisp_device *isp)
 	for (i = 0; i < sh_css_num_binaries - NUM_OF_SPS; i++) {
 		switch (bd[i].header.type) {
 		case ia_css_isp_firmware:
-			dev_dbg(isp->dev, "Num%2d type %s (%s), binary id is %2d, name is %s\n",
+			dev_dbg(atomisp_dev,
+				"Num%2d type %s (%s), binary id is %2d, name is %s\n",
 				i + NUM_OF_SPS,
 				fw_type_name[bd[i].header.type],
 				fw_acc_type_name[bd[i].header.info.isp.type],
@@ -4325,7 +4354,8 @@ int atomisp_css_dump_blob_infor(struct atomisp_device *isp)
 				bd[i].name);
 			break;
 		default:
-			dev_dbg(isp->dev, "Num%2d type %s, name is %s\n",
+			dev_dbg(atomisp_dev,
+				"Num%2d type %s, name is %s\n",
 				i + NUM_OF_SPS, fw_type_name[bd[i].header.type],
 				bd[i].name);
 		}

@@ -49,8 +49,8 @@ static int ov2722_read_reg(struct i2c_client *client,
 		return -ENODEV;
 	}
 
-	if (data_length != OV2722_8BIT && data_length != OV2722_16BIT &&
-	    data_length != OV2722_32BIT) {
+	if (data_length != OV2722_8BIT && data_length != OV2722_16BIT
+	    && data_length != OV2722_32BIT) {
 		dev_err(&client->dev, "%s error, invalid data length\n",
 			__func__);
 		return -EINVAL;
@@ -212,8 +212,8 @@ static int __ov2722_buf_reg_array(struct i2c_client *client,
 }
 
 static int __ov2722_write_reg_is_consecutive(struct i2c_client *client,
-					     struct ov2722_write_ctrl *ctrl,
-					     const struct ov2722_reg *next)
+	struct ov2722_write_ctrl *ctrl,
+	const struct ov2722_reg *next)
 {
 	if (ctrl->index == 0)
 		return 1;
@@ -774,11 +774,11 @@ static int ov2722_s_power(struct v4l2_subdev *sd, int on)
 
 	if (on == 0)
 		return power_down(sd);
-
-	ret = power_up(sd);
-	if (!ret)
-		return ov2722_init(sd);
-
+	else {
+		ret = power_up(sd);
+		if (!ret)
+			return ov2722_init(sd);
+	}
 	return ret;
 }
 
@@ -876,7 +876,7 @@ static int startup(struct v4l2_subdev *sd)
 }
 
 static int ov2722_set_fmt(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_state *sd_state,
+			  struct v4l2_subdev_pad_config *cfg,
 			  struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *fmt = &format->format;
@@ -906,7 +906,7 @@ static int ov2722_set_fmt(struct v4l2_subdev *sd,
 	}
 	fmt->code = MEDIA_BUS_FMT_SGRBG10_1X10;
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
-		sd_state->pads->try_fmt = *fmt;
+		cfg->try_fmt = *fmt;
 		mutex_unlock(&dev->input_lock);
 		return 0;
 	}
@@ -961,7 +961,7 @@ err:
 }
 
 static int ov2722_get_fmt(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_state *sd_state,
+			  struct v4l2_subdev_pad_config *cfg,
 			  struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *fmt = &format->format;
@@ -1104,7 +1104,7 @@ static int ov2722_g_frame_interval(struct v4l2_subdev *sd,
 }
 
 static int ov2722_enum_mbus_code(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_state *sd_state,
+				 struct v4l2_subdev_pad_config *cfg,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
 	if (code->index >= MAX_FMTS)
@@ -1115,7 +1115,7 @@ static int ov2722_enum_mbus_code(struct v4l2_subdev *sd,
 }
 
 static int ov2722_enum_frame_size(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_state *sd_state,
+				  struct v4l2_subdev_pad_config *cfg,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
 	int index = fse->index;
@@ -1175,6 +1175,8 @@ static int ov2722_remove(struct i2c_client *client)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct ov2722_device *dev = to_ov2722_sensor(sd);
 
+	dev_dbg(&client->dev, "ov2722_remove...\n");
+
 	dev->platform_data->csi_cfg(sd, 0);
 	v4l2_ctrl_handler_free(&dev->ctrl_handler);
 	v4l2_device_unregister_subdev(sd);
@@ -1213,6 +1215,17 @@ static int ov2722_probe(struct i2c_client *client)
 	struct ov2722_device *dev;
 	void *ovpdev;
 	int ret;
+	acpi_handle handle;
+	struct acpi_device *adev;
+
+	handle = ACPI_HANDLE(&client->dev);
+	if (!handle || acpi_bus_get_device(handle, &adev)) {
+		dev_err(&client->dev, "Error could not get ACPI device\n");
+		return -ENODEV;
+	}
+	pr_info("%s: ACPI detected it on bus ID=%s, HID=%s\n",
+		__func__, acpi_device_bid(adev), acpi_device_hid(adev));
+	// FIXME: may need to release resources allocated by acpi_bus_get_device()
 
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev)

@@ -39,9 +39,6 @@
 #include "ia_css_isp_param.h"
 #include "sh_css_params.h"
 #include "ia_css_bufq.h"
-/* ISP2401 */
-#include "ia_css_queue.h"
-
 #include "ia_css_isp_params.h"
 
 #include "system_local.h"
@@ -3358,28 +3355,6 @@ static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
 				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
 				break;
 
-			/* ISP2401 */
-			case TRACE_DUMP_FORMAT_POINT_NO_TID:
-				ia_css_debug_dtrace(
-				    IA_CSS_DEBUG_TRACE,	"\t\t%d %d:%d value - %x (%d)\n",
-				    j,
-				    FIELD_MAJOR_W_FMT_UNPACK(trace_read_buf[j]),
-				    FIELD_MINOR_UNPACK(trace_read_buf[j]),
-				    FIELD_VALUE_UNPACK(trace_read_buf[j]),
-				    FIELD_VALUE_UNPACK(trace_read_buf[j]));
-				break;
-
-			/* ISP2401 */
-			case TRACE_DUMP_FORMAT_VALUE24:
-				ia_css_debug_dtrace(
-				    IA_CSS_DEBUG_TRACE,	"\t\t%d, %d, 24bit value %x (%d)\n",
-				    j,
-				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
-				    FIELD_MAJOR_W_FMT_UNPACK(trace_read_buf[j]),
-				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]),
-				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
-				break;
-
 			case TRACE_DUMP_FORMAT_VALUE24_TIMING:
 				ia_css_debug_dtrace(
 				    IA_CSS_DEBUG_TRACE,	"\t\t%d, %d, timing %x\n",
@@ -3450,18 +3425,3 @@ void ia_css_debug_tagger_state(void)
 }
 #endif /* defined(USE_INPUT_SYSTEM_VERSION_2) || defined(USE_INPUT_SYSTEM_VERSION_2401) */
 
-/* ISP2401 */
-void ia_css_debug_pc_dump(sp_ID_t id, unsigned int num_of_dumps)
-{
-	unsigned int pc;
-	unsigned int i;
-	hrt_data sc = sp_ctrl_load(id, SP_SC_REG);
-
-	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "SP%-1d Status reg: 0x%X\n", id, sc);
-	sc = sp_ctrl_load(id, SP_CTRL_SINK_REG);
-	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "SP%-1d Stall reg: 0x%X\n", id, sc);
-	for (i = 0; i < num_of_dumps; i++) {
-		pc = sp_ctrl_load(id, SP_PC_REG);
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "SP%-1d PC: 0x%X\n", id, pc);
-	}
-}

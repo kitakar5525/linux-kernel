@@ -144,12 +144,6 @@
 #define ATOMISP_DEPTH_DEFAULT_MASTER_SENSOR 0
 #define ATOMISP_DEPTH_DEFAULT_SLAVE_SENSOR 1
 
-/* ISP2401 */
-#define ATOMISP_ION_DEVICE_FD_OFFSET   16
-#define ATOMISP_ION_SHARED_FD_MASK     (0xFFFF)
-#define ATOMISP_ION_DEVICE_FD_MASK     (~ATOMISP_ION_SHARED_FD_MASK)
-#define ION_FD_UNSET (-1)
-
 #define DIV_NEAREST_STEP(n, d, step) \
 	round_down((2 * (n) + (d) * (step)) / (2 * (d)), (step))
 
@@ -289,16 +283,8 @@ extern struct device *atomisp_dev;
 
 #define atomisp_is_wdt_running(a) timer_pending(&(a)->wdt)
 
-/* ISP2401 */
-void atomisp_wdt_refresh_pipe(struct atomisp_video_pipe *pipe,
-			      unsigned int delay);
-
 void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay);
 void atomisp_wdt_start(struct atomisp_sub_device *asd);
-
-/* ISP2401 */
-void atomisp_wdt_start_pipe(struct atomisp_video_pipe *pipe);
-void atomisp_wdt_stop_pipe(struct atomisp_video_pipe *pipe, bool sync);
 
 void atomisp_wdt_stop(struct atomisp_sub_device *asd, bool sync);
 

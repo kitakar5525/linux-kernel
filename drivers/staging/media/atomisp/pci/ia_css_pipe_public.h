@@ -25,9 +25,6 @@
 #include <ia_css_types.h>
 #include <ia_css_frame_public.h>
 #include <ia_css_buffer.h>
-/* ISP2401 */
-#include <ia_css_acc_types.h>
-
 enum {
 	IA_CSS_PIPE_OUTPUT_STAGE_0 = 0,
 	IA_CSS_PIPE_OUTPUT_STAGE_1,
@@ -122,14 +119,6 @@ struct ia_css_pipe_config {
 	     instead of vf_pp. This only applies to viewfinder post
 	     processing stages. */
 
-/* ISP2401 */
-	bool enable_luma_only;
-	/** Enabling of monochrome mode for a pipeline. If enabled only luma processing
-	     will be done. */
-	bool enable_tnr;
-	/** Enabling of TNR (temporal noise reduction). This is only applicable to video
-	     pipes. Non video-pipes should always set this parameter to false. */
-
 	struct ia_css_isp_config *p_isp_config;
 	/** Pointer to ISP configuration */
 	struct ia_css_resolution gdc_in_buffer_res;
@@ -137,13 +126,6 @@ struct ia_css_pipe_config {
 	struct ia_css_point gdc_in_buffer_offset;
 	/** GDC in buffer offset - indicates the pixel coordinates of the first valid pixel inside the buffer */
 
-/* ISP2401 */
-	struct ia_css_coordinate internal_frame_origin_bqs_on_sctbl;
-	/** Origin of internal frame positioned on shading table at shading correction in ISP.
-	     NOTE: Shading table is larger than or equal to internal frame.
-		   Shading table has shading gains and internal frame has bayer data.
-		   The origin of internal frame is used in shading correction in ISP
-		   to retrieve shading gains which correspond to bayer data. */
 };
 
 /**
@@ -181,11 +163,6 @@ struct ia_css_pipe_info {
 	     pixels normally used to initialize the ISP filters.
 	     This is why the raw output resolution should normally be set to
 	     the input resolution - 8x8. */
-
-	/* ISP2401 */
-	struct ia_css_resolution output_system_in_res_info;
-	/** For IPU3 only. Info about output system in resolution which is considered
-	     as gdc out resolution. */
 
 	struct ia_css_shading_info shading_info;
 	/** After an image pipe is created, this field will contain the info
@@ -484,29 +461,6 @@ ia_css_pipe_get_qos_ext_state(struct ia_css_pipe *pipe,
 			      u32 fw_handle,
 			      bool *enable);
 
-/* ISP2401 */
-/* @brief  Update mapped CSS and ISP arguments for QoS pipe during SP runtime.
- * @param[in] pipe	Pipe handle.
- * @param[in] fw_handle	Extension firmware Handle (ia_css_fw_info.handle).
- * @param[in] css_seg	Parameter memory descriptors for CSS segments.
- * @param[in] isp_seg	Parameter memory descriptors for ISP segments.
- *
- * @return
- * 0			: Success
- * -EINVAL		: Invalid Parameters
- * -EBUSY	: Inactive QOS Pipe
- *					(No active stream with this pipe)
- *
- * \deprecated[This interface is used to temporarily support a late-developed,
- * specific use-case on a specific IPU2 platform. It will not be supported or
- * maintained on IPU3 or further.]
- */
-int
-ia_css_pipe_update_qos_ext_mapped_arg(struct ia_css_pipe *pipe,
-				      u32 fw_handle,
-				      struct ia_css_isp_param_css_segments *css_seg,
-				      struct ia_css_isp_param_isp_segments *isp_seg);
-
 /* @brief Get selected configuration settings
  * @param[in]	pipe	The pipe.
  * @param[out]	config	Configuration settings.
@@ -541,30 +495,5 @@ ia_css_pipe_set_bci_scaler_lut(struct ia_css_pipe *pipe,
  *			false - otherwise
  */
 bool ia_css_pipe_has_dvs_stats(struct ia_css_pipe_info *pipe_info);
-
-/* ISP2401 */
-/* @brief Override the frameformat set on the output pins.
- * @param[in]  pipe        Pipe handle.
- * @param[in]  output_pin  Pin index to set the format on
- *                         0 - main output pin
- *                         1 - display output pin
- * @param[in]  format      Format to set
- *
- * @return
- * 0		: Success
- * -EINVAL	: Invalid Parameters
- * -EINVAL	: Pipe misses binary info
- *
- * Note:
- * 1) This is an optional function to override the formats set in the pipe.
- * 2) Only overriding with IA_CSS_FRAME_FORMAT_NV12_TILEY is currently allowed.
- * 3) This function is only to be used on pipes that use the output system.
- * 4) If this function is used, it MUST be called after ia_css_pipe_create.
- * 5) If this function is used, this function MUST be called before ia_css_stream_start.
- */
-int
-ia_css_pipe_override_frame_format(struct ia_css_pipe *pipe,
-				  int output_pin,
-				  enum ia_css_frame_format format);
 
 #endif /* __IA_CSS_PIPE_PUBLIC_H */

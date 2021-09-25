@@ -743,7 +743,7 @@ static int atomisp_mrfld_power(struct atomisp_device *isp, bool enable)
 
 		/* Wait until ISPSSPM0 bit[25:24] shows the right value */
 		iosf_mbi_read(BT_MBI_UNIT_PMC, MBI_REG_READ, MRFLD_ISPSSPM0, &tmp);
-		tmp = (tmp >> MRFLD_ISPSSPM0_ISPSSS_OFFSET) & MRFLD_ISPSSPM0_ISPSSC_MASK;
+		tmp = (tmp & MRFLD_ISPSSPM0_ISPSSC_MASK) >> MRFLD_ISPSSPM0_ISPSSS_OFFSET;
 		if (tmp == val) {
 			trace_ipu_cstate(enable);
 			return 0;
@@ -766,13 +766,17 @@ static int atomisp_mrfld_power(struct atomisp_device *isp, bool enable)
 /* Workaround for pmu_nc_set_power_state not ready in MRFLD */
 int atomisp_mrfld_power_down(struct atomisp_device *isp)
 {
-	return atomisp_mrfld_power(isp, false);
+	return 0;
+// FIXME: at least with ISP2401, the code below causes the driver to break
+//	return atomisp_mrfld_power(isp, false);
 }
 
 /* Workaround for pmu_nc_set_power_state not ready in MRFLD */
 int atomisp_mrfld_power_up(struct atomisp_device *isp)
 {
-	return atomisp_mrfld_power(isp, true);
+	return 0;
+// FIXME: at least with ISP2401, the code below causes the driver to break
+//	return atomisp_mrfld_power(isp, true);
 }
 
 int atomisp_runtime_suspend(struct device *dev)
@@ -1086,7 +1090,7 @@ static int atomisp_subdev_probe(struct atomisp_device *isp)
 		case RAW_CAMERA:
 			dev_dbg(isp->dev, "raw_index: %d\n", raw_index);
 			raw_index = isp->input_cnt;
-			fallthrough;
+			/* fall through */
 		case SOC_CAMERA:
 			dev_dbg(isp->dev, "SOC_INDEX: %d\n", isp->input_cnt);
 			if (isp->input_cnt >= ATOM_ISP_MAX_INPUTS) {
@@ -1178,7 +1182,7 @@ static void atomisp_unregister_entities(struct atomisp_device *isp)
 		atomisp_mipi_csi2_unregister_entities(&isp->csi2_port[i]);
 
 	list_for_each_entry_safe(sd, next, &isp->v4l2_dev.subdevs, list)
-		v4l2_device_unregister_subdev(sd);
+	v4l2_device_unregister_subdev(sd);
 
 	v4l2_device_unregister(&isp->v4l2_dev);
 	media_device_unregister(&isp->media_dev);
@@ -1429,6 +1433,7 @@ atomisp_load_firmware(struct atomisp_device *isp)
  */
 static bool is_valid_device(struct pci_dev *pdev, const struct pci_device_id *id)
 {
+	unsigned int a0_max_id = 0;
 	const char *name;
 	const char *product;
 
@@ -1436,9 +1441,11 @@ static bool is_valid_device(struct pci_dev *pdev, const struct pci_device_id *id
 
 	switch (id->device & ATOMISP_PCI_DEVICE_SOC_MASK) {
 	case ATOMISP_PCI_DEVICE_SOC_MRFLD:
+		a0_max_id = ATOMISP_PCI_REV_MRFLD_A0_MAX;
 		name = "Merrifield";
 		break;
 	case ATOMISP_PCI_DEVICE_SOC_BYT:
+		a0_max_id = ATOMISP_PCI_REV_BYT_A0_MAX;
 		name = "Baytrail";
 		break;
 	case ATOMISP_PCI_DEVICE_SOC_ANN:
@@ -1500,9 +1507,9 @@ static int init_atomisp_wdts(struct atomisp_device *isp)
 	for (i = 0; i < isp->num_of_streams; i++) {
 		struct atomisp_sub_device *asd = &isp->asd[i];
 
-		if (!IS_ISP2401) {
+		if (!IS_ISP2401)
 			timer_setup(&asd->wdt, atomisp_wdt, 0);
-		} else {
+		else {
 			timer_setup(&asd->video_out_capture.wdt,
 				    atomisp_wdt, 0);
 			timer_setup(&asd->video_out_preview.wdt,
@@ -1570,7 +1577,7 @@ static int atomisp_pci_probe(struct pci_dev *pdev, const struct pci_device_id *i
 	spin_lock_init(&isp->lock);
 
 	/* This is not a true PCI device on SoC, so the delay is not needed. */
-	pdev->d3hot_delay = 0;
+	pdev->d3_delay = 0;
 
 	pci_set_drvdata(pdev, isp);
 
@@ -1705,8 +1712,8 @@ static int atomisp_pci_probe(struct pci_dev *pdev, const struct pci_device_id *i
 
 	pci_set_master(pdev);
 
-	err = pci_alloc_irq_vectors(pdev, 1, 1, PCI_IRQ_MSI);
-	if (err < 0) {
+	err = pci_enable_msi(pdev);
+	if (err) {
 		dev_err(&pdev->dev, "Failed to enable msi (%d)\n", err);
 		goto enable_msi_fail;
 	}
@@ -1763,8 +1770,7 @@ static int atomisp_pci_probe(struct pci_dev *pdev, const struct pci_device_id *i
 	if (err < 0)
 		goto register_entities_fail;
 	/* init atomisp wdts */
-	err = init_atomisp_wdts(isp);
-	if (err != 0)
+	if (init_atomisp_wdts(isp) != 0)
 		goto wdt_work_queue_fail;
 
 	/* save the iunit context only once after all the values are init'ed. */
@@ -1816,7 +1822,6 @@ request_irq_fail:
 	hmm_cleanup();
 	hmm_pool_unregister(HMM_POOL_TYPE_RESERVED);
 hmm_pool_fail:
-	pm_runtime_get_noresume(&pdev->dev);
 	destroy_workqueue(isp->wdt_work_queue);
 wdt_work_queue_fail:
 	atomisp_acc_cleanup(isp);
@@ -1826,7 +1831,7 @@ register_entities_fail:
 initialize_modules_fail:
 	cpu_latency_qos_remove_request(&isp->pm_qos);
 	atomisp_msi_irq_uninit(isp);
-	pci_free_irq_vectors(pdev);
+	pci_disable_msi(pdev);
 enable_msi_fail:
 fw_validation_fail:
 	release_firmware(isp->firmware);

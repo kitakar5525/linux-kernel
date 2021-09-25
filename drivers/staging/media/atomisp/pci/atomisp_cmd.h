@@ -42,10 +42,6 @@ struct ia_css_frame;
 #define INTR_IER		24
 #define INTR_IIR		16
 
-/* ISP2401 */
-#define RUNMODE_MASK (ATOMISP_RUN_MODE_VIDEO | ATOMISP_RUN_MODE_STILL_CAPTURE \
-			| ATOMISP_RUN_MODE_PREVIEW)
-
 /* FIXME: check if can go */
 extern int atomisp_punit_hpll_freq;
 
@@ -61,9 +57,6 @@ int atomisp_reset(struct atomisp_device *isp);
 void atomisp_flush_bufs_and_wakeup(struct atomisp_sub_device *asd);
 void atomisp_clear_css_buffer_counters(struct atomisp_sub_device *asd);
 bool atomisp_buffers_queued(struct atomisp_sub_device *asd);
-/* ISP2401 */
-bool atomisp_buffers_queued_pipe(struct atomisp_video_pipe *pipe);
-
 /*
  * Interrupt functions
  */

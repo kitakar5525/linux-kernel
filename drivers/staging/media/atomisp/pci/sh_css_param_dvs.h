@@ -28,11 +28,9 @@
 #define DVS_BLOCKDIM_Y_LUMA (64)   /* Y block height*/
 #define DVS_BLOCKDIM_Y_CHROMA (32) /* UV height block size is half the Y block height*/
 
-/* ISP2400 */
 /* horizontal 64x64 blocks round up to DVS_BLOCKDIM_X, make even */
 #define DVS_NUM_BLOCKS_X(X)		(CEIL_MUL(CEIL_DIV((X), DVS_BLOCKDIM_X), 2))
 
-/* ISP2400 */
 /* vertical   64x64 blocks round up to DVS_BLOCKDIM_Y */
 #define DVS_NUM_BLOCKS_Y(X)		(CEIL_DIV((X), DVS_BLOCKDIM_Y_LUMA))
 #define DVS_NUM_BLOCKS_X_CHROMA(X)	(CEIL_DIV((X), DVS_BLOCKDIM_X))
@@ -48,7 +46,6 @@
 
 #define DVS_COORD_FRAC_BITS (10)
 
-/* ISP2400 */
 #define DVS_INPUT_BYTES_PER_PIXEL (1)
 
 #define XMEM_ALIGN_LOG2 (5)

@@ -3229,7 +3229,6 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 				    FIELD_MINOR_UNPACK(trace_read_buf[j]),
 				    FIELD_VALUE_UNPACK(trace_read_buf[j]));
 				break;
-			/* ISP2400 */
 			case TRACE_DUMP_FORMAT_VALUE24_HEX:
 				ia_css_debug_dtrace(
 				    IA_CSS_DEBUG_TRACE,	"\t\t%d, %d, 24bit value %x H\n",
@@ -3237,7 +3236,6 @@ static void debug_dump_one_trace(enum TRACE_CORE_ID proc_id)
 				    FIELD_MAJOR_UNPACK(trace_read_buf[j]),
 				    FIELD_VALUE_24_UNPACK(trace_read_buf[j]));
 				break;
-			/* ISP2400 */
 			case TRACE_DUMP_FORMAT_VALUE24_DEC:
 				ia_css_debug_dtrace(
 				    IA_CSS_DEBUG_TRACE,	"\t\t%d, %d, 24bit value %d D\n",

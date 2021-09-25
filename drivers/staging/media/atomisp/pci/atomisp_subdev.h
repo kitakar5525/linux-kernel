@@ -398,7 +398,6 @@ struct atomisp_sub_device {
 	int raw_buffer_locked_count;
 	spinlock_t raw_buffer_bitmap_lock;
 
-	/* ISP2400 */
 	struct timer_list wdt;
 	unsigned int wdt_duration;	/* in jiffies */
 	unsigned long wdt_expires;
@@ -420,7 +419,6 @@ u32 atomisp_subdev_uncompressed_code(u32 code);
 bool atomisp_subdev_is_compressed(u32 code);
 const struct atomisp_in_fmt_conv *atomisp_find_in_fmt_conv(u32 code);
 
-/* ISP2400 */
 const struct atomisp_in_fmt_conv *atomisp_find_in_fmt_conv_by_atomisp_in_fmt(
     enum atomisp_input_format atomisp_in_fmt);
 

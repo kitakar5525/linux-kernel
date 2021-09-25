@@ -41,9 +41,6 @@ extern int pad_h;
 #define CSS_DTRACE_VERBOSITY_TIMEOUT	9	/* Verbosity on ISP timeout */
 #define MRFLD_MAX_ZOOM_FACTOR	1024
 
-/* ISP2401 */
-#define ATOMISP_CSS_ISP_PIPE_VERSION_2_7    1
-
 struct atomisp_format_bridge {
 	unsigned int pixelformat;
 	unsigned int depth;

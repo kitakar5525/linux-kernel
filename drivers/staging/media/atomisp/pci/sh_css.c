@@ -188,7 +188,7 @@ allocate_delay_frames(struct ia_css_pipe *pipe);
 static int
 sh_css_pipe_start(struct ia_css_stream *stream);
 
-/* ISP 2401 */
+/* ISP2401 */
 /*
  * @brief Stop all "ia_css_pipe" instances in the target
  * "ia_css_stream" instance.
@@ -220,16 +220,16 @@ sh_css_pipes_stop(struct ia_css_stream *stream);
  *   instance have ben stopped.
  * - false, otherwise.
  */
-/* ISP 2401 */
+/* ISP2401 */
 static bool
 sh_css_pipes_have_stopped(struct ia_css_stream *stream);
 
-/* ISP 2401 */
+/* ISP2401 */
 static int
 ia_css_pipe_check_format(struct ia_css_pipe *pipe,
 			 enum ia_css_frame_format format);
 
-/* ISP 2401 */
+/* ISP2401 */
 static int
 check_pipe_resolutions(const struct ia_css_pipe *pipe);
 

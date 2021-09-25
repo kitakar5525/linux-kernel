@@ -4969,7 +4969,6 @@ sh_css_pipe_start(struct ia_css_stream *stream) {
 	return err;
 }
 
-/* ISP2400 */
 void
 sh_css_enable_cont_capt(bool enable, bool stop_copy_preview)
 {
@@ -4996,7 +4995,6 @@ sh_css_continuous_is_enabled(uint8_t pipe_num)
 	return continuous;
 }
 
-/* ISP2400 */
 int
 ia_css_stream_get_max_buffer_depth(struct ia_css_stream *stream,
 				   int *buffer_depth) {
@@ -9868,7 +9866,6 @@ ia_css_stream_has_stopped(struct ia_css_stream *stream) {
 	return stopped;
 }
 
-/* ISP2400 */
 /*
     * Destroy the stream and all the pipes related to it.
     * The stream handle is used to identify the correct entry in the css_save struct

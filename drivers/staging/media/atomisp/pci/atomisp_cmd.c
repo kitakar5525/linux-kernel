@@ -643,7 +643,6 @@ void atomisp_clear_css_buffer_counters(struct atomisp_sub_device *asd)
 	asd->video_out_video_capture.buffers_in_css = 0;
 }
 
-/* ISP2400 */
 bool atomisp_buffers_queued(struct atomisp_sub_device *asd)
 {
 	return asd->video_out_capture.buffers_in_css ||
@@ -1613,7 +1612,6 @@ void atomisp_wdt(struct timer_list *t)
 	queue_work(isp->wdt_work_queue, &isp->wdt_work);
 }
 
-/* ISP2400 */
 void atomisp_wdt_start(struct atomisp_sub_device *asd)
 {
 	atomisp_wdt_refresh(asd, ATOMISP_ISP_TIMEOUT_DURATION);

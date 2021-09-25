@@ -285,7 +285,6 @@ struct ia_css_shading_info {
 		 *  ISP2: SC1 is used.
 		 */
 		struct {
-			/* ISP2400 */
 			u32 enable;	/** Shading correction enabled.
 						     0:disabled, 1:enabled */
 
@@ -312,14 +311,12 @@ struct ia_css_shading_info {
 			which should be done before shading correction.
 			  output_height = input_height * bayer_scale_ver_ratio_out
 						/ bayer_scale_ver_ratio_in */
-			/* ISP2400 */
 			u32 sc_bayer_origin_x_bqs_on_shading_table;
 			/** X coordinate (in bqs) of bayer origin on shading table.
 			This indicates the left-most pixel of bayer
 			(not include margin) inputted to the shading correction.
 			This corresponds to the left-most pixel of bayer
 			inputted to isp from sensor. */
-			/* ISP2400 */
 			u32 sc_bayer_origin_y_bqs_on_shading_table;
 			/** Y coordinate (in bqs) of bayer origin on shading table.
 			This indicates the top pixel of bayer

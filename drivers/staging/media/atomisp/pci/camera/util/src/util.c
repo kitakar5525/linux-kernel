@@ -129,24 +129,6 @@ int ia_css_util_check_res(unsigned int width, unsigned int height)
 	return 0;
 }
 
-/* ISP2401 */
-bool ia_css_util_res_leq(struct ia_css_resolution a, struct ia_css_resolution b)
-{
-	return a.width <= b.width && a.height <= b.height;
-}
-
-/* ISP2401 */
-bool ia_css_util_resolution_is_zero(const struct ia_css_resolution resolution)
-{
-	return (resolution.width == 0) || (resolution.height == 0);
-}
-
-/* ISP2401 */
-bool ia_css_util_resolution_is_even(const struct ia_css_resolution resolution)
-{
-	return IS_EVEN(resolution.height) && IS_EVEN(resolution.width);
-}
-
 bool ia_css_util_is_input_format_raw(enum atomisp_input_format format)
 {
 	return ((format == ATOMISP_INPUT_FORMAT_RAW_6) ||

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -19,11 +18,14 @@
 #include "gp_timer.h" /*gp_timer_read()*/
 #include "assert_support.h"
 
-int ia_css_timer_get_current_tick(struct ia_css_clock_tick *curr_ts)
-{
+enum ia_css_err
+ia_css_timer_get_current_tick(
+    struct ia_css_clock_tick *curr_ts) {
 	assert(curr_ts);
 	if (!curr_ts)
-		return -EINVAL;
+	{
+		return IA_CSS_ERR_INVALID_ARGUMENTS;
+	}
 	curr_ts->ticks = (clock_value_t)gp_timer_read(GP_TIMER_SEL);
-	return 0;
+	return IA_CSS_SUCCESS;
 }

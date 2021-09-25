@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -95,7 +94,7 @@ union ia_css_dvs_statistics_host {
  * advised to map the ISP memory into a host-side pointer and use
  * the ia_css_translate_dvs_statistics() function instead.
  */
-int
+enum ia_css_err
 ia_css_get_dvs_statistics(struct ia_css_dvs_statistics *host_stats,
 			  const struct ia_css_isp_dvs_statistics *isp_stats);
 
@@ -129,7 +128,7 @@ ia_css_translate_dvs_statistics(
  * advised to map the ISP memory into a host-side pointer and use
  * the ia_css_translate_dvs2_statistics() function instead.
  */
-int
+enum ia_css_err
 ia_css_get_dvs2_statistics(struct ia_css_dvs2_statistics *host_stats,
 			   const struct ia_css_isp_dvs_statistics *isp_stats);
 

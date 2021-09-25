@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -15,6 +14,7 @@
 
 #if !defined(HAS_NO_HMEM)
 
+#include "memory_access.h"
 #include "ia_css_types.h"
 #include "sh_css_internal.h"
 #include "assert_support.h"

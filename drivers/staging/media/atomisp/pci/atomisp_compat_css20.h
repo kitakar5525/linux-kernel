@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Clovertrail PNW Camera Imaging ISP subsystem.
  *
@@ -141,19 +140,37 @@ void atomisp_css_set_yuv2rgb_cc_config(struct atomisp_sub_device *asd,
 void atomisp_css_set_rgb2yuv_cc_config(struct atomisp_sub_device *asd,
 				       struct ia_css_cc_config *rgb2yuv_cc_config);
 
+void atomisp_css_set_xnr_table(struct atomisp_sub_device *asd,
+			       struct ia_css_xnr_table *xnr_table);
+
+void atomisp_css_set_r_gamma_table(struct atomisp_sub_device *asd,
+				   struct ia_css_rgb_gamma_table *r_gamma_table);
+
+void atomisp_css_set_g_gamma_table(struct atomisp_sub_device *asd,
+				   struct ia_css_rgb_gamma_table *g_gamma_table);
+
+void atomisp_css_set_b_gamma_table(struct atomisp_sub_device *asd,
+				   struct ia_css_rgb_gamma_table *b_gamma_table);
+
 void atomisp_css_set_anr_thres(struct atomisp_sub_device *asd,
 			       struct ia_css_anr_thres *anr_thres);
 
+int atomisp_css_check_firmware_version(struct atomisp_device *isp);
+
 int atomisp_css_load_firmware(struct atomisp_device *isp);
+
+void atomisp_css_unload_firmware(struct atomisp_device *isp);
 
 void atomisp_css_set_dvs_6axis(struct atomisp_sub_device *asd,
 			       struct ia_css_dvs_6axis_config *dvs_6axis);
+
+unsigned int atomisp_css_debug_get_dtrace_level(void);
 
 int atomisp_css_debug_dump_isp_binary(void);
 
 int atomisp_css_dump_sp_raw_copy_linecount(bool reduced);
 
-int atomisp_css_dump_blob_infor(struct atomisp_device *isp);
+int atomisp_css_dump_blob_infor(void);
 
 void atomisp_css_set_isp_config_id(struct atomisp_sub_device *asd,
 				   uint32_t isp_config_id);

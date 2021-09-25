@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -19,7 +18,7 @@
 #include "isys_irq_global.h"
 #include "isys_irq_local.h"
 
-#if defined(ISP2401)
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
 
 /* -------------------------------------------------------+
  |             Native command interface (NCI)             |
@@ -29,7 +28,7 @@
 * @brief Get the isys irq status.
 * Refer to "isys_irq.h" for details.
 */
-void isys_irqc_state_get(
+STORAGE_CLASS_ISYS2401_IRQ_C void isys_irqc_state_get(
     const isys_irq_ID_t	isys_irqc_id,
     isys_irqc_state_t *state)
 {
@@ -48,7 +47,7 @@ void isys_irqc_state_get(
 * @brief Dump the isys irq status.
 * Refer to "isys_irq.h" for details.
 */
-void isys_irqc_state_dump(
+STORAGE_CLASS_ISYS2401_IRQ_C void isys_irqc_state_dump(
     const isys_irq_ID_t	isys_irqc_id,
     const isys_irqc_state_t *state)
 {
@@ -65,7 +64,7 @@ void isys_irqc_state_dump(
  + -------------------------------------------------------*/
 
 /* Support functions */
-void isys_irqc_reg_store(
+STORAGE_CLASS_ISYS2401_IRQ_C void isys_irqc_reg_store(
     const isys_irq_ID_t	isys_irqc_id,
     const unsigned int	reg_idx,
     const hrt_data	value)
@@ -82,7 +81,7 @@ void isys_irqc_reg_store(
 	ia_css_device_store_uint32(reg_addr, value);
 }
 
-hrt_data isys_irqc_reg_load(
+STORAGE_CLASS_ISYS2401_IRQ_C hrt_data isys_irqc_reg_load(
     const isys_irq_ID_t	isys_irqc_id,
     const unsigned int	reg_idx)
 {
@@ -102,6 +101,6 @@ hrt_data isys_irqc_reg_load(
 
 /* end of DLI */
 
-#endif /* defined(ISP2401) */
+#endif /* defined(USE_INPUT_SYSTEM_VERSION_2401) */
 
 #endif	/* __ISYS_IRQ_PRIVATE_H__ */

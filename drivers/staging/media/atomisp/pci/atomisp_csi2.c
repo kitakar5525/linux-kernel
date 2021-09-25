@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Medifield PNW Camera Imaging ISP subsystem.
  *
@@ -25,14 +24,13 @@
 static struct v4l2_mbus_framefmt *__csi2_get_format(struct
 	atomisp_mipi_csi2_device
 	* csi2,
-	struct v4l2_subdev_state *sd_state,
+	struct
+	v4l2_subdev_pad_config *cfg,
 	enum
 	v4l2_subdev_format_whence
-	which, unsigned int pad)
-{
+	which, unsigned int pad) {
 	if (which == V4L2_SUBDEV_FORMAT_TRY)
-		return v4l2_subdev_get_try_format(&csi2->subdev, sd_state,
-						  pad);
+		return v4l2_subdev_get_try_format(&csi2->subdev, cfg, pad);
 	else
 		return &csi2->formats[pad];
 }
@@ -45,7 +43,7 @@ static struct v4l2_mbus_framefmt *__csi2_get_format(struct
  * return -EINVAL or zero on success
 */
 static int csi2_enum_mbus_code(struct v4l2_subdev *sd,
-			       struct v4l2_subdev_state *sd_state,
+			       struct v4l2_subdev_pad_config *cfg,
 			       struct v4l2_subdev_mbus_code_enum *code)
 {
 	const struct atomisp_in_fmt_conv *ic = atomisp_in_fmt_conv;
@@ -71,13 +69,13 @@ static int csi2_enum_mbus_code(struct v4l2_subdev *sd,
  * return -EINVAL or zero on success
 */
 static int csi2_get_format(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_state *sd_state,
+			   struct v4l2_subdev_pad_config *cfg,
 			   struct v4l2_subdev_format *fmt)
 {
 	struct atomisp_mipi_csi2_device *csi2 = v4l2_get_subdevdata(sd);
 	struct v4l2_mbus_framefmt *format;
 
-	format = __csi2_get_format(csi2, sd_state, fmt->which, fmt->pad);
+	format = __csi2_get_format(csi2, cfg, fmt->which, fmt->pad);
 
 	fmt->format = *format;
 
@@ -85,14 +83,12 @@ static int csi2_get_format(struct v4l2_subdev *sd,
 }
 
 int atomisp_csi2_set_ffmt(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_state *sd_state,
+			  struct v4l2_subdev_pad_config *cfg,
 			  unsigned int which, uint16_t pad,
 			  struct v4l2_mbus_framefmt *ffmt)
 {
 	struct atomisp_mipi_csi2_device *csi2 = v4l2_get_subdevdata(sd);
-	struct v4l2_mbus_framefmt *actual_ffmt = __csi2_get_format(csi2,
-								   sd_state,
-								   which, pad);
+	struct v4l2_mbus_framefmt *actual_ffmt = __csi2_get_format(csi2, cfg, which, pad);
 
 	if (pad == CSI2_PAD_SINK) {
 		const struct atomisp_in_fmt_conv *ic;
@@ -113,14 +109,12 @@ int atomisp_csi2_set_ffmt(struct v4l2_subdev *sd,
 
 		tmp_ffmt = *ffmt = *actual_ffmt;
 
-		return atomisp_csi2_set_ffmt(sd, sd_state, which,
-					     CSI2_PAD_SOURCE,
+		return atomisp_csi2_set_ffmt(sd, cfg, which, CSI2_PAD_SOURCE,
 					     &tmp_ffmt);
 	}
 
 	/* FIXME: DPCM decompression */
-	*actual_ffmt = *ffmt = *__csi2_get_format(csi2, sd_state, which,
-						  CSI2_PAD_SINK);
+	*actual_ffmt = *ffmt = *__csi2_get_format(csi2, cfg, which, CSI2_PAD_SINK);
 
 	return 0;
 }
@@ -134,10 +128,10 @@ int atomisp_csi2_set_ffmt(struct v4l2_subdev *sd,
  * return -EINVAL or zero on success
 */
 static int csi2_set_format(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_state *sd_state,
+			   struct v4l2_subdev_pad_config *cfg,
 			   struct v4l2_subdev_format *fmt)
 {
-	return atomisp_csi2_set_ffmt(sd, sd_state, fmt->which, fmt->pad,
+	return atomisp_csi2_set_ffmt(sd, cfg, fmt->which, fmt->pad,
 				     &fmt->format);
 }
 
@@ -390,9 +384,9 @@ static void atomisp_csi2_configure_isp2401(struct atomisp_sub_device *asd)
 	for (n = 0; n < csi2_port_lanes[port] + 1; n++) {
 		hrt_address base = csi2_port_base[port] + csi2_lane_base[n];
 
-		atomisp_css2_hw_store_32(base + CSI2_REG_RX_CSI_DLY_CNT_TERMEN,
+		atomisp_store_uint32(base + CSI2_REG_RX_CSI_DLY_CNT_TERMEN,
 				     n == 0 ? clk_termen : dat_termen);
-		atomisp_css2_hw_store_32(base + CSI2_REG_RX_CSI_DLY_CNT_SETTLE,
+		atomisp_store_uint32(base + CSI2_REG_RX_CSI_DLY_CNT_SETTLE,
 				     n == 0 ? clk_settle : dat_settle);
 	}
 }

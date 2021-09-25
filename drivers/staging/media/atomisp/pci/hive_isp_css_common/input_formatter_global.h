@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -20,7 +19,7 @@
 #define IS_INPUT_SWITCH_VERSION2
 
 #include <type_support.h>
-#include <system_local.h>
+#include <system_types.h>
 #include "if_defs.h"
 #include "str2mem_defs.h"
 #include "input_switch_2400_defs.h"

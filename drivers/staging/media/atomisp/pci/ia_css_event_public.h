@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -144,9 +143,9 @@ struct ia_css_event {
  *
  * @param[out]	event   Pointer to the event struct which will be filled by
  *                      this function if an event is available.
- * @return		-ENODATA if no events are
+ * @return		IA_CSS_ERR_QUEUE_IS_EMPTY if no events are
  *			available or
- *			0 otherwise.
+ *			IA_CSS_SUCCESS otherwise.
  *
  * This function dequeues an event from the PSYS event queue. The queue is
  * between the Host CPU and the CSS system. This function can be
@@ -154,31 +153,31 @@ struct ia_css_event {
  * was available and can be used in a polling-like situation where the NO_EVENT
  * return value is used to determine whether an event was available or not.
  */
-int
+enum ia_css_err
 ia_css_dequeue_psys_event(struct ia_css_event *event);
 
 /* @brief Dequeue an event from the CSS system.
  *
  * @param[out]	event   Pointer to the event struct which will be filled by
  *                      this function if an event is available.
- * @return		-ENODATA if no events are
+ * @return		IA_CSS_ERR_QUEUE_IS_EMPTY if no events are
  *			available or
- *			0 otherwise.
+ *			IA_CSS_SUCCESS otherwise.
  *
  * deprecated{Use ia_css_dequeue_psys_event instead}.
  * Unless the isys event queue is explicitly enabled, this function will
  * dequeue both isys (EOF) and psys events (all others).
  */
-int
+enum ia_css_err
 ia_css_dequeue_event(struct ia_css_event *event);
 
 /* @brief Dequeue an ISYS event from the CSS system.
  *
  * @param[out]	event   Pointer to the event struct which will be filled by
  *                      this function if an event is available.
- * @return		-ENODATA if no events are
+ * @return		IA_CSS_ERR_QUEUE_IS_EMPTY if no events are
  *			available or
- *			0 otherwise.
+ *			IA_CSS_SUCCESS otherwise.
  *
  * This function dequeues an event from the ISYS event queue. The queue is
  * between host and the CSS system.
@@ -191,7 +190,7 @@ ia_css_dequeue_event(struct ia_css_event *event);
  * incurring additional latency due to locks being held by other CSS API
  * functions.
  */
-int
+enum ia_css_err
 ia_css_dequeue_isys_event(struct ia_css_event *event);
 
 #endif /* __IA_CSS_EVENT_PUBLIC_H */

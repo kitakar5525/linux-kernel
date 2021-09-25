@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2010 - 2015, Intel Corporation.
@@ -19,7 +18,7 @@
 #include "type_support.h"
 #include "platform_support.h"
 #include "runtime/bufq/interface/ia_css_bufq_comm.h"
-#include <system_local.h>	 /* ia_css_ptr */
+#include <system_types.h>	 /* hrt_vaddress */
 
 /*
  * These structs are derived from structs defined in ia_css_types.h
@@ -84,7 +83,7 @@ struct ia_css_frame_sp_info {
 
 struct ia_css_buffer_sp {
 	union {
-		ia_css_ptr xmem_addr;
+		hrt_vaddress xmem_addr;
 		enum sh_css_queue_id queue_id;
 	} buf_src;
 	enum ia_css_buffer_type buf_type;

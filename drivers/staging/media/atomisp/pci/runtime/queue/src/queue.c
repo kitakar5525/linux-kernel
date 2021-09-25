@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Intel Camera Imaging ISP subsystem.
  * Copyright (c) 2015, Intel Corporation.
@@ -22,12 +21,14 @@
 /*****************************************************************************
  * Queue Public APIs
  *****************************************************************************/
-int ia_css_queue_local_init(ia_css_queue_t *qhandle, ia_css_queue_local_t *desc)
+int ia_css_queue_local_init(
+    ia_css_queue_t *qhandle,
+    ia_css_queue_local_t *desc)
 {
 	if (NULL == qhandle || NULL == desc
 	    || NULL == desc->cb_elems || NULL == desc->cb_desc) {
 		/* Invalid parameters, return error*/
-		return -EINVAL;
+		return EINVAL;
 	}
 
 	/* Mark the queue as Local */
@@ -41,11 +42,13 @@ int ia_css_queue_local_init(ia_css_queue_t *qhandle, ia_css_queue_local_t *desc)
 	return 0;
 }
 
-int ia_css_queue_remote_init(ia_css_queue_t *qhandle, ia_css_queue_remote_t *desc)
+int ia_css_queue_remote_init(
+    ia_css_queue_t *qhandle,
+    ia_css_queue_remote_t *desc)
 {
 	if (NULL == qhandle || NULL == desc) {
 		/* Invalid parameters, return error*/
-		return -EINVAL;
+		return EINVAL;
 	}
 
 	/* Mark the queue as remote*/
@@ -65,10 +68,11 @@ int ia_css_queue_remote_init(ia_css_queue_t *qhandle, ia_css_queue_remote_t *des
 	return 0;
 }
 
-int ia_css_queue_uninit(ia_css_queue_t *qhandle)
+int ia_css_queue_uninit(
+    ia_css_queue_t *qhandle)
 {
 	if (!qhandle)
-		return -EINVAL;
+		return EINVAL;
 
 	/* Load the required queue object */
 	if (qhandle->type == IA_CSS_QUEUE_TYPE_LOCAL) {
@@ -79,12 +83,14 @@ int ia_css_queue_uninit(ia_css_queue_t *qhandle)
 	return 0;
 }
 
-int ia_css_queue_enqueue(ia_css_queue_t *qhandle, uint32_t item)
+int ia_css_queue_enqueue(
+    ia_css_queue_t *qhandle,
+    uint32_t item)
 {
 	int error = 0;
 
 	if (!qhandle)
-		return -EINVAL;
+		return EINVAL;
 
 	/* 1. Load the required queue object */
 	if (qhandle->type == IA_CSS_QUEUE_TYPE_LOCAL) {
@@ -93,7 +99,7 @@ int ia_css_queue_enqueue(ia_css_queue_t *qhandle, uint32_t item)
 		 */
 		if (ia_css_circbuf_is_full(&qhandle->desc.cb_local)) {
 			/* Cannot push the element. Return*/
-			return -ENOBUFS;
+			return ENOBUFS;
 		}
 
 		/* Push the element*/
@@ -111,7 +117,7 @@ int ia_css_queue_enqueue(ia_css_queue_t *qhandle, uint32_t item)
 
 		/* b. Operate on the queue */
 		if (ia_css_circbuf_desc_is_full(&cb_desc))
-			return -ENOBUFS;
+			return ENOBUFS;
 
 		cb_elem.val = item;
 
@@ -136,12 +142,14 @@ int ia_css_queue_enqueue(ia_css_queue_t *qhandle, uint32_t item)
 	return 0;
 }
 
-int ia_css_queue_dequeue(ia_css_queue_t *qhandle, uint32_t *item)
+int ia_css_queue_dequeue(
+    ia_css_queue_t *qhandle,
+    uint32_t *item)
 {
 	int error = 0;
 
 	if (!qhandle || NULL == item)
-		return -EINVAL;
+		return EINVAL;
 
 	/* 1. Load the required queue object */
 	if (qhandle->type == IA_CSS_QUEUE_TYPE_LOCAL) {
@@ -150,7 +158,7 @@ int ia_css_queue_dequeue(ia_css_queue_t *qhandle, uint32_t *item)
 		 */
 		if (ia_css_circbuf_is_empty(&qhandle->desc.cb_local)) {
 			/* Nothing to pop. Return empty queue*/
-			return -ENODATA;
+			return ENODATA;
 		}
 
 		*item = ia_css_circbuf_pop(&qhandle->desc.cb_local);
@@ -168,7 +176,7 @@ int ia_css_queue_dequeue(ia_css_queue_t *qhandle, uint32_t *item)
 
 		/* b. Operate on the queue */
 		if (ia_css_circbuf_desc_is_empty(&cb_desc))
-			return -ENODATA;
+			return ENODATA;
 
 		error = ia_css_queue_item_load(qhandle, cb_desc.start, &cb_elem);
 		if (error != 0)
@@ -191,12 +199,14 @@ int ia_css_queue_dequeue(ia_css_queue_t *qhandle, uint32_t *item)
 	return 0;
 }
 
-int ia_css_queue_is_full(ia_css_queue_t *qhandle, bool *is_full)
+int ia_css_queue_is_full(
+    ia_css_queue_t *qhandle,
+    bool *is_full)
 {
 	int error = 0;
 
 	if ((!qhandle) || (!is_full))
-		return -EINVAL;
+		return EINVAL;
 
 	/* 1. Load the required queue object */
 	if (qhandle->type == IA_CSS_QUEUE_TYPE_LOCAL) {
@@ -220,15 +230,17 @@ int ia_css_queue_is_full(ia_css_queue_t *qhandle, bool *is_full)
 		return 0;
 	}
 
-	return -EINVAL;
+	return EINVAL;
 }
 
-int ia_css_queue_get_free_space(ia_css_queue_t *qhandle, uint32_t *size)
+int ia_css_queue_get_free_space(
+    ia_css_queue_t *qhandle,
+    uint32_t *size)
 {
 	int error = 0;
 
 	if ((!qhandle) || (!size))
-		return -EINVAL;
+		return EINVAL;
 
 	/* 1. Load the required queue object */
 	if (qhandle->type == IA_CSS_QUEUE_TYPE_LOCAL) {
@@ -252,15 +264,17 @@ int ia_css_queue_get_free_space(ia_css_queue_t *qhandle, uint32_t *size)
 		return 0;
 	}
 
-	return -EINVAL;
+	return EINVAL;
 }
 
-int ia_css_queue_get_used_space(ia_css_queue_t *qhandle, uint32_t *size)
+int ia_css_queue_get_used_space(
+    ia_css_queue_t *qhandle,
+    uint32_t *size)
 {
 	int error = 0;
 
 	if ((!qhandle) || (!size))
-		return -EINVAL;
+		return EINVAL;
 
 	/* 1. Load the required queue object */
 	if (qhandle->type == IA_CSS_QUEUE_TYPE_LOCAL) {
@@ -284,16 +298,19 @@ int ia_css_queue_get_used_space(ia_css_queue_t *qhandle, uint32_t *size)
 		return 0;
 	}
 
-	return -EINVAL;
+	return EINVAL;
 }
 
-int ia_css_queue_peek(ia_css_queue_t *qhandle, u32 offset, uint32_t *element)
+int ia_css_queue_peek(
+    ia_css_queue_t *qhandle,
+    u32 offset,
+    uint32_t *element)
 {
 	u32 num_elems = 0;
 	int error = 0;
 
 	if ((!qhandle) || (!element))
-		return -EINVAL;
+		return EINVAL;
 
 	/* 1. Load the required queue object */
 	if (qhandle->type == IA_CSS_QUEUE_TYPE_LOCAL) {
@@ -303,7 +320,7 @@ int ia_css_queue_peek(ia_css_queue_t *qhandle, u32 offset, uint32_t *element)
 		/* Check if offset is valid */
 		num_elems = ia_css_circbuf_get_num_elems(&qhandle->desc.cb_local);
 		if (offset > num_elems)
-			return -EINVAL;
+			return EINVAL;
 
 		*element = ia_css_circbuf_peek_from_start(&qhandle->desc.cb_local, (int)offset);
 		return 0;
@@ -322,7 +339,7 @@ int ia_css_queue_peek(ia_css_queue_t *qhandle, u32 offset, uint32_t *element)
 		/* Check if offset is valid */
 		num_elems = ia_css_circbuf_desc_get_num_elems(&cb_desc);
 		if (offset > num_elems)
-			return -EINVAL;
+			return EINVAL;
 
 		offset = OP_std_modadd(cb_desc.start, offset, cb_desc.size);
 		error = ia_css_queue_item_load(qhandle, (uint8_t)offset, &cb_elem);
@@ -333,15 +350,17 @@ int ia_css_queue_peek(ia_css_queue_t *qhandle, u32 offset, uint32_t *element)
 		return 0;
 	}
 
-	return -EINVAL;
+	return EINVAL;
 }
 
-int ia_css_queue_is_empty(ia_css_queue_t *qhandle, bool *is_empty)
+int ia_css_queue_is_empty(
+    ia_css_queue_t *qhandle,
+    bool *is_empty)
 {
 	int error = 0;
 
 	if ((!qhandle) || (!is_empty))
-		return -EINVAL;
+		return EINVAL;
 
 	/* 1. Load the required queue object */
 	if (qhandle->type == IA_CSS_QUEUE_TYPE_LOCAL) {
@@ -365,15 +384,17 @@ int ia_css_queue_is_empty(ia_css_queue_t *qhandle, bool *is_empty)
 		return 0;
 	}
 
-	return -EINVAL;
+	return EINVAL;
 }
 
-int ia_css_queue_get_size(ia_css_queue_t *qhandle, uint32_t *size)
+int ia_css_queue_get_size(
+    ia_css_queue_t *qhandle,
+    uint32_t *size)
 {
 	int error = 0;
 
 	if ((!qhandle) || (!size))
-		return -EINVAL;
+		return EINVAL;
 
 	/* 1. Load the required queue object */
 	if (qhandle->type == IA_CSS_QUEUE_TYPE_LOCAL) {

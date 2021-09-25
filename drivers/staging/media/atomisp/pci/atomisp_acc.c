@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Support for Clovertrail PNW Camera Imaging ISP subsystem.
  *
@@ -24,13 +23,13 @@
 #include <linux/init.h>
 #include <media/v4l2-event.h>
 
-#include "hmm.h"
-
 #include "atomisp_acc.h"
 #include "atomisp_internal.h"
 #include "atomisp_compat.h"
 #include "atomisp_cmd.h"
 
+#include "hrt/hive_isp_css_mm_hrt.h"
+#include "memory_access/memory_access.h"
 #include "ia_css.h"
 
 static const struct {
@@ -77,8 +76,8 @@ acc_get_fw(struct atomisp_sub_device *asd, unsigned int handle)
 	struct atomisp_acc_fw *acc_fw;
 
 	list_for_each_entry(acc_fw, &asd->acc.fw, list)
-		if (acc_fw->handle == handle)
-			return acc_fw;
+	if (acc_fw->handle == handle)
+		return acc_fw;
 
 	return NULL;
 }
@@ -354,23 +353,16 @@ int atomisp_acc_map(struct atomisp_sub_device *asd, struct atomisp_acc_map *map)
 		}
 
 		pgnr = DIV_ROUND_UP(map->length, PAGE_SIZE);
-		if (pgnr < ((PAGE_ALIGN(map->length)) >> PAGE_SHIFT)) {
-			dev_err(asd->isp->dev,
-				"user space memory size is less than the expected size..\n");
-			return -ENOMEM;
-		} else if (pgnr > ((PAGE_ALIGN(map->length)) >> PAGE_SHIFT)) {
-			dev_err(asd->isp->dev,
-				"user space memory size is large than the expected size..\n");
-			return -ENOMEM;
-		}
-
-		cssptr = hmm_alloc(map->length, HMM_BO_USER, 0, map->user_ptr,
-				   map->flags & ATOMISP_MAP_FLAG_CACHED);
-
+		cssptr = hrt_isp_css_mm_alloc_user_ptr(map->length,
+						       map->user_ptr,
+						       pgnr, HRT_USR_PTR,
+						       (map->flags & ATOMISP_MAP_FLAG_CACHED));
 	} else {
 		/* Allocate private buffer. */
-		cssptr = hmm_alloc(map->length, HMM_BO_PRIVATE, 0, NULL,
-				   map->flags & ATOMISP_MAP_FLAG_CACHED);
+		if (map->flags & ATOMISP_MAP_FLAG_CACHED)
+			cssptr = hrt_isp_css_mm_calloc_cached(map->length);
+		else
+			cssptr = hrt_isp_css_mm_calloc(map->length);
 	}
 
 	if (!cssptr)
@@ -464,11 +456,9 @@ int atomisp_acc_load_extensions(struct atomisp_sub_device *asd)
 			continue;
 
 		for (i = 0; i < ARRAY_SIZE(acc_flag_to_pipe); i++) {
-			/*
-			 * QoS (ACC pipe) acceleration stages are
-			 * currently allowed only in continuous mode.
-			 * Skip them for all other modes.
-			 */
+			/* QoS (ACC pipe) acceleration stages are currently
+			 * allowed only in continuous mode. Skip them for
+			 * all other modes. */
 			if (!continuous &&
 			    acc_flag_to_pipe[i].flag ==
 			    ATOMISP_ACC_FW_LOAD_FL_ACC)
@@ -562,7 +552,7 @@ int atomisp_acc_set_state(struct atomisp_sub_device *asd,
 	struct atomisp_acc_fw *acc_fw;
 	bool enable = (arg->flags & ATOMISP_STATE_FLAG_ENABLE) != 0;
 	struct ia_css_pipe *pipe;
-	int r;
+	enum ia_css_err r;
 	int i;
 
 	if (!asd->acc.extension_mode)
@@ -584,7 +574,7 @@ int atomisp_acc_set_state(struct atomisp_sub_device *asd,
 			       pipes[acc_flag_to_pipe[i].pipe_id];
 			r = ia_css_pipe_set_qos_ext_state(pipe, acc_fw->handle,
 							  enable);
-			if (r)
+			if (r != IA_CSS_SUCCESS)
 				return -EBADRQC;
 		}
 	}

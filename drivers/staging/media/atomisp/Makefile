@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0
 #
 # Makefile for camera drivers.
 #
@@ -16,6 +15,7 @@ atomisp-objs += \
 	pci/atomisp_acc.o \
 	pci/atomisp_cmd.o \
 	pci/atomisp_compat_css20.o \
+	pci/atomisp_compat_ioctl32.o \
 	pci/atomisp_csi2.o \
 	pci/atomisp_drvfs.o \
 	pci/atomisp_file.o \
@@ -36,6 +36,7 @@ atomisp-objs += \
 	pci/sh_css_param_dvs.o \
 	pci/sh_css_param_shading.o \
 	pci/sh_css_params.o \
+	pci/sh_css_pipe.o \
 	pci/sh_css_properties.o \
 	pci/sh_css_shading.o \
 	pci/sh_css_sp.o \
@@ -52,7 +53,9 @@ atomisp-objs += \
 	pci/hmm/hmm_dynamic_pool.o \
 	pci/hmm/hmm.o \
 	pci/hmm/hmm_reserved_pool.o \
+	pci/hrt/hive_isp_css_mm_hrt.o \
 	pci/ia_css_device_access.o \
+	pci/ia_css_memory_access.o \
 	pci/isp/kernels/aa/aa_2/ia_css_aa2.host.o \
 	pci/isp/kernels/anr/anr_1.0/ia_css_anr.host.o \
 	pci/isp/kernels/anr/anr_2/ia_css_anr2.host.o \
@@ -113,6 +116,7 @@ atomisp-objs += \
 	pci/isp/kernels/xnr/xnr_3.0/ia_css_xnr3.host.o \
 	pci/isp/kernels/ynr/ynr_1.0/ia_css_ynr.host.o \
 	pci/isp/kernels/ynr/ynr_2/ia_css_ynr2.host.o \
+	pci/memory_realloc.o \
 	pci/mmu/isp_mmu.o \
 	pci/mmu/sh_mmu_mrfld.o \
 	pci/runtime/binary/src/binary.o \
@@ -125,6 +129,7 @@ atomisp-objs += \
 	pci/runtime/inputfifo/src/inputfifo.o \
 	pci/runtime/isp_param/src/isp_param.o \
 	pci/runtime/isys/src/csi_rx_rmgr.o \
+	pci/runtime/isys/src/ibuf_ctrl_rmgr.o \
 	pci/runtime/isys/src/isys_dma_rmgr.o \
 	pci/runtime/isys/src/isys_init.o \
 	pci/runtime/isys/src/isys_stream2mmio_rmgr.o \
@@ -154,7 +159,6 @@ atomisp-objs += \
 	pci/hive_isp_css_common/host/timed_ctrl.o \
 	pci/hive_isp_css_common/host/vmem.o \
 	pci/hive_isp_css_shared/host/tag.o \
-	pci/system_local.o \
 
 obj-byt = \
 	pci/css_2400_system/hive/ia_css_isp_configs.o \
@@ -181,6 +185,7 @@ INCLUDES += \
 	-I$(atomisp)/include/hmm/ \
 	-I$(atomisp)/include/mmu/ \
 	-I$(atomisp)/pci/ \
+	-I$(atomisp)/pci/hrt/ \
 	-I$(atomisp)/pci/base/circbuf/interface/ \
 	-I$(atomisp)/pci/base/refcount/interface/ \
 	-I$(atomisp)/pci/camera/pipe/interface/ \
@@ -190,6 +195,7 @@ INCLUDES += \
 	-I$(atomisp)/pci/hive_isp_css_include/ \
 	-I$(atomisp)/pci/hive_isp_css_include/device_access/ \
 	-I$(atomisp)/pci/hive_isp_css_include/host/ \
+	-I$(atomisp)/pci/hive_isp_css_include/memory_access/ \
 	-I$(atomisp)/pci/hive_isp_css_shared/ \
 	-I$(atomisp)/pci/hive_isp_css_shared/host/ \
 	-I$(atomisp)/pci/isp/kernels/ \
@@ -305,12 +311,26 @@ INCLUDES += \
 	-I$(atomisp)/pci/runtime/queue/src/ \
 	-I$(atomisp)/pci/runtime/rmgr/interface/ \
 	-I$(atomisp)/pci/runtime/spctrl/interface/ \
-	-I$(atomisp)/pci/runtime/tagger/interface/ \
+	-I$(atomisp)/pci/runtime/tagger/interface/
+
+INCLUDES_byt += \
+	-I$(atomisp)/pci/css_2400_system/ \
 	-I$(atomisp)/pci/css_2400_system/hive/ \
+	-I$(atomisp)/pci/css_2400_system/hrt/ \
+
+INCLUDES_cht += \
 	-I$(atomisp)/pci/css_2401_system/ \
 	-I$(atomisp)/pci/css_2401_system/host/ \
 	-I$(atomisp)/pci/css_2401_system/hive/ \
-	-I$(atomisp)/pci/css_2401_system/hrt/
+	-I$(atomisp)/pci/css_2401_system/hrt/ \
+
+#	-I$(atomisp)/pci/css_2401_system/hrt/ \
+#	-I$(atomisp)/pci/css_2401_system/hive_isp_css_2401_system_generated/ \
+
+
+ifeq ($(CONFIG_ION),y)
+INCLUDES += -I$(srctree)/drivers/staging/android/ion
+endif
 
 DEFINES := -DHRT_HW -DHRT_ISP_CSS_CUSTOM_HOST -DHRT_USE_VIR_ADDRS -D__HOST__
 #DEFINES += -DUSE_DYNAMIC_BIN
@@ -321,13 +341,22 @@ DEFINES := -DHRT_HW -DHRT_ISP_CSS_CUSTOM_HOST -DHRT_USE_VIR_ADDRS -D__HOST__
 #DEFINES += -DUSE_KMEM_CACHE
 
 ifeq ($(CONFIG_VIDEO_ATOMISP_ISP2401),y)
-atomisp-objs += \
-	$(obj-cht) \
-	pci/runtime/isys/src/ibuf_ctrl_rmgr.o
+atomisp-objs += $(obj-cht)
+INCLUDES += $(INCLUDES_cht)
 DEFINES += -DISP2401 -DISP2401_NEW_INPUT_SYSTEM -DSYSTEM_hive_isp_css_2401_system
 else
 atomisp-objs += $(obj-byt)
+INCLUDES += $(INCLUDES_byt)
 DEFINES += -DISP2400 -DSYSTEM_hive_isp_css_2400_system
 endif
 
 ccflags-y += $(INCLUDES) $(DEFINES) -fno-common
+
+# HACK! While this driver is in bad shape, don't enable several warnings
+#       that would be otherwise enabled with W=1
+ccflags-y += $(call cc-disable-warning, implicit-fallthrough)
+ccflags-y += $(call cc-disable-warning, missing-prototypes)
+ccflags-y += $(call cc-disable-warning, missing-declarations)
+ccflags-y += $(call cc-disable-warning, suggest-attribute=format)
+ccflags-y += $(call cc-disable-warning, unused-const-variable)
+ccflags-y += $(call cc-disable-warning, unused-but-set-variable)

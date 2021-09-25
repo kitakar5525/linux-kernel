@@ -106,7 +106,6 @@ ia_css_binary_internal_res(const struct ia_css_frame_info *in_info,
 			       binary_dvs_env.height);
 }
 
-/* ISP2400 */
 /* Computation results of the origin coordinate of bayer on the shading table. */
 struct sh_css_shading_table_bayer_origin_compute_results {
 	u32 bayer_scale_hor_ratio_in;	/* Horizontal ratio (in) of bayer scaling. */

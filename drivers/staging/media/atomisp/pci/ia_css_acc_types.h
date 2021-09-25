@@ -327,7 +327,6 @@ struct ia_css_sp_info {
 	u32 sleep_mode;  /** different mode to halt SP */
 	u32 invalidate_tlb;		/** inform SP to invalidate mmu TLB */
 
-	/* ISP2400 */
 	u32 stop_copy_preview;       /** suspend copy and preview pipe when capture */
 
 	u32 debug_buffer_ddr_address;	/** inform SP the address

@@ -28,7 +28,6 @@
 #include <media/media-device.h>
 #include <media/v4l2-subdev.h>
 
-/* ISP2400 */
 #include "ia_css_types.h"
 #include "sh_css_legacy.h"
 
@@ -267,7 +266,6 @@ struct atomisp_device {
 	struct workqueue_struct *wdt_work_queue;
 	struct work_struct wdt_work;
 
-	/* ISP2400 */
 	atomic_t wdt_count;
 
 	atomic_t wdt_work_queued;
@@ -295,7 +293,6 @@ void atomisp_wdt_refresh_pipe(struct atomisp_video_pipe *pipe,
 			      unsigned int delay);
 void atomisp_wdt_refresh(struct atomisp_sub_device *asd, unsigned int delay);
 
-/* ISP2400 */
 void atomisp_wdt_start(struct atomisp_sub_device *asd);
 
 /* ISP2401 */

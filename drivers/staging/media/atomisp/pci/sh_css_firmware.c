@@ -186,10 +186,7 @@ sh_css_check_firmware_version(struct device *dev, const char *fw_data)
 
 	const char *release_version;
 
-	if (!atomisp_hw_is_isp2401)
-		release_version = isp2400_release_version;
-	else
-		release_version = isp2401_release_version;
+	release_version = isp2400_release_version;
 
 	firmware_header = (struct firmware_header *)fw_data;
 	file_header = &firmware_header->file_header;
@@ -213,10 +210,7 @@ sh_css_load_firmware(struct device *dev, const char *fw_data,
 	bool valid_firmware = false;
 	const char *release_version;
 
-	if (!atomisp_hw_is_isp2401)
-		release_version = isp2400_release_version;
-	else
-		release_version = isp2401_release_version;
+	release_version = isp2400_release_version;
 
 	firmware_header = (struct firmware_header *)fw_data;
 	file_header = &firmware_header->file_header;

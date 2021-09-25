@@ -1530,13 +1530,8 @@ static bool is_valid_device(struct pci_dev *dev,
 	 */
 
 #if defined(ISP2400)
-	if (atomisp_hw_is_isp2401) {
-		dev_err(&dev->dev, "Support for %s (ISP2401) was disabled at compile time\n",
-			name);
-		return false;
-	}
 #else
-	if (!atomisp_hw_is_isp2401) {
+	{
 		dev_err(&dev->dev, "Support for %s (ISP2400) was disabled at compile time\n",
 			name);
 		return false;
@@ -1566,17 +1561,7 @@ static int init_atomisp_wdts(struct atomisp_device *isp)
 
 	for (i = 0; i < isp->num_of_streams; i++) {
 		struct atomisp_sub_device *asd = &isp->asd[i];
-		if (!atomisp_hw_is_isp2401)
-			timer_setup(&asd->wdt, atomisp_wdt, 0);
-		else {
-			timer_setup(&asd->video_out_capture.wdt,
-				    atomisp_wdt, 0);
-			timer_setup(&asd->video_out_preview.wdt,
-				    atomisp_wdt, 0);
-			timer_setup(&asd->video_out_vf.wdt, atomisp_wdt, 0);
-			timer_setup(&asd->video_out_video_capture.wdt,
-				    atomisp_wdt, 0);
-		}
+		timer_setup(&asd->wdt, atomisp_wdt, 0);
 	}
 	return 0;
 alloc_fail:

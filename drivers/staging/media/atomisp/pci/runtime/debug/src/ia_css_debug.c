@@ -487,7 +487,6 @@ void ia_css_debug_dump_sp_state(void)
 				    stall.fifo3);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n",
 				    "if_prim_a_FIFO stalled", stall.fifo4);
-
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "isp_FIFO stalled",
 				    stall.fifo5);
 		ia_css_debug_dtrace(2, "\t%-32s: %d\n", "gp_FIFO stalled",
@@ -531,6 +530,7 @@ static void debug_print_fifo_channel_state(const fifo_channel_state_t *state,
 	return;
 }
 
+#if !defined(HAS_NO_INPUT_FORMATTER) && defined(USE_INPUT_SYSTEM_VERSION_2)
 void ia_css_debug_dump_pif_a_isp_fifo_state(void)
 {
 	fifo_channel_state_t pif_to_isp, isp_to_pif;
@@ -867,6 +867,7 @@ static void ia_css_debug_dump_if_state(void)
 	debug_print_if_bin_state(&if_bin_state);
 	ia_css_debug_dump_str2mem_sp_fifo_state();
 }
+#endif
 
 void ia_css_debug_dump_dma_state(void)
 {
@@ -1654,6 +1655,7 @@ void ia_css_debug_print_sp_debug_state(const struct sh_css_sp_debug_state
 }
 #endif
 
+#if !defined(HAS_NO_INPUT_FORMATTER)
 static void debug_print_rx_mipi_port_state(mipi_port_state_t *state)
 {
 	int i;
@@ -1848,7 +1850,9 @@ static void debug_print_rx_state(receiver_state_t *state)
 
 	return;
 }
+#endif
 
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 void ia_css_debug_dump_rx_state(void)
 {
 	receiver_state_t state;
@@ -1856,6 +1860,7 @@ void ia_css_debug_dump_rx_state(void)
 	receiver_get_state(RX0_ID, &state);
 	debug_print_rx_state(&state);
 }
+#endif
 
 void ia_css_debug_dump_sp_sw_debug_info(void)
 {
@@ -1870,6 +1875,7 @@ void ia_css_debug_dump_sp_sw_debug_info(void)
 	return;
 }
 
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 static void debug_print_isys_capture_unit_state(capture_unit_state_t *state)
 {
 	assert(state);
@@ -2115,6 +2121,21 @@ void ia_css_debug_dump_isys_state(void)
 
 		debug_print_isys_state(&state);
 }
+#endif
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
+void ia_css_debug_dump_isys_state(void)
+{
+	/* Android compilation fails if made a local variable
+	stack size on android is limited to 2k and this structure
+	is around 3.5K, in place of static malloc can be done but
+	if this call is made too often it will lead to fragment memory
+	versus a fixed allocation */
+	static input_system_state_t state;
+
+	input_system_get_state(INPUT_SYSTEM0_ID, &state);
+	input_system_dump_state(INPUT_SYSTEM0_ID, &state);
+}
+#endif
 
 void ia_css_debug_dump_debug_info(const char *context)
 {
@@ -2122,9 +2143,12 @@ void ia_css_debug_dump_debug_info(const char *context)
 		context = "No Context provided";
 
 	ia_css_debug_dtrace(2, "CSS Debug Info dump [Context = %s]\n", context);
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 	ia_css_debug_dump_rx_state();
-
+#endif
+#if !defined(HAS_NO_INPUT_FORMATTER) && defined(USE_INPUT_SYSTEM_VERSION_2)
 	ia_css_debug_dump_if_state();
+#endif
 	ia_css_debug_dump_isp_state();
 	ia_css_debug_dump_isp_sp_fifo_state();
 	ia_css_debug_dump_isp_gdc_fifo_state();
@@ -2139,7 +2163,7 @@ void ia_css_debug_dump_debug_info(const char *context)
 	ia_css_debug_dump_dma_isp_fifo_state();
 	ia_css_debug_dump_dma_sp_fifo_state();
 	ia_css_debug_dump_dma_state();
-
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 	{
 		struct irq_controller_state state;
 
@@ -2166,7 +2190,10 @@ void ia_css_debug_dump_debug_info(const char *context)
 				    "irq_level_not_pulse",
 				    state.irq_level_not_pulse);
 	}
-
+#endif
+#if defined(USE_INPUT_SYSTEM_VERSION_2401)
+	ia_css_debug_dump_isys_state();
+#endif
 	ia_css_debug_tagger_state();
 
 	return;
@@ -2362,6 +2389,7 @@ void ia_css_debug_dump_isp_binary(void)
 
 void ia_css_debug_dump_perf_counters(void)
 {
+#if defined(USE_INPUT_SYSTEM_VERSION_2)
 	const struct ia_css_fw_info *fw;
 	int i;
 	unsigned int HIVE_ADDR_ia_css_isys_sp_error_cnt;
@@ -2385,6 +2413,7 @@ void ia_css_debug_dump_perf_counters(void)
 		ia_css_debug_dtrace(IA_CSS_DEBUG_VERBOSE, "\tport[%d] = %d\n",
 				    i, ia_css_sp_input_system_error_cnt[i]);
 	}
+#endif
 }
 
 /*

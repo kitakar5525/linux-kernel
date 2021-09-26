@@ -17,7 +17,7 @@
 #ifndef __T4KA3_H__
 #define __T4KA3_H__
 #include "../../include/linux/atomisp_platform.h"
-#include <linux/atomisp.h>
+#include "../../include/linux/atomisp_gmin_platform.h"
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/kernel.h>

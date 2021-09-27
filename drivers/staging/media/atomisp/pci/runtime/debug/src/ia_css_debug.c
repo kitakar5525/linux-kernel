@@ -3279,13 +3279,12 @@ static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
 		return;
 	}
 
-	{
-		tmp = ia_css_device_load_uint32(start_addr);
-		point_num = (tmp >> 16) & 0xFFFF;
+	tmp = ia_css_device_load_uint32(start_addr);
+	point_num = (tmp >> 16) & 0xFFFF;
 
-		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, " ver %d %d points\n", tmp & 0xFF,
-				    point_num);
-	}
+	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, " ver %d %d points\n", tmp & 0xFF,
+			    point_num);
+
 	if ((tmp & 0xFF) != TRACER_VER) {
 		ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "\t\tUnknown version - exiting\n");
 		return;
@@ -3320,9 +3319,7 @@ static void debug_dump_one_trace(TRACE_CORE_ID proc_id)
 	for (i = 0; i < point_num; i++) {
 		j = (limit + i) % point_num;
 		if (trace_read_buf[j]) {
-			{
-				TRACE_DUMP_FORMAT dump_format = FIELD_FORMAT_UNPACK(trace_read_buf[j]);
-			}
+			TRACE_DUMP_FORMAT dump_format = FIELD_FORMAT_UNPACK(trace_read_buf[j]);
 			switch (dump_format) {
 			case TRACE_DUMP_FORMAT_POINT:
 				ia_css_debug_dtrace(

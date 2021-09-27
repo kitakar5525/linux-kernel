@@ -965,15 +965,9 @@ binary_grid_deci_factor_log2(int width, int height)
 	/* 3A/Shading decimation factor spcification (at August 2008)
 	 * ------------------------------------------------------------------
 	 * [Image Width (BQ)] [Decimation Factor (BQ)] [Resulting grid cells]
-	#ifndef ISP2401
 	 * 1280 ?c             32                       40 ?c
 	 *  640 ?c 1279        16                       40 ?c 80
 	 *      ?c  639         8                          ?c 80
-	#else
-	 * from 1280                   32                 from 40
-	 * from  640 to 1279           16                 from 40 to 80
-	 *           to  639            8                         to 80
-	#endif
 	 * ------------------------------------------------------------------
 	 */
 	/* Maximum and minimum decimation factor by the specification */
@@ -1383,20 +1377,13 @@ static int __ia_css_binary_find(struct ia_css_binary_descr *descr,
 		*req_vf_info;
 
 	struct ia_css_binary_xinfo *xcandidate;
-#ifndef ISP2401
 	bool need_ds, need_dz, need_dvs, need_xnr, need_dpc;
-#else
-	bool need_ds, need_dz, need_dvs, need_xnr, need_dpc, need_tnr;
-#endif
 	bool striped;
 	bool enable_yuv_ds;
 	bool enable_high_speed;
 	bool enable_dvs_6axis;
 	bool enable_reduced_pipe;
 	bool enable_capture_pp_bli;
-#ifdef ISP2401
-	bool enable_luma_only;
-#endif
 	int err = -EINVAL;
 	bool continuous;
 	unsigned int isp_pipe_version;
@@ -1426,33 +1413,18 @@ static int __ia_css_binary_find(struct ia_css_binary_descr *descr,
 	}
 	if (!req_bin_out_info)
 		return -EINVAL;
-#ifndef ISP2401
 	req_vf_info = descr->vf_info;
-#else
-
-	if ((descr->vf_info) && (descr->vf_info->res.width == 0))
-		/* width==0 means that there is no vf pin (e.g. in SkyCam preview case) */
-		req_vf_info = NULL;
-	else
-		req_vf_info = descr->vf_info;
-#endif
 
 	need_xnr = descr->enable_xnr;
 	need_ds = descr->enable_fractional_ds;
 	need_dz = false;
 	need_dvs = false;
 	need_dpc = descr->enable_dpc;
-#ifdef ISP2401
-	need_tnr = descr->enable_tnr;
-#endif
 	enable_yuv_ds = descr->enable_yuv_ds;
 	enable_high_speed = descr->enable_high_speed;
 	enable_dvs_6axis  = descr->enable_dvs_6axis;
 	enable_reduced_pipe = descr->enable_reduced_pipe;
 	enable_capture_pp_bli = descr->enable_capture_pp_bli;
-#ifdef ISP2401
-	enable_luma_only = descr->enable_luma_only;
-#endif
 	continuous = descr->continuous;
 	striped = descr->striped;
 	isp_pipe_version = descr->isp_pipe_version;
@@ -1747,24 +1719,6 @@ static int __ia_css_binary_find(struct ia_css_binary_descr *descr,
 			continue;
 		}
 
-#ifdef ISP2401
-		if (candidate->enable.luma_only != enable_luma_only) {
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-					    "ia_css_binary_find() [%d] continue: %d != %d\n",
-					    __LINE__, candidate->enable.luma_only,
-					    descr->enable_luma_only);
-			continue;
-		}
-
-		if (!candidate->enable.tnr && need_tnr) {
-			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
-					    "ia_css_binary_find() [%d] continue: !%d && %d\n",
-					    __LINE__, candidate->enable.tnr,
-					    descr->enable_tnr);
-			continue;
-		}
-
-#endif
 		/* reconfigure any variable properties of the binary */
 		err = ia_css_binary_fill_info(xcandidate, online, two_ppc,
 					      stream_format, req_in_info,

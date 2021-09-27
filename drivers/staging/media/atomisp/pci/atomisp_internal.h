@@ -29,7 +29,7 @@
 #include <media/media-device.h>
 #include <media/v4l2-subdev.h>
 
-/* ISP2400*/
+/* ISP2400 */
 #include "ia_css_types.h"
 #include "sh_css_legacy.h"
 

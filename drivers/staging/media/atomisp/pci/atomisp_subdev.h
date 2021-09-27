@@ -398,7 +398,7 @@ struct atomisp_sub_device {
 	int raw_buffer_locked_count;
 	spinlock_t raw_buffer_bitmap_lock;
 
-	/* ISP 2400 */
+	/* ISP2400 */
 	struct timer_list wdt;
 	unsigned int wdt_duration;	/* in jiffies */
 	unsigned long wdt_expires;

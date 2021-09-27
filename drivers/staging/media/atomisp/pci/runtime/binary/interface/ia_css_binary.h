@@ -93,10 +93,6 @@ struct ia_css_binary_descr {
 	bool enable_fractional_ds;
 	bool enable_dpc;
 
-	/* ISP2401 */
-	bool enable_luma_only;
-	bool enable_tnr;
-
 	bool enable_capture_pp_bli;
 	struct ia_css_resolution dvs_env;
 	enum atomisp_input_format stream_format;

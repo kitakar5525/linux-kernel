@@ -182,62 +182,6 @@ ia_css_xnr3_encode(
 	to->blending.strength = blending;
 }
 
-/* ISP2401 */
-/* (void) = ia_css_xnr3_vmem_encode(*to, *from)
- * -----------------------------------------------
- * VMEM Encode Function to translate UV parameters from userspace into ISP space
-*/
-void
-ia_css_xnr3_vmem_encode(
-    struct sh_css_isp_xnr3_vmem_params *to,
-    const struct ia_css_xnr3_config *from,
-    unsigned int size)
-{
-	unsigned int i, j, base;
-	const unsigned int total_blocks = 4;
-	const unsigned int shuffle_block = 16;
-
-	(void)from;
-	(void)size;
-
-	/* Init */
-	for (i = 0; i < ISP_VEC_NELEMS; i++) {
-		to->x[0][i] = 0;
-		to->a[0][i] = 0;
-		to->b[0][i] = 0;
-		to->c[0][i] = 0;
-	}
-
-	/* Constraints on "x":
-	 * - values should be greater or equal to 0.
-	 * - values should be ascending.
-	 */
-	assert(x[0] >= 0);
-
-	for (j = 1; j < XNR3_LOOK_UP_TABLE_POINTS; j++) {
-		assert(x[j] >= 0);
-		assert(x[j] > x[j - 1]);
-	}
-
-	/* The implementation of the calulating 1/x is based on the availability
-	 * of the OP_vec_shuffle16 operation.
-	 * A 64 element vector is split up in 4 blocks of 16 element. Each array is copied to
-	 * a vector 4 times, (starting at 0, 16, 32 and 48). All array elements are copied or
-	 * initialised as described in the KFS. The remaining elements of a vector are set to 0.
-	 */
-	/* TODO: guard this code with above assumptions */
-	for (i = 0; i < total_blocks; i++) {
-		base = shuffle_block * i;
-
-		for (j = 0; j < XNR3_LOOK_UP_TABLE_POINTS; j++) {
-			to->x[0][base + j] = x[j];
-			to->a[0][base + j] = a[j];
-			to->b[0][base + j] = b[j];
-			to->c[0][base + j] = c[j];
-		}
-	}
-}
-
 /* Dummy Function added as the tool expects it*/
 void
 ia_css_xnr3_debug_dtrace(

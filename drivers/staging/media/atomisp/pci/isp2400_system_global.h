@@ -13,16 +13,4 @@
  * more details.
  */
 
-#ifndef __IA_CSS_ISYS_IRQ_H__
-#define __IA_CSS_ISYS_IRQ_H__
-
-#include <type_support.h>
-#include <system_local.h>
-
-#if defined(USE_INPUT_SYSTEM_VERSION_2401)
-
-#include "isys_irq_public.h"
-
-#endif /* defined(USE_INPUT_SYSTEM_VERSION_2401) */
-
-#endif	/* __IA_CSS_ISYS_IRQ_H__ */
+#define USE_INPUT_SYSTEM_VERSION_2

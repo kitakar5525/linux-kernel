@@ -13,16 +13,7 @@
  * more details.
  */
 
-#ifndef __IA_CSS_ISYS_IRQ_H__
-#define __IA_CSS_ISYS_IRQ_H__
-
-#include <type_support.h>
-#include <system_local.h>
-
-#if defined(USE_INPUT_SYSTEM_VERSION_2401)
-
-#include "isys_irq_public.h"
-
-#endif /* defined(USE_INPUT_SYSTEM_VERSION_2401) */
-
-#endif	/* __IA_CSS_ISYS_IRQ_H__ */
+#define HAS_NO_INPUT_FORMATTER
+#define USE_INPUT_SYSTEM_VERSION_2401
+#define HAS_INPUT_SYSTEM_VERSION_2401
+#define CSI2P_DISABLE_ISYS2401_ONLINE_MODE

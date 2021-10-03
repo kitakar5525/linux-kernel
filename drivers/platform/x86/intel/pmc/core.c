@@ -1944,6 +1944,8 @@ static void pmc_core_xtal_ignore(struct pmc_dev *pmcdev)
 	/* Low Voltage Mode Enable */
 	value &= ~SPT_PMC_VRIC1_SLPS0LVEN;
 	pmc_core_reg_write(pmcdev, pmcdev->map->pm_vric1_offset, value);
+
+	pr_info("%s(): xtal_ignore quirk applied\n", __func__);
 }
 
 static const struct dmi_system_id pmc_core_dmi_table[]  = {

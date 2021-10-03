@@ -1958,11 +1958,15 @@ static const struct dmi_system_id pmc_core_dmi_table[]  = {
 	{}
 };
 
+static bool modparam_xtal_ignore;
+module_param(modparam_xtal_ignore, bool, 0444);
+MODULE_PARM_DESC(modparam_xtal_ignore, "Enable xtal_ignore quirk");
+
 static void pmc_core_do_dmi_quirks(struct pmc_dev *pmcdev)
 {
 	dmi_check_system(pmc_core_dmi_table);
 
-	if (xtal_ignore)
+	if (xtal_ignore || modparam_xtal_ignore)
 		pmc_core_xtal_ignore(pmcdev);
 }
 

@@ -1086,6 +1086,9 @@ static void atomisp_init_subdev_pipe(struct atomisp_sub_device *asd,
 static void atomisp_init_acc_pipe(struct atomisp_sub_device *asd,
 				  struct atomisp_acc_pipe *pipe)
 {
+	if (!asd)
+		pr_err("%s(): asd is NULL\n", __func__);
+
 	pipe->asd = asd;
 	pipe->isp = asd->isp;
 	INIT_LIST_HEAD(&asd->acc.fw);

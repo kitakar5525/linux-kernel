@@ -182,7 +182,7 @@ static int isp_subdev_subscribe_event(struct v4l2_subdev *sd,
 	struct atomisp_device *isp = isp_sd->isp;
 
 	if (sub->type != V4L2_EVENT_FRAME_SYNC &&
-	    sub->type != V4L2_EVENT_FRAME_END &&
+	    sub->type != V4L2_EVENT_ATOMISP_FRAME_END &&
 	    sub->type != V4L2_EVENT_ATOMISP_3A_STATS_READY &&
 	    sub->type != V4L2_EVENT_ATOMISP_METADATA_READY &&
 	    sub->type != V4L2_EVENT_ATOMISP_PAUSE_BUFFER &&

@@ -43,8 +43,6 @@
 #include "irq.h"
 #include <linux/vmalloc.h>
 
-#define V4L2_EVENT_FRAME_END          5
-
 #define IS_HWREVISION(isp, rev) \
 	(((isp)->media_dev.hw_revision & ATOMISP_HW_REVISION_MASK) == \
 	 ((rev) << ATOMISP_HW_REVISION_SHIFT))

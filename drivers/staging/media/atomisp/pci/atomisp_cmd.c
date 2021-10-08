@@ -417,7 +417,7 @@ void atomisp_eof_event(struct atomisp_sub_device *asd, uint8_t exp_id)
 {
 	struct v4l2_event event = {0};
 
-	event.type = V4L2_EVENT_FRAME_END;
+	event.type = V4L2_EVENT_ATOMISP_FRAME_END;
 	event.u.frame_sync.frame_sequence = exp_id;
 
 	v4l2_event_queue(asd->subdev.devnode, &event);
@@ -6633,7 +6633,7 @@ int atomisp_inject_a_fake_event(struct atomisp_sub_device *asd, int *event)
 	case V4L2_EVENT_FRAME_SYNC:
 		atomisp_sof_event(asd);
 		break;
-	case V4L2_EVENT_FRAME_END:
+	case V4L2_EVENT_ATOMISP_FRAME_END:
 		atomisp_eof_event(asd, 0);
 		break;
 	case V4L2_EVENT_ATOMISP_3A_STATS_READY:

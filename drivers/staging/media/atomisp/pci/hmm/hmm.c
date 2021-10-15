@@ -209,8 +209,6 @@ int hmm_init(void)
 
 void hmm_cleanup(void)
 {
-	if (!dummy_ptr)
-		return;
 	sysfs_remove_group(&atomisp_dev->kobj, atomisp_attribute_group);
 
 	/* free dummy memory first */
@@ -287,8 +285,6 @@ void hmm_free(ia_css_ptr virt)
 	struct hmm_buffer_object *bo;
 
 	dev_dbg(atomisp_dev, "%s: free 0x%08x\n", __func__, virt);
-
-	WARN_ON(!virt);
 
 	bo = hmm_bo_device_search_start(&bo_device, (unsigned int)virt);
 

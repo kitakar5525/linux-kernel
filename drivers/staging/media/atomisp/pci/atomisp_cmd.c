@@ -104,8 +104,15 @@ struct atomisp_video_pipe *atomisp_to_video_pipe(struct video_device *dev)
  */
 struct atomisp_acc_pipe *atomisp_to_acc_pipe(struct video_device *dev)
 {
-	return (struct atomisp_acc_pipe *)
-	       container_of(dev, struct atomisp_acc_pipe, vdev);
+	struct atomisp_acc_pipe *acc_pipe =
+	    (struct atomisp_acc_pipe *)
+	    container_of(dev, struct atomisp_acc_pipe, vdev);
+
+	pr_alert("%s() called\n", __func__);
+	if (!acc_pipe->asd)
+		pr_err("%s(): asd is NULL\n", __func__);
+
+	return acc_pipe;
 }
 
 static unsigned short atomisp_get_sensor_fps(struct atomisp_sub_device *asd)

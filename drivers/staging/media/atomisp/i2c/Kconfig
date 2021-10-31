@@ -81,6 +81,19 @@ config VIDEO_ATOMISP_OV5693
 
 	  It currently only works with the atomisp driver.
 
+config VIDEO_ATOMISP_AR0330
+	tristate "Aptina AR0330 sensor support"
+	depends on ACPI
+	depends on I2C && VIDEO_V4L2
+	help
+	  This is a Video4Linux2 sensor-level driver for the Aptina
+	  AR0330 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called AR0330.
+
+	  It currently only works with atopmisp driver.
+
 #
 # Kconfig for flash drivers
 #

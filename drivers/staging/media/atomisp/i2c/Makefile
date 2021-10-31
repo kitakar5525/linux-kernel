@@ -10,6 +10,7 @@ obj-$(CONFIG_VIDEO_ATOMISP_OV2722)     += atomisp-ov2722.o
 obj-$(CONFIG_VIDEO_ATOMISP_OV2680)     += atomisp-ov2680.o
 obj-$(CONFIG_VIDEO_ATOMISP_GC0310)     += atomisp-gc0310.o
 obj-$(CONFIG_VIDEO_ATOMISP_AR0330)     += atomisp-ar0330.o
+obj-$(CONFIG_VIDEO_ATOMISP_OV883X)     += atomisp-ov883x.o
 
 obj-$(CONFIG_VIDEO_ATOMISP_MSRLIST_HELPER) += atomisp-libmsrlisthelper.o
 

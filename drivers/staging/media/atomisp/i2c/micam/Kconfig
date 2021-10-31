@@ -1,0 +1,15 @@
+menuconfig VIDEO_ATOMISP_MICAM
+	bool "Camera sensor driver support for Xiaomi Mi Pad 2"
+	help
+	  Enable camera sensor driver support for Xiaomi Mi Pad 2
+
+config VIDEO_ATOMISP_MICAM_OV5693
+	tristate "Omnivision OV5693 sensor support"
+	depends on I2C && VIDEO_V4L2
+	help
+	  This is a Video4Linux2 sensor-level driver for the Omnivision
+	  OV5693 5 Mpixel camera.
+
+	  OV5693 is video camera sensor.
+
+	  It currently only works with the atomisp driver.

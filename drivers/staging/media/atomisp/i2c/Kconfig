@@ -73,6 +73,7 @@ config VIDEO_ATOMISP_OV5693
 	tristate "Omnivision ov5693 sensor support"
 	depends on ACPI
 	depends on I2C && VIDEO_V4L2
+	depends on !VIDEO_ATOMISP_MICAM
 	help
 	  This is a Video4Linux2 sensor-level driver for the Micron
 	  ov5693 5 Mpixel camera.
@@ -121,3 +122,5 @@ config VIDEO_ATOMISP_LM3554
 
 	 To compile this driver as a module, choose M here: the
 	 module will be called lm3554
+
+source "drivers/staging/media/atomisp/i2c/micam/Kconfig"

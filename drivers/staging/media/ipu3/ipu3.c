@@ -748,6 +748,8 @@ static void imgu_pci_remove(struct pci_dev *pci_dev)
 {
 	struct imgu_device *imgu = pci_get_drvdata(pci_dev);
 
+	dev_info(&pci_dev->dev, "enter %s()\n", __func__);
+
 	pm_runtime_forbid(&pci_dev->dev);
 	pm_runtime_get_noresume(&pci_dev->dev);
 

@@ -161,6 +161,9 @@ struct imgu_css {
 
 	/* enabled pipe(s) */
 	DECLARE_BITMAP(enabled_pipes, IMGU_MAX_PIPE_NUM);
+
+	/* Indicate if module remove() is ongoing */
+	bool remove_ongoing;
 };
 
 /******************* css v4l *******************/

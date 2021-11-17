@@ -2322,6 +2322,12 @@ int imgu_css_irq_ack(struct imgu_css *css)
 
 	u32 imgu_status = readl(base + IMGU_REG_INT_STATUS);
 
+	if (css->remove_ongoing) {
+		dev_info(css->dev, "remove() is ongoing, skip %s()\n",
+			 __func__);
+		return 0;
+	}
+
 	writel(imgu_status, base + IMGU_REG_INT_STATUS);
 	for (i = 0; i < IMGU_IRQCTRL_NUM; i++)
 		irq_status[i] = readl(base + IMGU_REG_IRQCTRL_STATUS(i));

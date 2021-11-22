@@ -1,0 +1,81 @@
+# You can add kernel config here to override Arch Linux's default config
+
+#
+# example
+#
+# Rename to invalid name like C#ONFIG when you need to comment out
+# configs. Remove the # when you want to uncomment.
+C#ONFIG_EXAMPLE_YOUR_CONFIG_OVERRIDE=m
+
+
+
+#
+# mipad2
+#
+CONFIG_XIAOMI_MIPAD2=m
+
+#
+# ("platform/x86: Rename touchscreen_dmi to dmi_device_properties")
+#
+CONFIG_DMI_DEVICE_PROPERTIES=y
+
+#
+# enable acpidbg
+#
+CONFIG_ACPI_DEBUGGER=y
+CONFIG_ACPI_DEBUGGER_USER=m
+
+#
+# DEBUG: pmc_core as a module.
+#   This driver is tristate but arch config sets this to "y".
+#   Build this as "m" for debug.
+#
+CONFIG_INTEL_PMC_CORE=m
+
+#
+# atomisp
+#
+CONFIG_VIDEO_ATOMISP_OV5693=m
+CONFIG_REGULATOR_WHISKEY_COVE=m
+
+# camera sensor drivers
+CONFIG_VIDEO_ATOMISP_OV883X=m
+CONFIG_VIDEO_ATOMISP_AR0330=m
+CONFIG_VIDEO_ATOMISP_T4KA3=m
+CONFIG_VIDEO_ATOMISP_OV5693=m
+# Kconfig name may vary depending on patches applied
+CONFIG_VIDEO_ATOMISP_MICAM=y
+CONFIG_VIDEO_ATOMISP_MICAM_T4KA3=m
+CONFIG_VIDEO_ATOMISP_MICAM_OV5693=m
+
+# atomisp config; meybe needed depending on patches applied
+CONFIG_INTEL_ATOMISP=y
+CONFIG_VIDEO_ATOMISP_MSRLIST_HELPER=m
+
+# (linux-lts49) required to be y for opregion drivers
+CONFIG_I2C_DESIGNWARE_PLATFORM=y
+
+# cht wc drivers which may be backported by me
+CONFIG_INTEL_SOC_PMIC_CHTWC=y
+CONFIG_CHT_WC_PMIC_OPREGION=y
+CONFIG_I2C_CHT_WC=m
+CONFIG_EXTCON_INTEL_CHT_WC=m
+
+#
+# camera.cfg (from intel-aero)
+#
+CONFIG_MEDIA_PCI_SUPPORT=y
+#
+CONFIG_VIDEO_DEV=m
+CONFIG_MEDIA_SUPPORT=m
+CONFIG_VIDEO_V4L2=m
+CONFIG_INTEL_MID_ISP=y
+CONFIG_VIDEO_ATOMISP=m
+CONFIG_VIDEO_OV7251=m
+CONFIG_VIDEO_OV8858=m
+# kitakar5525: let's try to build imx driver, too
+CONFIG_VIDEO_IMX=m
+# kitakar5525: Kconfig name may vary depending on patches applied
+CONFIG_VIDEO_ATOMISP_OV7251=m
+CONFIG_VIDEO_ATOMISP_OV8858=m
+CONFIG_VIDEO_ATOMISP_IMX=m

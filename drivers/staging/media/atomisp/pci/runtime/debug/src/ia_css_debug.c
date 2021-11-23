@@ -3093,9 +3093,12 @@ ia_css_debug_dump_stream_config(
 	ia_css_debug_dump_stream_config_source(config);
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "channel_id: %d\n",
 			    config->channel_id);
-	ia_css_debug_dump_resolution(&config->input_config.input_res, "input_res");
-	ia_css_debug_dump_resolution(&config->input_config.effective_res,
-				     "effective_res");
+	pr_info("input_res: %d x %d\n",
+		config->input_config.input_res.width,
+		config->input_config.input_res.height);
+	pr_info("effective_res: %d x %d\n",
+		config->input_config.effective_res.width,
+		config->input_config.effective_res.height);
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "format: %d\n",
 			    config->input_config.format);
 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE, "bayer_order: %d\n",

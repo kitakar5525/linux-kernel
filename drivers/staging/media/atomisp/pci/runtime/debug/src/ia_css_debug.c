@@ -2978,7 +2978,8 @@ ia_css_debug_dump_pipe_config(
 				     "bayer_ds_out_res");
 	ia_css_debug_dump_resolution(&config->capt_pp_in_res,
 				     "capt_pp_in_res");
-	ia_css_debug_dump_resolution(&config->vf_pp_in_res, "vf_pp_in_res");
+	pr_info("vf_pp_in_res: %d x %d\n",
+		config->vf_pp_in_res.width, config->vf_pp_in_res.height);
 
 	if (IS_ISP2401) {
 		ia_css_debug_dump_resolution(&config->output_system_in_res,

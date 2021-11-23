@@ -4874,16 +4874,16 @@ int atomisp_try_fmt(struct video_device *vdev, struct v4l2_pix_format *f,
 
 	__atomisp_init_stream_info(stream_index, stream_info);
 
-	dev_dbg(isp->dev, "try_mbus_fmt: asking for %ux%u\n",
-		snr_mbus_fmt->width, snr_mbus_fmt->height);
+	dev_info(isp->dev, "try_mbus_fmt: asking for %ux%u\n",
+		 snr_mbus_fmt->width, snr_mbus_fmt->height);
 
 	ret = v4l2_subdev_call(isp->inputs[asd->input_curr].camera,
 			       pad, set_fmt, &pad_state, &format);
 	if (ret)
 		return ret;
 
-	dev_dbg(isp->dev, "try_mbus_fmt: got %ux%u\n",
-		snr_mbus_fmt->width, snr_mbus_fmt->height);
+	dev_info(isp->dev, "try_mbus_fmt: got %ux%u\n",
+		 snr_mbus_fmt->width, snr_mbus_fmt->height);
 
 	fmt = atomisp_get_format_bridge_from_mbus(snr_mbus_fmt->code);
 	if (!fmt) {

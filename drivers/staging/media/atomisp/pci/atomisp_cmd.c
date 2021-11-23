@@ -5541,9 +5541,9 @@ static int atomisp_set_fmt_to_snr(struct video_device *vdev,
 	ffmt->height += padding_h + dvs_env_h;
 	ffmt->width += padding_w + dvs_env_w;
 
-	dev_dbg(isp->dev, "s_mbus_fmt: ask %ux%u (padding %ux%u, dvs %ux%u)\n",
-		ffmt->width, ffmt->height, padding_w, padding_h,
-		dvs_env_w, dvs_env_h);
+	dev_info(isp->dev, "s_mbus_fmt: ask %ux%u (padding %ux%u, dvs %ux%u)\n",
+		 ffmt->width, ffmt->height, padding_w, padding_h,
+		 dvs_env_w, dvs_env_h);
 
 	__atomisp_init_stream_info(stream_index, stream_info);
 
@@ -5558,8 +5558,8 @@ static int atomisp_set_fmt_to_snr(struct video_device *vdev,
 		if (ret)
 			return ret;
 
-		dev_dbg(isp->dev, "video dis: sensor width: %d, height: %d\n",
-			ffmt->width, ffmt->height);
+		dev_info(isp->dev, "video dis: sensor width: %d, height: %d\n",
+			 ffmt->width, ffmt->height);
 
 		if (ffmt->width < req_ffmt->width ||
 		    ffmt->height < req_ffmt->height) {
@@ -5579,8 +5579,8 @@ static int atomisp_set_fmt_to_snr(struct video_device *vdev,
 
 	__atomisp_update_stream_env(asd, stream_index, stream_info);
 
-	dev_dbg(isp->dev, "sensor width: %d, height: %d\n",
-		ffmt->width, ffmt->height);
+	dev_info(isp->dev, "sensor width: %d, height: %d\n",
+		 ffmt->width, ffmt->height);
 
 	if (ffmt->width < ATOM_ISP_STEP_WIDTH ||
 	    ffmt->height < ATOM_ISP_STEP_HEIGHT)

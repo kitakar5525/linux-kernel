@@ -1561,14 +1561,21 @@ int gmin_get_var_int(struct device *dev, bool is_gmin, const char *var, int def)
 	int ret;
 
 	ret = gmin_get_config_var(dev, is_gmin, var, val, &len);
-	if (!ret) {
-		val[len] = 0;
-		ret = kstrtol(val, 0, &result);
-	} else {
+	if (ret) {
 		dev_info(dev, "%s: using default (%d)\n", var, def);
+		return def;
 	}
 
-	return ret ? def : result;
+	val[len] = 0;
+	ret = kstrtol(val, 0, &result);
+	if (ret) {
+		dev_err(dev, "%s: kstrtol() failed, ret=%d\n", var, ret);
+		dev_info(dev, "%s: using default (%d)\n", var, def);
+		return def;
+	}
+
+	dev_info(dev, "%s: using provided (%ld)\n", var, result);
+	return result;
 }
 EXPORT_SYMBOL_GPL(gmin_get_var_int);
 

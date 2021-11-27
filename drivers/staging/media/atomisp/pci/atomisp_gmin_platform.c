@@ -374,9 +374,15 @@ static struct gmin_cfg_var i8880_vars[] = {
 static struct gmin_cfg_var surface3_vars[] = {
 	{"APTA0330:00_CsiPort", "0"},
 	{"APTA0330:00_CsiLanes", "2"},
+	/* No need to touch regulators */
+	{"APTA0330:00_crc_1p8v_reg", "-1"},
+	{"APTA0330:00_crc_2p8v_reg", "-1"},
 
 	{"OVTI8835:00_CsiPort", "1"},
 	{"OVTI8835:00_CsiLanes", "4"},
+	/* No need to touch regulators */
+	{"OVTI8835:00_crc_1p8v_reg", "-1"},
+	{"OVTI8835:00_crc_2p8v_reg", "-1"},
 	{},
 };
 

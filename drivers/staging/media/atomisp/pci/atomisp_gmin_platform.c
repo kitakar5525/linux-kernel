@@ -1007,7 +1007,7 @@ static int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
 		return gmin_i2c_write(subdev->dev, gs->pwm_i2c_addr,
 				      CRYSTAL_1P8V_REG, value, 0xff);
 	default:
-		dev_err(subdev->dev, "Couldn't set power mode for v1p2\n");
+		dev_err(subdev->dev, "Couldn't set power mode for v1p8\n");
 	}
 
 	return -EINVAL;
@@ -1074,7 +1074,7 @@ static int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
 		return gmin_i2c_write(subdev->dev, gs->pwm_i2c_addr,
 				      CRYSTAL_2P8V_REG, value, 0xff);
 	default:
-		dev_err(subdev->dev, "Couldn't set power mode for v1p2\n");
+		dev_err(subdev->dev, "Couldn't set power mode for v2p8\n");
 	}
 
 	return -EINVAL;

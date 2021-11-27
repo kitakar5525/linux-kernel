@@ -91,6 +91,10 @@ struct gmin_subdev {
 	/* For PMIC AXP */
 	int eldo1_sel_reg, eldo1_1p8v, eldo1_ctrl_shift;
 	int eldo2_sel_reg, eldo2_1p8v, eldo2_ctrl_shift;
+
+	/* For PMIC CRYSTALCOVE */
+	int crc_1p8v_reg;
+	int crc_2p8v_reg;
 };
 
 static struct gmin_subdev gmin_subdevs[MAX_SUBDEVS];
@@ -818,6 +822,14 @@ static int gmin_subdev_add(struct gmin_subdev *gs)
 							ELDO2_CTRL_SHIFT);
 		break;
 
+	case PMIC_CRYSTALCOVE:
+		gs->crc_1p8v_reg = gmin_get_var_int(dev, false,
+						    "crc_1p8v_reg",
+						    CRYSTAL_1P8V_REG);
+		gs->crc_2p8v_reg = gmin_get_var_int(dev, false,
+						    "crc_2p8v_reg",
+						    CRYSTAL_2P8V_REG);
+
 	default:
 		break;
 	}
@@ -1002,10 +1014,13 @@ static int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
 		return gmin_i2c_write(subdev->dev, gs->pwm_i2c_addr,
 				      LDO10_REG, value, 0xff);
 	case PMIC_CRYSTALCOVE:
+		if (gs->crc_1p8v_reg < 0)
+			return 0;
+
 		value = on ? CRYSTAL_ON : CRYSTAL_OFF;
 
 		return gmin_i2c_write(subdev->dev, gs->pwm_i2c_addr,
-				      CRYSTAL_1P8V_REG, value, 0xff);
+				      gs->crc_1p8v_reg, value, 0xff);
 	default:
 		dev_err(subdev->dev, "Couldn't set power mode for v1p8\n");
 	}
@@ -1069,10 +1084,13 @@ static int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
 		return gmin_i2c_write(subdev->dev, gs->pwm_i2c_addr,
 				      LDO9_REG, value, 0xff);
 	case PMIC_CRYSTALCOVE:
+		if (gs->crc_2p8v_reg < 0)
+			return 0;
+
 		value = on ? CRYSTAL_ON : CRYSTAL_OFF;
 
 		return gmin_i2c_write(subdev->dev, gs->pwm_i2c_addr,
-				      CRYSTAL_2P8V_REG, value, 0xff);
+				      gs->crc_2p8v_reg, value, 0xff);
 	default:
 		dev_err(subdev->dev, "Couldn't set power mode for v2p8\n");
 	}

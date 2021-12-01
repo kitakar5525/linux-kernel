@@ -1286,6 +1286,10 @@ static int gmin_get_config_dsm_var_port(struct device *dev,
 	int csi2_nlanes;
 	int ret;
 
+	/* This function supports only CsiPort and CsiLanes*/
+	if (strcmp(var, "CsiPort") && strcmp(var, "CsiLanes"))
+		return -EINVAL;
+
 	ret = get_dsm_data_integer(adev, &mipi_port_dsm_guid,
 				   MIPI_PORT_DSM_REV,
 				   MIPI_PORT_DSM_FUNC,

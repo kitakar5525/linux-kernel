@@ -10,14 +10,9 @@ C#ONFIG_EXAMPLE_YOUR_CONFIG_OVERRIDE=m
 
 
 #
-# mipad2
+# ("platform/x86: x86-android-tablets: New driver for x86 Android tablets")
 #
-CONFIG_XIAOMI_MIPAD2=m
-
-#
-# ("platform/x86: Rename touchscreen_dmi to dmi_device_properties")
-#
-CONFIG_DMI_DEVICE_PROPERTIES=y
+CONFIG_X86_ANDROID_TABLETS=m
 
 #
 # enable acpidbg

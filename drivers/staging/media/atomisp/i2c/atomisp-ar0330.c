@@ -56,6 +56,8 @@
 #define AR0330_ORIENTATION_H		bit(14)
 #define AR0330_ORIENTATION_V		bit(15)
 
+#define AR0330_TEST_PATTERN_MODE	0x3070
+
 #define REG_NULL			0xFFFF
 #define REG_DELAY			0xFFFE
 
@@ -66,9 +68,7 @@
 #define USE_HDR_MODE
 
 /* h_offs 35 v_offs 14 */
-/* TODO: original ar0330 driver uses MEDIA_BUS_FMT_SGRBG12_1X12.
- * what's the difference? */
-#define PIX_FORMAT MEDIA_BUS_FMT_SGRBG10_1X10
+#define PIX_FORMAT MEDIA_BUS_FMT_SGRBG12_1X12
 
 #define AR0330_NAME			"ar0330"
 
@@ -256,10 +256,10 @@ static const s64 link_freq_menu_items[] = {
 
 static const char * const ar0330_test_pattern_menu[] = {
 	"Disabled",
-	"Vertical Color Bar Type 1",
-	"Vertical Color Bar Type 2",
-	"Vertical Color Bar Type 3",
-	"Vertical Color Bar Type 4"
+	"Solid Color",
+	"Full Color Bar",
+	"Fade-to-gray Color Bar",
+	"Walking 1s",
 };
 
 /* sensor register write */
@@ -470,7 +470,10 @@ static int ar0330_enum_frame_sizes(struct v4l2_subdev *sd,
 
 static int ar0330_enable_test_pattern(struct ar0330 *ar0330, u32 pattern)
 {
-	return 0;
+	static const u16 test_pattern[] = { 0, 1, 2, 3, 256, };
+
+	return ar0330_write(ar0330->client, AR0330_TEST_PATTERN_MODE,
+			    test_pattern[pattern]);
 }
 
 static int __ar0330_start_stream(struct ar0330 *ar0330)
@@ -691,7 +694,9 @@ static int ar0330_s_power(struct v4l2_subdev *sd, int on)
 		ret = power_down(ar0330);
 	} else {
 		ret = power_up(ar0330);
-		if (!ret)
+		if (ret)
+			goto unlock_and_return;
+
 		ret = ar0330_write_array(ar0330->client, ar0330_global_regs);
 		if (ret) {
 			v4l2_err(sd, "could not set init registers\n");
@@ -1073,7 +1078,7 @@ static int ar0330_probe(struct i2c_client *client,
 	v4l2_i2c_subdev_init(sd, client, &ar0330_subdev_ops);
 
 	pdata = gmin_camera_platform_data(sd,
-					  ATOMISP_INPUT_FORMAT_RAW_10,
+					  ATOMISP_INPUT_FORMAT_RAW_12,
 					  atomisp_bayer_order_grbg);
 	if (!pdata) {
 		ret = -EINVAL;
@@ -1090,7 +1095,7 @@ static int ar0330_probe(struct i2c_client *client,
 
 	ret = ar0330_initialize_controls(ar0330);
 	if (ret)
-		goto err_destroy_mutex;
+		goto out_free;
 
 	sd->internal_ops = &ar0330_internal_ops;
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
@@ -1098,17 +1103,15 @@ static int ar0330_probe(struct i2c_client *client,
 	sd->entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	ret = media_entity_pads_init(&sd->entity, 1, &ar0330->pad);
 	if (ret < 0)
-		goto err_power_off;
+		goto err_free_handler;
 
 	return 0;
 
-err_power_off:
-	power_down(ar0330);
+err_free_handler:
 	v4l2_ctrl_handler_free(&ar0330->ctrl_handler);
 out_free:
 	v4l2_device_unregister_subdev(sd);
 	atomisp_gmin_remove_subdev(sd);
-err_destroy_mutex:
 	mutex_destroy(&ar0330->mutex);
 
 	return ret;

@@ -1313,6 +1313,8 @@ void atomisp_subdev_cleanup_pending_events(struct atomisp_sub_device *asd)
 
 void atomisp_subdev_unregister_entities(struct atomisp_sub_device *asd)
 {
+	pr_info("%s(): asd->subdev.name: %s\n", __func__, asd->subdev.name);
+
 	atomisp_subdev_cleanup_entities(asd);
 	v4l2_device_unregister_subdev(&asd->subdev);
 	atomisp_video_unregister(&asd->video_in);

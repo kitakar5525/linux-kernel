@@ -1879,6 +1879,8 @@ static void atomisp_pci_remove(struct pci_dev *pdev)
 	cpu_latency_qos_remove_request(&isp->pm_qos);
 
 	atomisp_msi_irq_uninit(isp);
+	devm_free_irq(&pdev->dev, pdev->irq, isp);
+	pci_free_irq_vectors(pdev);
 	atomisp_unregister_entities(isp);
 
 	destroy_workqueue(isp->wdt_work_queue);

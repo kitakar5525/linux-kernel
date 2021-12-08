@@ -25,7 +25,7 @@ struct vb2_dc_conf {
 	struct device		*dev;
 };
 
-struct vb2_dc_buf {
+/* struct vb2_dc_buf {
 	struct device			*dev;
 	void				*vaddr;
 	unsigned long			size;
@@ -34,14 +34,14 @@ struct vb2_dc_buf {
 	struct sg_table			*dma_sgt;
 	struct frame_vector		*vec;
 
-	/* MMAP related */
+	 MMAP related
 	struct vb2_vmarea_handler	handler;
 	atomic_t			refcount;
 	struct sg_table			*sgt_base;
 
-	/* DMABUF related */
+	 DMABUF related
 	struct dma_buf_attachment	*db_attach;
-};
+};*/
 
 /*********************************************/
 /*        scatterlist table functions        */
@@ -55,8 +55,9 @@ static unsigned long vb2_dc_get_contiguous_size(struct sg_table *sgt)
 	unsigned long size = 0;
 
 	for_each_sg(sgt->sgl, s, sgt->nents, i) {
-		if (sg_dma_address(s) != expected)
-			break;
+		//TODO SARAT super big hack to get large resolutions to work. Actual fix is to switch to dma-sg backend for vb2.
+		//if (sg_dma_address(s) != expected)
+		//	break;
 		expected = sg_dma_address(s) + sg_dma_len(s);
 		size += sg_dma_len(s);
 	}
@@ -66,6 +67,7 @@ static unsigned long vb2_dc_get_contiguous_size(struct sg_table *sgt)
 /*********************************************/
 /*         callbacks for all buffers         */
 /*********************************************/
+
 
 static void *vb2_dc_cookie(void *buf_priv)
 {

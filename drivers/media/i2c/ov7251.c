@@ -6,6 +6,7 @@
  * Copyright (c) 2017-2018, Linaro Ltd.
  */
 
+#include <linux/acpi.h>
 #include <linux/bitops.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
@@ -14,6 +15,7 @@
 #include <linux/i2c.h>
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/types.h>
@@ -42,6 +44,24 @@
 #define OV7251_PRE_ISP_00		0x5e00
 #define OV7251_PRE_ISP_00_TEST_PATTERN	BIT(7)
 
+/* PLL Registers */
+#define OV7251_PLL1_PRE_DIVIDER_REG	0x30b4
+#define OV7251_PLL1_MULTIPLIER_REG	0x30b3
+#define OV7251_PLL1_DIVIDER_REG		0x30b1
+#define OV7251_PLL1_PIX_DIVIDER_REG	0x30b0
+#define OV7251_PLL1_MIPI_DIVIDER_REG	0x30b5
+#define OV7251_PLL2_PRE_DIVIDER_REG	0x3098
+#define OV7251_PLL2_MULTIPLIER_REG	0x3099
+#define OV7251_PLL2_DIVIDER_REG		0x309D
+#define OV7251_PLL2_DIVIDER_CTRL(v)	(BIT(2) & (v << 2))
+#define OV7251_PLL2_SYS_DIVIDER_REG	0x309a
+#define OV7251_PLL2_ADC_DIVIDER_REG	0x309b
+
+#define OV7251_VBLANK_MIN		0x04
+#define OV7251_VBLANK_MAX		0xffff
+#define OV7251_VTS_REG_HIGH		0x380e
+#define OV7251_VTS_REG_LOW		0x380f
+
 struct reg_value {
 	u16 reg;
 	u8 val;
@@ -50,6 +70,8 @@ struct reg_value {
 struct ov7251_mode_info {
 	u32 width;
 	u32 height;
+	u32 hts;
+	u32 vts;
 	const struct reg_value *data;
 	u32 data_size;
 	u32 pixel_clock;
@@ -69,18 +91,22 @@ struct ov7251 {
 	struct v4l2_rect crop;
 	struct clk *xclk;
 	u32 xclk_freq;
+	unsigned int xclk_freq_idx;
 
 	struct regulator *io_regulator;
 	struct regulator *core_regulator;
 	struct regulator *analog_regulator;
 
 	const struct ov7251_mode_info *current_mode;
+	bool streaming;
 
 	struct v4l2_ctrl_handler ctrls;
 	struct v4l2_ctrl *pixel_clock;
 	struct v4l2_ctrl *link_freq;
 	struct v4l2_ctrl *exposure;
 	struct v4l2_ctrl *gain;
+	struct v4l2_ctrl *hblank;
+	struct v4l2_ctrl *vblank;
 
 	/* Cached register values */
 	u8 aec_pk_manual;
@@ -92,6 +118,88 @@ struct ov7251 {
 	bool power_on;
 
 	struct gpio_desc *enable_gpio;
+	struct gpio_desc *reset;
+};
+
+/*
+ * PLL1 Clock Tree
+ *
+ * Only "special" values called out in the settings, otherwise assume normality
+ * I.E. setting 0x04 means /4.
+ *
+ * +-< XCLK (19.2MHz or 24MHz supported)
+ * |
+ * +-+ pll1_pre_divider (0x30b4 [3:0], 0x0 = /1, 0x5 = /1.5, 0x7 = /2.5)
+ *   |
+ *   +-+ pll1_multiplier (0x30b3 [7:0])
+ *     |
+ *     +-+ pll1_divider (0x30b1 [4:0], 1-16 only)
+ * 	 |
+ * 	 +-+ pll1_pix_divider (0x30b0 [3:0], 0x08 or 0x0a only)
+ * 	 | |
+ * 	 | +-> PIX_CLK (80MHz)
+ *	 |
+ *	 +-+ pll1_mipi_divider (0x30b5 [2:0], 0x02, 0x04 only, others all =/1)
+ *	   |
+ *	   +-> MIPI_CLK (800MHz)
+ */
+
+struct pll1_config {
+	u8 pll1_pre_divider;
+	u8 pll1_multiplier;
+	u8 pll1_divider;
+	u8 pll1_pix_divider;
+	u8 pll1_mipi_divider;
+};
+
+struct pll1_config pll1_configurations[] = {
+	/* 19.2 MHz xclk */
+	{ 0x05, 0x7d, 0x02, 0x0a, 0x05},
+	/* 24 MHz xclk */
+	{ 0x03, 0x64, 0x01, 0x0a, 0x05 }
+};
+
+/*
+ * PLL2 Clock Tree
+ *
+ * Only "special" values called out in the settings, otherwise assume normality
+ * I.E. setting 0x04 means /4.
+ *
+ * +-< XCLK (19.2MHz or 24MHz supported)
+ * |
+ * +-+ pll2_pre_divider (0x3098 [4:0], 0x2=/1, 0x3=/1.5, 0x4=/2, 0x5=/2.5, 0x6=/3
+ *   |                                 0x8=/4, 0xc=/6. Anything else =/1)
+ *   +-+ pll2_multiplier (0x3099 [7:0])
+ *     |
+ *     +-+ pll2_divider (0x309d [2], 0x0=/1, 0x1=/1.5)
+ * 	 |
+ * 	 +-+ pll2_sys_divider (0x309a [3:0], 0x2=/4, 0x3=/6, 0x4=/8, 0x5=/10,
+ * 	 | |                                 0x6=/12, 0x7=/14, 0x8=/16, 0x9=/18)
+ * 	 | +-> SYS_CLK (48 MHz)
+ *	 |
+ *	 +-+ pll2_adc_divider (0x309b [3:0], 0x2=/1, 0x3=/1.5, 0x4=/2, 0x5=/2.5,
+ *	   |                                 0x6=/3, 0x7=/3.5, 0x8=/4, 0x9=/4.5)
+ *	   +-> ADC_CLK (240 MHz)
+ */
+
+struct pll2_config {
+	u8 pll2_pre_divider;
+	u8 pll2_multiplier;
+	u8 pll2_divider;
+	u8 pll2_sys_divider;
+	u8 pll2_adc_divider;
+};
+
+struct pll2_config pll2_configurations[] = {
+	/* 19.2 MHz xclk */
+	{ 0x08, 0x64, 0x00, 0x05, 0x04},
+	/* 24 MHz xclk */
+	{ 0x04, 0x28, 0x00, 0x05, 0x04}
+};
+
+u32 supported_xclk_freqs[] = {
+	19200000,
+	24000000,
 };
 
 static inline struct ov7251 *to_ov7251(struct v4l2_subdev *sd)
@@ -105,7 +213,7 @@ static const struct reg_value ov7251_global_init_setting[] = {
 };
 
 static const struct reg_value ov7251_setting_vga_30fps[] = {
-	{ 0x3005, 0x00 },
+	{ 0x3005, 0x08 }, /* strobe output enabled */
 	{ 0x3012, 0xc0 },
 	{ 0x3013, 0xd2 },
 	{ 0x3014, 0x04 },
@@ -117,16 +225,6 @@ static const struct reg_value ov7251_setting_vga_30fps[] = {
 	{ 0x301c, 0xf0 },
 	{ 0x3023, 0x05 },
 	{ 0x3037, 0xf0 },
-	{ 0x3098, 0x04 }, /* pll2 pre divider */
-	{ 0x3099, 0x28 }, /* pll2 multiplier */
-	{ 0x309a, 0x05 }, /* pll2 sys divider */
-	{ 0x309b, 0x04 }, /* pll2 adc divider */
-	{ 0x309d, 0x00 }, /* pll2 divider */
-	{ 0x30b0, 0x0a }, /* pll1 pix divider */
-	{ 0x30b1, 0x01 }, /* pll1 divider */
-	{ 0x30b3, 0x64 }, /* pll1 multiplier */
-	{ 0x30b4, 0x03 }, /* pll1 pre divider */
-	{ 0x30b5, 0x05 }, /* pll1 mipi divider */
 	{ 0x3106, 0xda },
 	{ 0x3503, 0x07 },
 	{ 0x3509, 0x10 },
@@ -189,7 +287,7 @@ static const struct reg_value ov7251_setting_vga_30fps[] = {
 	{ 0x3835, 0x0c },
 	{ 0x3837, 0x00 },
 	{ 0x3b80, 0x00 },
-	{ 0x3b81, 0xa5 },
+	{ 0x3b81, 0xff }, /* strobe frame pattern */
 	{ 0x3b82, 0x10 },
 	{ 0x3b83, 0x00 },
 	{ 0x3b84, 0x08 },
@@ -243,7 +341,7 @@ static const struct reg_value ov7251_setting_vga_30fps[] = {
 };
 
 static const struct reg_value ov7251_setting_vga_60fps[] = {
-	{ 0x3005, 0x00 },
+	{ 0x3005, 0x08 }, /* strobe output enabled */
 	{ 0x3012, 0xc0 },
 	{ 0x3013, 0xd2 },
 	{ 0x3014, 0x04 },
@@ -255,16 +353,6 @@ static const struct reg_value ov7251_setting_vga_60fps[] = {
 	{ 0x301c, 0x00 },
 	{ 0x3023, 0x05 },
 	{ 0x3037, 0xf0 },
-	{ 0x3098, 0x04 }, /* pll2 pre divider */
-	{ 0x3099, 0x28 }, /* pll2 multiplier */
-	{ 0x309a, 0x05 }, /* pll2 sys divider */
-	{ 0x309b, 0x04 }, /* pll2 adc divider */
-	{ 0x309d, 0x00 }, /* pll2 divider */
-	{ 0x30b0, 0x0a }, /* pll1 pix divider */
-	{ 0x30b1, 0x01 }, /* pll1 divider */
-	{ 0x30b3, 0x64 }, /* pll1 multiplier */
-	{ 0x30b4, 0x03 }, /* pll1 pre divider */
-	{ 0x30b5, 0x05 }, /* pll1 mipi divider */
 	{ 0x3106, 0xda },
 	{ 0x3503, 0x07 },
 	{ 0x3509, 0x10 },
@@ -327,7 +415,7 @@ static const struct reg_value ov7251_setting_vga_60fps[] = {
 	{ 0x3835, 0x0c },
 	{ 0x3837, 0x00 },
 	{ 0x3b80, 0x00 },
-	{ 0x3b81, 0xa5 },
+	{ 0x3b81, 0xff }, /* strobe frame pattern */
 	{ 0x3b82, 0x10 },
 	{ 0x3b83, 0x00 },
 	{ 0x3b84, 0x08 },
@@ -381,7 +469,7 @@ static const struct reg_value ov7251_setting_vga_60fps[] = {
 };
 
 static const struct reg_value ov7251_setting_vga_90fps[] = {
-	{ 0x3005, 0x00 },
+	{ 0x3005, 0x08 }, /* strobe output enabled */
 	{ 0x3012, 0xc0 },
 	{ 0x3013, 0xd2 },
 	{ 0x3014, 0x04 },
@@ -393,16 +481,6 @@ static const struct reg_value ov7251_setting_vga_90fps[] = {
 	{ 0x301c, 0x00 },
 	{ 0x3023, 0x05 },
 	{ 0x3037, 0xf0 },
-	{ 0x3098, 0x04 }, /* pll2 pre divider */
-	{ 0x3099, 0x28 }, /* pll2 multiplier */
-	{ 0x309a, 0x05 }, /* pll2 sys divider */
-	{ 0x309b, 0x04 }, /* pll2 adc divider */
-	{ 0x309d, 0x00 }, /* pll2 divider */
-	{ 0x30b0, 0x0a }, /* pll1 pix divider */
-	{ 0x30b1, 0x01 }, /* pll1 divider */
-	{ 0x30b3, 0x64 }, /* pll1 multiplier */
-	{ 0x30b4, 0x03 }, /* pll1 pre divider */
-	{ 0x30b5, 0x05 }, /* pll1 mipi divider */
 	{ 0x3106, 0xda },
 	{ 0x3503, 0x07 },
 	{ 0x3509, 0x10 },
@@ -465,7 +543,7 @@ static const struct reg_value ov7251_setting_vga_90fps[] = {
 	{ 0x3835, 0x0c },
 	{ 0x3837, 0x00 },
 	{ 0x3b80, 0x00 },
-	{ 0x3b81, 0xa5 },
+	{ 0x3b81, 0xff }, /* strobe frame pattern */
 	{ 0x3b82, 0x10 },
 	{ 0x3b83, 0x00 },
 	{ 0x3b84, 0x08 },
@@ -526,6 +604,8 @@ static const struct ov7251_mode_info ov7251_mode_info_data[] = {
 	{
 		.width = 640,
 		.height = 480,
+		.hts = 928,
+		.vts = 1724,
 		.data = ov7251_setting_vga_30fps,
 		.data_size = ARRAY_SIZE(ov7251_setting_vga_30fps),
 		.pixel_clock = 48000000,
@@ -540,6 +620,8 @@ static const struct ov7251_mode_info ov7251_mode_info_data[] = {
 	{
 		.width = 640,
 		.height = 480,
+		.hts = 928,
+		.vts = 860,
 		.data = ov7251_setting_vga_60fps,
 		.data_size = ARRAY_SIZE(ov7251_setting_vga_60fps),
 		.pixel_clock = 48000000,
@@ -554,6 +636,8 @@ static const struct ov7251_mode_info ov7251_mode_info_data[] = {
 	{
 		.width = 640,
 		.height = 480,
+		.hts = 928,
+		.vts = 572,
 		.data = ov7251_setting_vga_90fps,
 		.data_size = ARRAY_SIZE(ov7251_setting_vga_90fps),
 		.pixel_clock = 48000000,
@@ -716,6 +800,72 @@ static int ov7251_set_gain(struct ov7251 *ov7251, s32 gain)
 	return ov7251_write_seq_regs(ov7251, reg, val, 2);
 }
 
+static int ov7251_pll1_configure(struct ov7251 *ov7251)
+{
+	struct pll1_config *cfg = &pll1_configurations[ov7251->xclk_freq_idx];
+	int ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_PLL1_PRE_DIVIDER_REG,
+			       cfg->pll1_pre_divider);
+	if (ret)
+		return ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_PLL1_MULTIPLIER_REG,
+			       cfg->pll1_multiplier);
+	if (ret)
+		return ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_PLL1_DIVIDER_REG,
+			       cfg->pll1_divider);
+	if (ret)
+		return ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_PLL1_MIPI_DIVIDER_REG,
+			       cfg->pll1_mipi_divider);
+	if (ret)
+		return ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_PLL1_PIX_DIVIDER_REG,
+			       cfg->pll1_pix_divider);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static int ov7251_pll2_configure(struct ov7251 *ov7251)
+{
+	struct pll2_config *cfg = &pll2_configurations[ov7251->xclk_freq_idx];
+	int ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_PLL2_PRE_DIVIDER_REG,
+			       cfg->pll2_pre_divider);
+	if (ret)
+		return ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_PLL2_MULTIPLIER_REG,
+			       cfg->pll2_multiplier);
+	if (ret)
+		return ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_PLL2_DIVIDER_REG,
+			       OV7251_PLL2_DIVIDER_CTRL(cfg->pll2_divider));
+	if (ret)
+		return ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_PLL2_SYS_DIVIDER_REG,
+			       cfg->pll2_sys_divider);
+	if (ret)
+		return ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_PLL2_ADC_DIVIDER_REG,
+			       cfg->pll2_adc_divider);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
 static int ov7251_set_register_array(struct ov7251 *ov7251,
 				     const struct reg_value *settings,
 				     unsigned int num_settings)
@@ -737,6 +887,8 @@ static int ov7251_set_power_on(struct ov7251 *ov7251)
 	int ret;
 	u32 wait_us;
 
+	dev_info(ov7251->dev, "%s() called\n", __func__);
+
 	ret = ov7251_regulators_enable(ov7251);
 	if (ret < 0)
 		return ret;
@@ -749,6 +901,7 @@ static int ov7251_set_power_on(struct ov7251 *ov7251)
 	}
 
 	gpiod_set_value_cansleep(ov7251->enable_gpio, 1);
+	gpiod_set_value_cansleep(ov7251->reset, 0);
 
 	/* wait at least 65536 external clock cycles */
 	wait_us = DIV_ROUND_UP(65536 * 1000,
@@ -760,45 +913,88 @@ static int ov7251_set_power_on(struct ov7251 *ov7251)
 
 static void ov7251_set_power_off(struct ov7251 *ov7251)
 {
+	dev_info(ov7251->dev, "%s() called\n", __func__);
+
 	clk_disable_unprepare(ov7251->xclk);
 	gpiod_set_value_cansleep(ov7251->enable_gpio, 0);
+	gpiod_set_value_cansleep(ov7251->reset, 1);
 	ov7251_regulators_disable(ov7251);
 }
 
-static int ov7251_s_power(struct v4l2_subdev *sd, int on)
+static int ov7251_sensor_resume(struct device *dev)
 {
+	struct i2c_client *client = i2c_verify_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct ov7251 *ov7251 = to_ov7251(sd);
-	int ret = 0;
+	int ret;
 
-	mutex_lock(&ov7251->lock);
+	dev_info(dev, "%s() called\n", __func__);
 
-	/* If the power state is not modified - no work to do. */
-	if (ov7251->power_on == !!on)
-		goto exit;
+	ret = ov7251_set_power_on(ov7251);
+	if (ret < 0)
+		goto out;
 
-	if (on) {
-		ret = ov7251_set_power_on(ov7251);
-		if (ret < 0)
-			goto exit;
-
-		ret = ov7251_set_register_array(ov7251,
+	ret = ov7251_set_register_array(ov7251,
 					ov7251_global_init_setting,
 					ARRAY_SIZE(ov7251_global_init_setting));
-		if (ret < 0) {
-			dev_err(ov7251->dev, "could not set init registers\n");
-			ov7251_set_power_off(ov7251);
-			goto exit;
-		}
-
-		ov7251->power_on = true;
-	} else {
-		ov7251_set_power_off(ov7251);
-		ov7251->power_on = false;
+	if (ret < 0) {
+		dev_err(dev, "could not set init registers\n");
+		goto err_power;
 	}
 
-exit:
-	mutex_unlock(&ov7251->lock);
+	ret = ov7251_pll1_configure(ov7251);
+	if (ret) {
+		dev_err(dev, "Could not set PLL1 config\n");
+		goto err_power;
+	}
 
+	ret = ov7251_pll2_configure(ov7251);
+	if (ret) {
+		dev_err(dev, "Could not set PLL2 config\n");
+		goto err_power;
+	}
+
+	ov7251->power_on = true;
+
+	if (ov7251->streaming) {
+		ret = ov7251_write_reg(ov7251, OV7251_SC_MODE_SELECT,
+				       OV7251_SC_MODE_SELECT_STREAMING);
+		if (ret) {
+			dev_err(dev, "could not re-start streaming\n");
+			goto err_power;
+		}
+	}
+
+	return 0;
+
+err_power:
+	ov7251_set_power_off(ov7251);
+out:
+	return ret;
+}
+
+static int ov7251_sensor_suspend(struct device *dev)
+{
+	struct i2c_client *client = i2c_verify_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct ov7251 *ov7251 = to_ov7251(sd);
+	int ret;
+
+	dev_info(dev, "%s() called\n", __func__);
+
+	if (ov7251->streaming) {
+		ret = ov7251_write_reg(ov7251, OV7251_SC_MODE_SELECT,
+				       OV7251_SC_MODE_SELECT_SW_STANDBY);
+		if (ret)
+			goto out;
+	}
+
+	ov7251_set_power_off(ov7251);
+	ov7251->power_on = false;
+
+	return 0;
+
+out:
 	return ret;
 }
 
@@ -853,6 +1049,22 @@ static int ov7251_set_test_pattern(struct ov7251 *ov7251, s32 value)
 	return ret;
 }
 
+static int ov7251_set_vblank(struct ov7251 *ov7251, s32 value)
+{
+	u16 val = ov7251->current_mode->height + value;
+	int ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_VTS_REG_HIGH, val >> 8);
+	if (ret)
+		return ret;
+
+	ret = ov7251_write_reg(ov7251, OV7251_VTS_REG_LOW, val & 0xff);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
 static const char * const ov7251_test_pattern_menu[] = {
 	"Disabled",
 	"Vertical Pattern Bars",
@@ -873,7 +1085,7 @@ static int ov7251_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_EXPOSURE:
 		ret = ov7251_set_exposure(ov7251, ctrl->val);
 		break;
-	case V4L2_CID_GAIN:
+	case V4L2_CID_ANALOGUE_GAIN:
 		ret = ov7251_set_gain(ov7251, ctrl->val);
 		break;
 	case V4L2_CID_TEST_PATTERN:
@@ -884,6 +1096,9 @@ static int ov7251_s_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_VFLIP:
 		ret = ov7251_set_vflip(ov7251, ctrl->val);
+		break;
+	case V4L2_CID_VBLANK:
+		ret = ov7251_set_vblank(ov7251, ctrl->val);
 		break;
 	default:
 		ret = -EINVAL;
@@ -904,7 +1119,7 @@ static int ov7251_enum_mbus_code(struct v4l2_subdev *sd,
 	if (code->index > 0)
 		return -EINVAL;
 
-	code->code = MEDIA_BUS_FMT_Y10_1X10;
+	code->code = MEDIA_BUS_FMT_SBGGR10_1X10;
 
 	return 0;
 }
@@ -913,7 +1128,7 @@ static int ov7251_enum_frame_size(struct v4l2_subdev *subdev,
 				  struct v4l2_subdev_state *sd_state,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
-	if (fse->code != MEDIA_BUS_FMT_Y10_1X10)
+	if (fse->code != MEDIA_BUS_FMT_SBGGR10_1X10)
 		return -EINVAL;
 
 	if (fse->index >= ARRAY_SIZE(ov7251_mode_info_data))
@@ -1077,6 +1292,10 @@ static int ov7251_set_format(struct v4l2_subdev *sd,
 		if (ret < 0)
 			goto exit;
 
+		ret = __v4l2_ctrl_modify_range(ov7251->vblank, OV7251_VBLANK_MIN,
+					       OV7251_VBLANK_MAX - ov7251->current_mode->height,
+					       1, ov7251->current_mode->vts - ov7251->current_mode->height);
+
 		ov7251->current_mode = new_mode;
 	}
 
@@ -1084,7 +1303,7 @@ static int ov7251_set_format(struct v4l2_subdev *sd,
 					   format->which);
 	__format->width = __crop->width;
 	__format->height = __crop->height;
-	__format->code = MEDIA_BUS_FMT_Y10_1X10;
+	__format->code = MEDIA_BUS_FMT_SBGGR10_1X10;
 	__format->field = V4L2_FIELD_NONE;
 	__format->colorspace = V4L2_COLORSPACE_SRGB;
 	__format->ycbcr_enc = V4L2_MAP_YCBCR_ENC_DEFAULT(__format->colorspace);
@@ -1123,13 +1342,29 @@ static int ov7251_get_selection(struct v4l2_subdev *sd,
 {
 	struct ov7251 *ov7251 = to_ov7251(sd);
 
-	if (sel->target != V4L2_SEL_TGT_CROP)
+	switch (sel->target) {
+	case V4L2_SEL_TGT_CROP:
+		mutex_lock(&ov7251->lock);
+		sel->r = *__ov7251_get_pad_crop(ov7251, sd_state, sel->pad,
+						sel->which);
+		mutex_unlock(&ov7251->lock);
+		break;
+	case V4L2_SEL_TGT_NATIVE_SIZE:
+		sel->r.top = 0;
+		sel->r.left = 0;
+		sel->r.width = 640;
+		sel->r.height = 480;
+		break;
+	case V4L2_SEL_TGT_CROP_BOUNDS:
+	case V4L2_SEL_TGT_CROP_DEFAULT:
+		sel->r.top = 0;
+		sel->r.left = 0;
+		sel->r.width = 640;
+		sel->r.height = 480;
+		break;
+	default:
 		return -EINVAL;
-
-	mutex_lock(&ov7251->lock);
-	sel->r = *__ov7251_get_pad_crop(ov7251, sd_state, sel->pad,
-					sel->which);
-	mutex_unlock(&ov7251->lock);
+	}
 
 	return 0;
 }
@@ -1142,6 +1377,13 @@ static int ov7251_s_stream(struct v4l2_subdev *subdev, int enable)
 	mutex_lock(&ov7251->lock);
 
 	if (enable) {
+		ret = ov7251_sensor_resume(ov7251->dev);
+		if (ret < 0) {
+			dev_err(ov7251->dev, "could not power up OV7251\n");
+			ov7251_sensor_suspend(ov7251->dev);
+			goto exit;
+		}
+
 		ret = ov7251_set_register_array(ov7251,
 					ov7251->current_mode->data,
 					ov7251->current_mode->data_size);
@@ -1161,6 +1403,8 @@ static int ov7251_s_stream(struct v4l2_subdev *subdev, int enable)
 	} else {
 		ret = ov7251_write_reg(ov7251, OV7251_SC_MODE_SELECT,
 				       OV7251_SC_MODE_SELECT_SW_STANDBY);
+
+		ov7251_sensor_suspend(ov7251->dev);
 	}
 
 exit:
@@ -1228,10 +1472,6 @@ exit:
 	return ret;
 }
 
-static const struct v4l2_subdev_core_ops ov7251_core_ops = {
-	.s_power = ov7251_s_power,
-};
-
 static const struct v4l2_subdev_video_ops ov7251_video_ops = {
 	.s_stream = ov7251_s_stream,
 	.g_frame_interval = ov7251_get_frame_interval,
@@ -1249,17 +1489,132 @@ static const struct v4l2_subdev_pad_ops ov7251_subdev_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov7251_subdev_ops = {
-	.core = &ov7251_core_ops,
 	.video = &ov7251_video_ops,
 	.pad = &ov7251_subdev_pad_ops,
 };
 
+static int ov7251_configure_regulators(struct ov7251 *ov7251)
+{
+	ov7251->io_regulator = devm_regulator_get(ov7251->dev, "vdddo");
+	if (IS_ERR(ov7251->io_regulator)) {
+		dev_err(ov7251->dev, "cannot get io regulator\n");
+		return PTR_ERR(ov7251->io_regulator);
+	}
+
+	ov7251->core_regulator = devm_regulator_get(ov7251->dev, "vddd");
+	if (IS_ERR(ov7251->core_regulator)) {
+		dev_err(ov7251->dev, "cannot get core regulator\n");
+		return PTR_ERR(ov7251->core_regulator);
+	}
+
+	ov7251->analog_regulator = devm_regulator_get(ov7251->dev, "vdda");
+	if (IS_ERR(ov7251->analog_regulator)) {
+		dev_err(ov7251->dev, "cannot get analog regulator\n");
+		return PTR_ERR(ov7251->analog_regulator);
+	}
+
+	return 0;
+}
+
+static int ov7251_init_controls(struct ov7251 *ov7251)
+{
+	struct v4l2_fwnode_device_properties props;
+	int vblank_max, vblank_def;
+	int hblank;
+	int ret;
+
+	v4l2_ctrl_handler_init(&ov7251->ctrls, 9);
+	ov7251->ctrls.lock = &ov7251->lock;
+
+	v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
+			  V4L2_CID_HFLIP, 0, 1, 1, 0);
+	v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
+			  V4L2_CID_VFLIP, 0, 1, 1, 0);
+	ov7251->exposure = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
+					     V4L2_CID_EXPOSURE, 1, 32, 1, 32);
+	ov7251->gain = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
+					 V4L2_CID_ANALOGUE_GAIN, 16, 1023, 1, 16);
+	v4l2_ctrl_new_std_menu_items(&ov7251->ctrls, &ov7251_ctrl_ops,
+				     V4L2_CID_TEST_PATTERN,
+				     ARRAY_SIZE(ov7251_test_pattern_menu) - 1,
+				     0, 0, ov7251_test_pattern_menu);
+	ov7251->pixel_clock = v4l2_ctrl_new_std(&ov7251->ctrls,
+						&ov7251_ctrl_ops,
+						V4L2_CID_PIXEL_RATE,
+						1, INT_MAX, 1, 1);
+	ov7251->link_freq = v4l2_ctrl_new_int_menu(&ov7251->ctrls,
+						   &ov7251_ctrl_ops,
+						   V4L2_CID_LINK_FREQ,
+						   ARRAY_SIZE(link_freq) - 1,
+						   0, link_freq);
+	if (ov7251->link_freq)
+		ov7251->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+
+	hblank = ov7251->current_mode->hts - ov7251->current_mode->width;
+	ov7251->hblank = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
+					   V4L2_CID_HBLANK, hblank, hblank, 1,
+					   hblank);
+
+	if (ov7251->hblank)
+		ov7251->hblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+
+	vblank_max = OV7251_VBLANK_MAX - ov7251->current_mode->height;
+	vblank_def = ov7251->current_mode->vts - ov7251->current_mode->height;
+	ov7251->vblank = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
+					   V4L2_CID_VBLANK, OV7251_VBLANK_MIN,
+					   vblank_max, 1, vblank_def);
+
+	ov7251->sd.ctrl_handler = &ov7251->ctrls;
+
+	if (ov7251->ctrls.error) {
+		dev_err(ov7251->dev, "%s: control initialization error %d\n",
+			__func__, ov7251->ctrls.error);
+		v4l2_ctrl_handler_free(&ov7251->ctrls);
+		return ov7251->ctrls.error;
+	}
+
+	ret = v4l2_fwnode_device_parse(ov7251->dev, &props);
+	if (ret)
+		goto free_ctrl;
+
+	ret = v4l2_ctrl_new_fwnode_properties(&ov7251->ctrls, &ov7251_ctrl_ops,
+					      &props);
+	if (ret)
+		goto free_ctrl;
+
+	return 0;
+
+free_ctrl:
+	v4l2_ctrl_handler_free(&ov7251->ctrls);
+	return ret;
+}
+
+static int ov7251_configure_gpios(struct ov7251 *ov7251)
+{
+	ov7251->enable_gpio = devm_gpiod_get_optional(ov7251->dev, "enable",
+						      GPIOD_OUT_HIGH);
+	if (IS_ERR(ov7251->enable_gpio)) {
+		dev_err(ov7251->dev, "Error fetching enable GPIO\n");
+		return PTR_ERR(ov7251->enable_gpio);
+	}
+
+	ov7251->reset = devm_gpiod_get_optional(ov7251->dev, "reset",
+						GPIOD_OUT_HIGH);
+	if (IS_ERR(ov7251->reset)) {
+		dev_err(ov7251->dev, "Error fetching reset GPIO\n");
+		return PTR_ERR(ov7251->reset);
+	}
+
+	return 0;
+}
+
 static int ov7251_probe(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
-	struct fwnode_handle *endpoint;
+	struct fwnode_handle *endpoint, *fwnode;
 	struct ov7251 *ov7251;
 	u8 chip_id_high, chip_id_low, chip_rev;
+	unsigned int i;
 	int ret;
 
 	ov7251 = devm_kzalloc(dev, sizeof(struct ov7251), GFP_KERNEL);
@@ -1269,11 +1624,13 @@ static int ov7251_probe(struct i2c_client *client)
 	ov7251->i2c_client = client;
 	ov7251->dev = dev;
 
-	endpoint = fwnode_graph_get_next_endpoint(dev_fwnode(dev), NULL);
-	if (!endpoint) {
-		dev_err(dev, "endpoint node not found\n");
-		return -EINVAL;
-	}
+	fwnode = dev_fwnode(dev);
+	endpoint = fwnode_graph_get_next_endpoint(fwnode, NULL);
+	if (!endpoint)
+		endpoint = fwnode_graph_get_next_endpoint(fwnode->secondary,
+							  NULL);
+	if (!endpoint)
+		return -EPROBE_DEFER;
 
 	ret = v4l2_fwnode_endpoint_parse(endpoint, &ov7251->ep);
 	fwnode_handle_put(endpoint);
@@ -1302,12 +1659,17 @@ static int ov7251_probe(struct i2c_client *client)
 		return ret;
 	}
 
-	/* external clock must be 24MHz, allow 1% tolerance */
-	if (ov7251->xclk_freq < 23760000 || ov7251->xclk_freq > 24240000) {
+	for (i = 0; i < ARRAY_SIZE(supported_xclk_freqs); i++)
+		if (ov7251->xclk_freq == supported_xclk_freqs[i])
+			break;
+
+	if (i == ARRAY_SIZE(supported_xclk_freqs)) {
 		dev_err(dev, "external clock frequency %u is not supported\n",
 			ov7251->xclk_freq);
 		return -EINVAL;
 	}
+
+	ov7251->xclk_freq_idx = i;
 
 	ret = clk_set_rate(ov7251->xclk, ov7251->xclk_freq);
 	if (ret) {
@@ -1315,67 +1677,22 @@ static int ov7251_probe(struct i2c_client *client)
 		return ret;
 	}
 
-	ov7251->io_regulator = devm_regulator_get(dev, "vdddo");
-	if (IS_ERR(ov7251->io_regulator)) {
-		dev_err(dev, "cannot get io regulator\n");
-		return PTR_ERR(ov7251->io_regulator);
-	}
+	ret = ov7251_configure_regulators(ov7251);
+	if (ret)
+		return ret;
 
-	ov7251->core_regulator = devm_regulator_get(dev, "vddd");
-	if (IS_ERR(ov7251->core_regulator)) {
-		dev_err(dev, "cannot get core regulator\n");
-		return PTR_ERR(ov7251->core_regulator);
-	}
-
-	ov7251->analog_regulator = devm_regulator_get(dev, "vdda");
-	if (IS_ERR(ov7251->analog_regulator)) {
-		dev_err(dev, "cannot get analog regulator\n");
-		return PTR_ERR(ov7251->analog_regulator);
-	}
-
-	ov7251->enable_gpio = devm_gpiod_get(dev, "enable", GPIOD_OUT_HIGH);
-	if (IS_ERR(ov7251->enable_gpio)) {
-		dev_err(dev, "cannot get enable gpio\n");
-		return PTR_ERR(ov7251->enable_gpio);
-	}
+	ov7251_configure_gpios(ov7251);
+	if (ret)
+		return ret;
 
 	mutex_init(&ov7251->lock);
 
-	v4l2_ctrl_handler_init(&ov7251->ctrls, 7);
-	ov7251->ctrls.lock = &ov7251->lock;
+	/* set highest resolution as initial mode */
+	ov7251->current_mode = &ov7251_mode_info_data[0];
 
-	v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
-			  V4L2_CID_HFLIP, 0, 1, 1, 0);
-	v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
-			  V4L2_CID_VFLIP, 0, 1, 1, 0);
-	ov7251->exposure = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
-					     V4L2_CID_EXPOSURE, 1, 32, 1, 32);
-	ov7251->gain = v4l2_ctrl_new_std(&ov7251->ctrls, &ov7251_ctrl_ops,
-					 V4L2_CID_GAIN, 16, 1023, 1, 16);
-	v4l2_ctrl_new_std_menu_items(&ov7251->ctrls, &ov7251_ctrl_ops,
-				     V4L2_CID_TEST_PATTERN,
-				     ARRAY_SIZE(ov7251_test_pattern_menu) - 1,
-				     0, 0, ov7251_test_pattern_menu);
-	ov7251->pixel_clock = v4l2_ctrl_new_std(&ov7251->ctrls,
-						&ov7251_ctrl_ops,
-						V4L2_CID_PIXEL_RATE,
-						1, INT_MAX, 1, 1);
-	ov7251->link_freq = v4l2_ctrl_new_int_menu(&ov7251->ctrls,
-						   &ov7251_ctrl_ops,
-						   V4L2_CID_LINK_FREQ,
-						   ARRAY_SIZE(link_freq) - 1,
-						   0, link_freq);
-	if (ov7251->link_freq)
-		ov7251->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
-
-	ov7251->sd.ctrl_handler = &ov7251->ctrls;
-
-	if (ov7251->ctrls.error) {
-		dev_err(dev, "%s: control initialization error %d\n",
-			__func__, ov7251->ctrls.error);
-		ret = ov7251->ctrls.error;
-		goto free_ctrl;
-	}
+	ret = ov7251_init_controls(ov7251);
+	if (ret)
+		return ret;
 
 	v4l2_i2c_subdev_init(&ov7251->sd, client, &ov7251_subdev_ops);
 	ov7251->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
@@ -1386,10 +1703,10 @@ static int ov7251_probe(struct i2c_client *client)
 	ret = media_entity_pads_init(&ov7251->sd.entity, 1, &ov7251->pad);
 	if (ret < 0) {
 		dev_err(dev, "could not register media entity\n");
-		goto free_ctrl;
+		goto out_unlock;
 	}
 
-	ret = ov7251_s_power(&ov7251->sd, true);
+	ret = ov7251_set_power_on(ov7251);
 	if (ret < 0) {
 		dev_err(dev, "could not power up OV7251\n");
 		goto free_entity;
@@ -1448,7 +1765,7 @@ static int ov7251_probe(struct i2c_client *client)
 		goto power_down;
 	}
 
-	ov7251_s_power(&ov7251->sd, false);
+	ov7251_set_power_off(ov7251);
 
 	ret = v4l2_async_register_subdev(&ov7251->sd);
 	if (ret < 0) {
@@ -1458,14 +1775,16 @@ static int ov7251_probe(struct i2c_client *client)
 
 	ov7251_entity_init_cfg(&ov7251->sd, NULL);
 
+	pm_runtime_enable(dev);
+	pm_runtime_set_suspended(dev);
+
 	return 0;
 
 power_down:
-	ov7251_s_power(&ov7251->sd, false);
+	ov7251_set_power_off(ov7251);
 free_entity:
 	media_entity_cleanup(&ov7251->sd.entity);
-free_ctrl:
-	v4l2_ctrl_handler_free(&ov7251->ctrls);
+out_unlock:
 	mutex_destroy(&ov7251->lock);
 
 	return ret;
@@ -1484,16 +1803,28 @@ static int ov7251_remove(struct i2c_client *client)
 	return 0;
 }
 
+static const struct dev_pm_ops ov7251_pm_ops = {
+	SET_RUNTIME_PM_OPS(ov7251_sensor_suspend, ov7251_sensor_resume, NULL)
+};
+
 static const struct of_device_id ov7251_of_match[] = {
 	{ .compatible = "ovti,ov7251" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, ov7251_of_match);
 
+static const struct acpi_device_id ov7251_acpi_match[] = {
+	{ "INT347E" },
+	{ }
+};
+MODULE_DEVICE_TABLE(acpi, ov7251_acpi_match);
+
 static struct i2c_driver ov7251_i2c_driver = {
 	.driver = {
 		.of_match_table = ov7251_of_match,
+		.acpi_match_table = ov7251_acpi_match,
 		.name  = "ov7251",
+		.pm = &ov7251_pm_ops,
 	},
 	.probe_new  = ov7251_probe,
 	.remove = ov7251_remove,

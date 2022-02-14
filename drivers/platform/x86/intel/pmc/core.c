@@ -2108,6 +2108,7 @@ static void pmc_core_xtal_ignore(struct pmc_dev *pmcdev)
 	u32 value;
 
 	value = pmc_core_reg_read(pmcdev, pmcdev->map->pm_vric1_offset);
+	pr_info("%s(): pm_vric1_offset value: %x", __func__, value);
 	/* 24MHz Crystal Shutdown Qualification Disable */
 	value |= SPT_PMC_VRIC1_XTALSDQDIS;
 	/* Low Voltage Mode Enable */
